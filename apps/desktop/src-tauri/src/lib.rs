@@ -10,6 +10,7 @@
 //!   unsaved changes, crash recovery and "Open Recent".
 //! - [`menu`] builds the native menu bar.
 //! - [`bibles`] imports Bibles in the background, including the bundled ones.
+//! - [`import_sources`] finds libraries from other worship software to import.
 //! - [`media`] copies images and videos into the media library;
 //!   [`schedule_archive`] carries themes and media inside saved schedules.
 //!
@@ -23,6 +24,7 @@ mod bibles;
 mod commands;
 mod error;
 mod files;
+mod import_sources;
 mod media;
 mod menu;
 mod recent;
@@ -101,6 +103,10 @@ pub fn run() {
             commands::media::media_delete,
             commands::media::media_show_in_preview,
             commands::media::schedule_add_media,
+            commands::import::import_scan,
+            commands::import::import_first_launch,
+            commands::import::import_preview,
+            commands::import::import_commit,
             commands::text::text_show_in_preview,
             commands::outputs::monitors_list,
             commands::outputs::output_open,

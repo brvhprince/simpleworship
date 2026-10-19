@@ -78,20 +78,34 @@ fn install_missing_bundled(app: &AppHandle) -> AppResult<()> {
 /// Imports a Bible file chosen by the operator. Blocks until done, so call
 /// it from a background task.
 pub fn import_file(app: &AppHandle, path: &Path) -> AppResult<BibleInfo> {
-    let bible = read(path)?;
+    import_file_as(app, path, None, None)
+}
+
+/// Like [`import_file`], with a name and abbreviation to use instead of the
+/// file's own (some files have wrong ones).
+pub fn import_file_as(
+    app: &AppHandle,
+    path: &Path,
+    name: Option<&str>,
+    abbreviation: Option<&str>,
+) -> AppResult<BibleInfo> {
+    let mut bible = read(path)?;
+    if let Some(name) = name.filter(|name| !name.trim().is_empty()) {
+        name.trim().clone_into(&mut bible.name);
+    }
+    if let Some(abbreviation) = abbreviation.filter(|abbreviation| !abbreviation.trim().is_empty())
+    {
+        abbreviation.trim().clone_into(&mut bible.abbreviation);
+    }
     let database = Database::open(&app.state::<AppState>().database_path)?;
     let info = database.bibles().import(&bible, None)?;
     announce(app);
     Ok(info)
 }
 
-fn read(path: &Path) -> AppResult<BibleData> {
-    let bytes = std::fs::read(path)?;
-    let name = path
-        .file_name()
-        .map(|n| n.to_string_lossy().into_owned())
-        .unwrap_or_default();
-    Ok(import::import(&name, &bytes)?)
+/// Reads any supported Bible file, including EasyWorship `.ewb`.
+pub fn read(path: &Path) -> AppResult<BibleData> {
+    Ok(import::import_file(path)?)
 }
 
 /// Tells every window that the list of Bibles changed.

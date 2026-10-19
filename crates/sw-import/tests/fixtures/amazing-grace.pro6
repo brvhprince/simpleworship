@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RVPresentationDocument CCLISongTitle="Amazing Grace" CCLIAuthor="John Newton" CCLICopyrightYear="1779" CCLIPublisher="Public Domain" CCLISongNumber="22025">
+  <array rvXMLIvarName="groups">
+    <RVSlideGrouping name="Verse 1"><array rvXMLIvarName="slides"><RVDisplaySlide><array rvXMLIvarName="displayElements"><RVTextElement>
+      <NSString rvXMLIvarName="PlainText">QW1hemluZyBncmFjZSBob3cgc3dlZXQgdGhlIHNvdW5kClRoYXQgc2F2ZWQgYSB3cmV0Y2ggbGlrZSBtZQ==</NSString>
+    </RVTextElement></array></RVDisplaySlide></array></RVSlideGrouping>
+    <RVSlideGrouping name="Verse 2"><array rvXMLIvarName="slides"><RVDisplaySlide><array rvXMLIvarName="displayElements"><RVTextElement>
+      <NSString rvXMLIvarName="PlainText">J1R3YXMgZ3JhY2UgdGhhdCB0YXVnaHQgbXkgaGVhcnQgdG8gZmVhcgpBbmQgZ3JhY2UgbXkgZmVhcnMgcmVsaWV2ZWQ=</NSString>
+    </RVTextElement></array></RVDisplaySlide></array></RVSlideGrouping>
+  </array>
+</RVPresentationDocument>

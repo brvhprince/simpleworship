@@ -26,6 +26,7 @@ sw-bible.workspace = true
 sw-core.workspace = true
 sw-db.workspace = true
 sw-files.workspace = true
+sw-import.workspace = true
 # protocol-asset serves media files to the webview (with range requests,
 # so videos can seek).
 tauri = { version = "2.12", features = ["protocol-asset"] }

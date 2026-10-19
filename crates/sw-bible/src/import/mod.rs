@@ -7,15 +7,19 @@
 //! | OpenSong | one `.xmm` / `.xml` file (`<bible>`) | [`opensong`]  |
 //! | USX      | a `.zip` of one `.usx` file per book | [`usx`]       |
 //! | USFM     | a `.zip` of one `.usfm` / `.sfm` per book | [`usfm`] |
+//! | EasyWorship | one `.ewb` file (SQLite)             | [`ewb`]       |
 //!
-//! [`import`] takes the bytes of a single file or a zip, works out the
-//! format by looking inside, and returns a [`BibleData`]: the verse texts
-//! with footnotes, cross-references, Strong's numbers and headings removed.
+//! [`import_file`] reads a file from disk and works out its format by
+//! looking inside; [`import`] does the same for bytes already in memory
+//! (all formats except `.ewb`, which is a database). Both return a
+//! [`BibleData`]: the verse texts with footnotes, cross-references, Strong's
+//! numbers and headings removed.
 //!
 //! Real-world files are messy. Importers keep what they understand and skip
 //! the rest instead of failing, and only report an error when no verses at
 //! all could be found.
 
+pub mod ewb;
 pub mod opensong;
 pub mod osis;
 pub mod usfm;
@@ -99,6 +103,31 @@ pub enum ImportError {
 struct SourceFile {
     name: String,
     text: String,
+}
+
+/// Imports a Bible file from disk: any format [`import`] reads, or an
+/// EasyWorship `.ewb` database.
+pub fn import_file(path: &std::path::Path) -> Result<BibleData, ImportError> {
+    let name = path
+        .file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let bytes = std::fs::read(path).map_err(|error| ImportError::Malformed {
+        reason: error.to_string(),
+    })?;
+
+    if bytes.starts_with(b"SQLite format 3\0") {
+        let mut bible = ewb::read(path)?;
+        finish(&mut bible);
+        if bible.verses.is_empty() {
+            return Err(ImportError::NoVerses);
+        }
+        if bible.abbreviation.is_empty() {
+            bible.abbreviation = suggest_abbreviation(&bible.name);
+        }
+        return Ok(bible);
+    }
+    import(&name, &bytes)
 }
 
 /// Imports a Bible from the bytes of a file or a zip archive of files.

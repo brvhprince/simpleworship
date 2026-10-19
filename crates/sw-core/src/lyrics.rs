@@ -141,6 +141,22 @@ impl SectionLabel {
         }
     }
 
+    /// Recognises a whole line that is only a section heading, as found in
+    /// lyrics from other programs: `"Verse 1"`, `"CHORUS"`, `"Pre-Chorus 2:"`.
+    ///
+    /// Stricter than [`SectionLabel::parse`]: the name must be written out
+    /// (at least three letters, so "I" or "C" in a lyric is never taken for
+    /// a heading) and nothing else may be on the line.
+    pub fn parse_heading(line: &str) -> Option<Self> {
+        let line = line.trim().trim_end_matches(':').trim();
+        if line.is_empty() || line.len() > 24 {
+            return None;
+        }
+        let letters = line.chars().filter(|c| c.is_alphabetic()).count();
+        let label = Self::parse(line);
+        (letters >= 3 && label.kind != SectionKind::Other).then_some(label)
+    }
+
     /// The keyboard shortcut for this section, e.g. `"V2"` or `"C"`.
     /// Returns `None` for [`SectionKind::Other`] sections.
     pub fn shortcut(&self) -> Option<String> {
@@ -299,6 +315,18 @@ mod tests {
         );
         assert_eq!(SectionLabel::parse("pre chorus 2").number, Some(2));
         assert_eq!(SectionLabel::parse("Outro").kind, SectionKind::Ending);
+    }
+
+    #[test]
+    fn recognises_heading_lines_strictly() {
+        let heading = |line| SectionLabel::parse_heading(line).map(|label| label.name);
+        assert_eq!(heading("Verse 1").as_deref(), Some("Verse 1"));
+        assert_eq!(heading("  CHORUS: ").as_deref(), Some("Chorus"));
+        assert_eq!(heading("Pre-Chorus 2").as_deref(), Some("Pre-Chorus 2"));
+        assert_eq!(heading("I"), None, "a lyric line, not an intro");
+        assert_eq!(heading("C"), None);
+        assert_eq!(heading("Amazing grace how sweet the sound"), None);
+        assert_eq!(heading("Lord"), None);
     }
 
     #[test]

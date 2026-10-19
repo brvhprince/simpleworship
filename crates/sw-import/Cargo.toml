@@ -1,0 +1,25 @@
+[package]
+name = "sw-import"
+description = "Importing songs from EasyWorship, OpenLP, ProPresenter, OpenLyrics, ChordPro and CCLI SongSelect."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+base64 = "0.23"
+quick-xml.workspace = true
+rusqlite.workspace = true
+serde.workspace = true
+sw-core.workspace = true
+thiserror.workspace = true
+ts-rs.workspace = true
+
+[dev-dependencies]
+# The test library uses EasyWorship's custom collation, as the real one does.
+rusqlite = { workspace = true, features = ["collation"] }
+tempfile = "3"
+
+[lints]
+workspace = true

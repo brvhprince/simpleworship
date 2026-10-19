@@ -18,6 +18,7 @@
   import { onMount } from "svelte";
   import { bibles } from "../lib/bibles.svelte.ts";
   import { engine } from "../lib/engine.svelte.ts";
+  import { importer } from "../lib/importer.svelte.ts";
   import { media } from "../lib/media.svelte.ts";
   import { scheduleFile } from "../lib/schedule-file.svelte.ts";
   import {
@@ -26,6 +27,7 @@
     isTypingTarget,
     SectionJumper,
   } from "../lib/shortcuts.ts";
+  import ImportDialog from "./ImportDialog.svelte";
   import Library from "./library/Library.svelte";
   import PromptHost from "./PromptHost.svelte";
   import SchedulePanel from "./SchedulePanel.svelte";
@@ -41,10 +43,16 @@
       scheduleFile.connect(),
       bibles.connect(),
       media.connect(urls),
+      importer.connect(),
     ];
     for (const connection of connections) {
       connection.catch((error) => engine.showError(error));
     }
+    // After any crash-recovery question, offer another program's library
+    // (first launch only).
+    void Promise.all(connections)
+      .then(() => importer.offerOnFirstLaunch())
+      .catch((error) => engine.showError(error));
     return () => {
       for (const connection of connections) {
         void connection.then((disconnect) => disconnect());
@@ -139,6 +147,10 @@
   </SlidePane>
 
   <Library />
+
+  {#if importer.isOpen}
+    <ImportDialog />
+  {/if}
 
   <PromptHost />
 

@@ -63,3 +63,39 @@ fn world_english_bible() {
     );
     assert_clean(&bible);
 }
+
+/// Imports every EasyWorship Bible in a folder, if one is given. These are
+/// usually licensed texts, so they never go into the repository:
+///
+/// ```sh
+/// SW_EWB_FOLDER="/path/to/EasyWorship/Bibles" \
+///   cargo test --release -p sw-bible --test real_bibles -- --ignored --nocapture
+/// ```
+#[test]
+#[ignore = "needs EasyWorship Bibles; see the docs above"]
+fn easyworship_bibles() {
+    let Ok(folder) = std::env::var("SW_EWB_FOLDER") else {
+        eprintln!("SW_EWB_FOLDER is not set; nothing to test");
+        return;
+    };
+    let mut paths: Vec<_> = std::fs::read_dir(folder)
+        .unwrap()
+        .flatten()
+        .map(|entry| entry.path())
+        .filter(|path| path.extension().is_some_and(|ext| ext == "ewb"))
+        .collect();
+    paths.sort();
+    for path in paths {
+        let bible = sw_bible::import::import_file(&path).unwrap();
+        let john_3_16 = text(&bible, 43, 3, 16);
+        println!(
+            "{:10} {:28} {:5} {:>6} verses | John 3:16: {}",
+            path.file_name().unwrap().to_string_lossy(),
+            bible.name,
+            bible.abbreviation,
+            bible.verses.len(),
+            john_3_16.chars().take(50).collect::<String>()
+        );
+        assert!(!john_3_16.is_empty());
+    }
+}

@@ -50,6 +50,11 @@ with EasyWorship should feel at home.
   change. Set any image as the logo for the Logo button.
 - **Portable schedules:** saved schedules carry their themes and media, so
   they look the same on the church computer.
+- **Bring your library across:** import songs from EasyWorship 6/7, OpenLP,
+  ProPresenter 6, OpenLyrics, ChordPro and CCLI SongSelect files, and
+  Bibles from EasyWorship. On first launch SimpleWorship looks for these
+  programs and offers to import. See
+  [Moving from EasyWorship](docs/moving-from-easyworship.md).
 
 ## Keyboard shortcuts
 
@@ -116,6 +121,7 @@ crates/
   sw-db/        SQLite library storage with full-text search
   sw-files/     SimpleWorship's own file formats (.sws schedules)
   sw-bible/     Bible books, reference parsing, and Bible file importers
+  sw-import/    Song importers for other worship software
 apps/
   desktop/      The Tauri app: operator window, output and stage windows
 packages/
@@ -143,7 +149,7 @@ projector, the stage display and every thumbnail look the same.
 | M3        | Schedules: build, save/open, run a service                          | ✅     |
 | M4        | Scripture: Bible import, reference entry ("jn 3:16-18"), versions  | ✅     |
 | M5        | Theme designer, image/video backgrounds, media library, per-item overrides | ✅     |
-| M6        | Importers: EasyWorship 6/7, OpenLyrics, ProPresenter, ChordPro, CCLI |        |
+| M6        | Importers: EasyWorship 6/7, OpenLP, OpenLyrics, ProPresenter, ChordPro, CCLI | ✅     |
 | M7        | Alerts, countdowns, background audio, presentations (PDF/PPTX), CCLI report |        |
 | M8        | Installers, auto-update, translations                               |        |
 

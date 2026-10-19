@@ -14,4 +14,5 @@
 export type * from "./generated/bible.ts";
 export type * from "./generated/bindings.ts";
 export type * from "./generated/desktop.ts";
+export type * from "./generated/import.ts";
 export * from "./transport.ts";

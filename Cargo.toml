@@ -15,8 +15,10 @@ sw-bible = { path = "crates/sw-bible" }
 sw-core = { path = "crates/sw-core" }
 sw-db = { path = "crates/sw-db" }
 sw-files = { path = "crates/sw-files" }
+sw-import = { path = "crates/sw-import" }
 
 # Shared third-party crates
+flate2 = { version = "1", default-features = false, features = ["zlib-rs"] }
 quick-xml = "0.42"
 rusqlite = { version = "0.40", features = ["bundled"] }
 rusqlite_migration = "2.6"

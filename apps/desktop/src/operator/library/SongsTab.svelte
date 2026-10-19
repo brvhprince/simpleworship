@@ -20,6 +20,7 @@
   } from "../../lib/api.ts";
   import { SONG_DRAG_TYPE } from "../../lib/drag.ts";
   import { engine } from "../../lib/engine.svelte.ts";
+  import { importer } from "../../lib/importer.svelte.ts";
   import { library } from "../../lib/library.svelte.ts";
   import SongEditor from "./SongEditor.svelte";
 
@@ -145,6 +146,7 @@
       aria-label="Search songs"
     >
     <Button onclick={() => (editing = newSong())}>New Song</Button>
+    <Button onclick={() => importer.open()}>Import…</Button>
     <Button disabled={!selected} onclick={() => edit()}>Edit</Button>
     {#if confirmingDelete}
       <span class="confirm">Delete “{selected?.title}”?</span>

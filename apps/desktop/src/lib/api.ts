@@ -6,8 +6,13 @@
 
 import type {
   AutosaveInfo,
+  BibleChoice,
   BibleInfo,
   BookOutline,
+  FoundSource,
+  ImportedSong,
+  ImportPreview,
+  ImportSummary,
   MediaFolderPaths,
   MediaItem,
   MonitorInfo,
@@ -196,6 +201,23 @@ export const showMediaInPreview = (id: string) => invoke<void>("media_show_in_pr
 /** Adds an image or video to the schedule at `index`, or at the end. */
 export const addMediaToSchedule = (id: string, index: number | null = null) =>
   invoke<void>("schedule_add_media", { id, index });
+
+// ── Importing from other software ────────────────────────────────────────
+
+/** Finds importable libraries in `folder`, or in the usual places. */
+export const scanForImports = (folder: string | null = null) =>
+  invoke<FoundSource[]>("import_scan", { folder });
+
+/** On the very first launch, what the usual places contain; later, nothing. */
+export const firstLaunchImports = () => invoke<FoundSource[]>("import_first_launch");
+
+/** Reads sources and reports their songs (marking duplicates) and Bibles. */
+export const previewImport = (sources: FoundSource[]) =>
+  invoke<ImportPreview>("import_preview", { sources });
+
+/** Saves the chosen songs and imports the chosen Bibles. */
+export const commitImport = (songs: ImportedSong[], bibles: BibleChoice[]) =>
+  invoke<ImportSummary>("import_commit", { songs, bibles });
 
 // ── Outputs ──────────────────────────────────────────────────────────────
 

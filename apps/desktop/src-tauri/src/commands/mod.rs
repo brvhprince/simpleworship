@@ -4,6 +4,7 @@
 //! Argument names are camelCase on the JavaScript side (Tauri converts them).
 
 pub mod engine;
+pub mod import;
 pub mod media;
 pub mod outputs;
 pub mod schedule;

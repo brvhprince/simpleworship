@@ -134,6 +134,29 @@ impl<'db> Songs<'db> {
         Ok(saved)
     }
 
+    /// Every song with its full lyrics (for checking an import for
+    /// duplicates). Deleted songs are left out.
+    pub fn all(&self) -> Result<Vec<Song>, DbError> {
+        let mut statement = self.conn.prepare_cached(
+            "SELECT id, title, author, copyright, ccli_number, lyrics, arrangement,
+                    created_at, updated_at, theme_id
+             FROM songs WHERE deleted_at IS NULL",
+        )?;
+        let rows = statement.query_map([], read_song)?;
+        Ok(rows.collect::<Result<_, _>>()?)
+    }
+
+    /// Saves many songs in one transaction, so a big import is quick and
+    /// either fully stored or not stored at all. Returns how many were saved.
+    pub fn save_all(&self, songs: &[Song]) -> Result<usize, DbError> {
+        let transaction = self.conn.unchecked_transaction()?;
+        for song in songs {
+            Songs::new(&transaction).save(song)?;
+        }
+        transaction.commit()?;
+        Ok(songs.len())
+    }
+
     /// Marks a song as deleted. It disappears from listings and searches.
     /// Returns `false` if there was no such song.
     pub fn delete(&self, id: Id) -> Result<bool, DbError> {
@@ -242,6 +265,17 @@ mod tests {
             .save(&song("Señor, Ten Piedad", "", "[Coro]\nSeñor ten piedad"))
             .unwrap();
         db
+    }
+
+    #[test]
+    fn saves_many_songs_at_once() {
+        let db = Database::open_in_memory().unwrap();
+        let songs = [
+            song("One", "", "[V1]\nfirst"),
+            song("Two", "", "[V1]\nsecond"),
+        ];
+        assert_eq!(db.songs().save_all(&songs).unwrap(), 2);
+        assert_eq!(db.songs().all().unwrap().len(), 2);
     }
 
     #[test]

@@ -94,7 +94,9 @@ fn build(app: &AppHandle, recent: &Submenu<Wry>) -> tauri::Result<Menu<Wry>> {
             "schedule-save-as",
             "Save Schedule As…",
             "CmdOrCtrl+Shift+S",
-        )?);
+        )?)
+        .separator()
+        .text("import", "Import from Other Software…");
     #[cfg(not(target_os = "macos"))]
     let file = file.separator().item(&quit);
     let file = file.build()?;
