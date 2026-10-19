@@ -13,7 +13,9 @@
 //! The schema is created and upgraded automatically by [`Database::open`]
 //! (see the SQL files in `migrations/`).
 
+mod bibles;
 mod error;
+mod fts;
 mod migrations;
 mod songs;
 
@@ -21,6 +23,7 @@ use std::path::Path;
 
 use rusqlite::Connection;
 
+pub use bibles::Bibles;
 pub use error::DbError;
 pub use songs::Songs;
 
@@ -46,6 +49,9 @@ impl Database {
 
     fn init(mut conn: Connection) -> Result<Self, DbError> {
         conn.pragma_update(None, "foreign_keys", true)?;
+        // Another connection may be writing (a Bible import runs on its own
+        // connection); wait for it instead of failing straight away.
+        conn.busy_timeout(std::time::Duration::from_secs(10))?;
         migrations::run(&mut conn)?;
         Ok(Self { conn })
     }
@@ -53,5 +59,10 @@ impl Database {
     /// Access to the song library.
     pub fn songs(&self) -> Songs<'_> {
         Songs::new(&self.conn)
+    }
+
+    /// Access to the installed Bibles.
+    pub fn bibles(&self) -> Bibles<'_> {
+        Bibles::new(&self.conn)
     }
 }

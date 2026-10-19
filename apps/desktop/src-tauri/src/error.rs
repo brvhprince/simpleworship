@@ -38,6 +38,18 @@ pub enum AppError {
     #[error("that song is no longer in the library")]
     SongNotFound,
 
+    /// A Bible file could not be imported.
+    #[error(transparent)]
+    BibleImport(#[from] sw_bible::import::ImportError),
+
+    /// A Bible id that is not installed (any more).
+    #[error("that Bible is no longer installed")]
+    BibleNotFound,
+
+    /// Scripture was asked for without choosing a translation.
+    #[error("choose a Bible translation first")]
+    NoTranslation,
+
     /// A monitor index that does not exist (any more).
     #[error("monitor {0} is not connected")]
     MonitorNotFound(usize),

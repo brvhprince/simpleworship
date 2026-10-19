@@ -77,6 +77,8 @@
               <span class="number">{index + 1}</span>
               {#if slide.startsSection && slide.section}
                 <span class="section">{slide.section.name}</span>
+              {:else if slide.caption}
+                <span class="section">{slide.caption}</span>
               {/if}
             </span>
           </button>

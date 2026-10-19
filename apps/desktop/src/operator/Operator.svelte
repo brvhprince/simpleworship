@@ -15,6 +15,7 @@
   import type { Command } from "@simpleworship/protocol";
   import { Button } from "@simpleworship/ui";
   import { onMount } from "svelte";
+  import { bibles } from "../lib/bibles.svelte.ts";
   import { engine } from "../lib/engine.svelte.ts";
   import { scheduleFile } from "../lib/schedule-file.svelte.ts";
   import {
@@ -30,7 +31,7 @@
   import Toolbar from "./Toolbar.svelte";
 
   onMount(() => {
-    const connections = [engine.connect(), scheduleFile.connect()];
+    const connections = [engine.connect(), scheduleFile.connect(), bibles.connect()];
     for (const connection of connections) {
       connection.catch((error) => engine.showError(error));
     }

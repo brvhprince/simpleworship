@@ -11,6 +11,7 @@
  *   phone remote).
  */
 
+export type * from "./generated/bible.ts";
 export type * from "./generated/bindings.ts";
 export type * from "./generated/desktop.ts";
 export * from "./transport.ts";

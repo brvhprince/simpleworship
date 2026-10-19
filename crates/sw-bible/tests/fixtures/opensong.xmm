@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bible>
+  <b n="Genesis">
+    <c n="1">
+      <v n="1">In the beginning God created the heavens and the earth.</v>
+      <v n="2">The earth was formless and empty.</v>
+      <v n="3">God said, “Let there be light,” and there was light.</v>
+    </c>
+  </b>
+  <b n="John">
+    <c n="3">
+      <v n="16">For God so loved the world &amp; gave his Son.</v>
+    </c>
+  </b>
+</bible>

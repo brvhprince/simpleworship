@@ -1,4 +1,5 @@
-# ts-rs writes generated TypeScript bindings here when `cargo test` runs.
-# Regenerate with `pnpm gen:bindings`.
+# ts-rs writes TypeScript bindings whenever `cargo test` runs. Plain test
+# runs write them to this git-ignored scratch folder; `pnpm gen:bindings`
+# (scripts/gen-bindings.mjs) overrides it to update packages/protocol.
 [env]
-TS_RS_EXPORT_DIR = { value = "packages/protocol/src/generated", relative = true }
+TS_RS_EXPORT_DIR = { value = "target/ts-bindings", relative = true }

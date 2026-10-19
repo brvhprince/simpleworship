@@ -18,7 +18,10 @@ pub fn run(conn: &mut Connection) -> Result<(), DbError> {
 }
 
 fn migrations() -> Migrations<'static> {
-    Migrations::new(vec![M::up(include_str!("../migrations/0001_songs.sql"))])
+    Migrations::new(vec![
+        M::up(include_str!("../migrations/0001_songs.sql")),
+        M::up(include_str!("../migrations/0002_bibles.sql")),
+    ])
 }
 
 #[cfg(test)]

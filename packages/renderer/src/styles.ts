@@ -3,7 +3,7 @@
  * rules are easy to unit-test (see `styles.test.ts`).
  */
 
-import type { Background, FooterStyle, TextBox, TextStyle } from "@simpleworship/protocol";
+import type { Background, FooterStyle, TextBox, TextStyle, Theme } from "@simpleworship/protocol";
 
 /** Joins `property: value` pairs into an inline style string, skipping empty values. */
 function css(declarations: Record<string, string | number | null | undefined>): string {
@@ -59,6 +59,22 @@ export function footerStyle(footer: FooterStyle, align: TextStyle["align"]): str
     "font-size": `${footer.fontSize}px`,
     color: footer.color,
     "text-align": align,
+  });
+}
+
+/**
+ * Style of the caption under scripture ("John 3:16–17 (KJV)"): like the
+ * footer but larger and in the text colour, because the audience reads it.
+ */
+export function captionStyle(theme: Theme): string {
+  return css({
+    "font-size": `${Math.round(theme.footer.fontSize * 1.4)}px`,
+    "font-family": theme.text.fontFamily,
+    "font-weight": 600,
+    color: theme.text.color,
+    "text-shadow": theme.text.shadow
+      ? `${theme.text.shadow.offsetX}px ${theme.text.shadow.offsetY}px ${theme.text.shadow.blur}px ${theme.text.shadow.color}`
+      : null,
   });
 }
 

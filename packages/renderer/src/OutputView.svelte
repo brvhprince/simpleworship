@@ -54,8 +54,16 @@
 
   /** Everything that affects how the text layer looks. */
   function textKey(frame: RenderFrame): string {
-    const { text, footer, theme } = frame;
-    return JSON.stringify([text, footer, theme.text, theme.textBox, theme.footer]);
+    const { text, scripture, caption, footer, theme } = frame;
+    return JSON.stringify([
+      text,
+      scripture,
+      caption,
+      footer,
+      theme.text,
+      theme.textBox,
+      theme.footer,
+    ]);
   }
 </script>
 

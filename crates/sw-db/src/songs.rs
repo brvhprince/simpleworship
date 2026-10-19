@@ -6,6 +6,7 @@ use sw_core::time;
 use sw_core::{Id, Song, SongSummary};
 
 use crate::DbError;
+use crate::fts::to_fts_query;
 
 /// The most results a search or listing returns. Plenty for a picker list,
 /// and it keeps the UI responsive on libraries with thousands of songs.
@@ -167,22 +168,6 @@ fn read_id(row: &Row<'_>, column: usize) -> rusqlite::Result<Id> {
     let text: String = row.get(column)?;
     text.parse()
         .map_err(|err| rusqlite::Error::FromSqlConversionFailure(column, Type::Text, Box::new(err)))
-}
-
-/// Turns what the operator typed into an FTS5 query: every word must match
-/// as a prefix. Returns `None` if there are no searchable words.
-///
-/// Each word is quoted, so characters that mean something in FTS5 syntax
-/// (`-`, `*`, `"`, `AND`) are treated as plain text.
-fn to_fts_query(input: &str) -> Option<String> {
-    let terms: Vec<String> = input
-        .split(|c: char| !c.is_alphanumeric() && c != '\'')
-        .map(|word| word.trim_matches('\''))
-        .filter(|word| !word.is_empty())
-        .map(|word| format!("\"{}\"*", word.replace('"', "")))
-        .collect();
-
-    (!terms.is_empty()).then(|| terms.join(" "))
 }
 
 /// The first line of actual lyrics, skipping section tags and blank lines.
@@ -354,15 +339,5 @@ mod tests {
         restored.id = grace;
         songs.save(&restored).unwrap();
         assert!(songs.get(grace).unwrap().is_some());
-    }
-
-    #[test]
-    fn fts_query_quotes_every_word() {
-        assert_eq!(
-            to_fts_query("amazing grace").unwrap(),
-            "\"amazing\"* \"grace\"*"
-        );
-        assert_eq!(to_fts_query("don't").unwrap(), "\"don't\"*");
-        assert_eq!(to_fts_query(" - * "), None);
     }
 }

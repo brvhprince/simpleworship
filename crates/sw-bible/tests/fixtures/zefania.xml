@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<XMLBIBLE biblename="Test Bible">
+  <INFORMATION>
+    <title>Not used: the biblename attribute wins</title>
+    <identifier>TEST</identifier>
+    <language>en</language>
+    <rights>Public Domain</rights>
+  </INFORMATION>
+  <BIBLEBOOK bnumber="1" bname="Genesis">
+    <CHAPTER cnumber="1">
+      <VERS vnumber="1">In the <gr str="7225">beginning</gr> God created the heavens and the earth.<NOTE>A footnote that must not appear.</NOTE></VERS>
+      <VERS vnumber="2">The earth was formless<BR/>and empty.</VERS>
+      <VERS vnumber="3">God said, “Let there be light,” and there was light.</VERS>
+    </CHAPTER>
+  </BIBLEBOOK>
+  <BIBLEBOOK bnumber="43" bname="John">
+    <CHAPTER cnumber="3">
+      <VERS vnumber="16">For God so loved the world &amp; gave his Son.</VERS>
+    </CHAPTER>
+  </BIBLEBOOK>
+</XMLBIBLE>

@@ -13,17 +13,25 @@
 //! SimpleWorship. Opening a file with a *newer* version is refused with a
 //! clear message instead of silently losing data. Unknown fields are
 //! ignored, so adding optional fields does not need a new version.
+//!
+//! | Version | Added                 |
+//! | ------- | --------------------- |
+//! | 1       | songs and text items  |
+//! | 2       | scripture items       |
+//!
+//! A file is written with the *lowest* version that can hold it, so a
+//! schedule without scripture still opens in versions that only know v1.
 
 use std::io::{Cursor, Read, Write};
 
 use serde::{Deserialize, Serialize};
-use sw_core::Schedule;
+use sw_core::{ItemContent, Schedule};
 use thiserror::Error;
 use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipArchive, ZipWriter};
 
-/// The format version this build writes and the newest it can read.
-pub const FORMAT_VERSION: u32 = 1;
+/// The newest format version this build reads (and writes, when needed).
+pub const FORMAT_VERSION: u32 = 2;
 
 /// Name of the schedule entry inside the archive.
 const SCHEDULE_ENTRY: &str = "schedule.json";
@@ -104,7 +112,7 @@ pub fn read_schedule(bytes: &[u8]) -> Result<Schedule, ScheduleFileError> {
 /// Writes a schedule as the bytes of a `.sws` file.
 pub fn write_schedule(schedule: &Schedule) -> Result<Vec<u8>, ScheduleFileError> {
     let document = ScheduleDocument {
-        format_version: FORMAT_VERSION,
+        format_version: version_needed(schedule),
         generator: format!("SimpleWorship {}", env!("CARGO_PKG_VERSION")),
         schedule: schedule.clone(),
     };
@@ -124,10 +132,20 @@ pub fn write_schedule(schedule: &Schedule) -> Result<Vec<u8>, ScheduleFileError>
     Ok(cursor.into_inner())
 }
 
+/// The lowest format version that can hold `schedule` (see the table in
+/// the [module docs](self)).
+fn version_needed(schedule: &Schedule) -> u32 {
+    let has_scripture = schedule
+        .items
+        .iter()
+        .any(|item| matches!(item.content, ItemContent::Scripture { .. }));
+    if has_scripture { 2 } else { 1 }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sw_core::{ItemContent, ScheduleItem, Song};
+    use sw_core::{ScheduleItem, ScriptureOptions, Song};
 
     fn sample_schedule() -> Schedule {
         let mut song = Song::new("Amazing Grace");
@@ -158,6 +176,38 @@ mod tests {
     fn round_trips() {
         let schedule = sample_schedule();
         let bytes = write_schedule(&schedule).unwrap();
+        assert_eq!(read_schedule(&bytes).unwrap(), schedule);
+    }
+
+    /// Reads the `formatVersion` back out of written bytes.
+    fn written_version(bytes: &[u8]) -> u64 {
+        let mut archive = ZipArchive::new(Cursor::new(bytes)).unwrap();
+        let mut json = String::new();
+        archive
+            .by_name(SCHEDULE_ENTRY)
+            .unwrap()
+            .read_to_string(&mut json)
+            .unwrap();
+        let value: serde_json::Value = serde_json::from_str(&json).unwrap();
+        value["formatVersion"].as_u64().unwrap()
+    }
+
+    #[test]
+    fn writes_the_lowest_version_that_fits() {
+        let mut schedule = sample_schedule();
+        assert_eq!(written_version(&write_schedule(&schedule).unwrap()), 1);
+
+        let passage = sw_bible::reference::parse("jn 3:16").unwrap().passage;
+        schedule
+            .items
+            .push(ScheduleItem::new(ItemContent::Scripture {
+                reference: passage.to_string(),
+                passage,
+                translations: Vec::new(),
+                options: ScriptureOptions::default(),
+            }));
+        let bytes = write_schedule(&schedule).unwrap();
+        assert_eq!(written_version(&bytes), 2);
         assert_eq!(read_schedule(&bytes).unwrap(), schedule);
     }
 

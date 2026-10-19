@@ -1,0 +1,18 @@
+[package]
+name = "sw-bible"
+description = "SimpleWorship Bible support: books, reference parsing and Bible file import."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+quick-xml.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+ts-rs.workspace = true
+zip.workspace = true
+
+[lints]
+workspace = true

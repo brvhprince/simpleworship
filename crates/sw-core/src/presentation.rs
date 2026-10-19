@@ -8,8 +8,11 @@
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
+use sw_bible::Passage;
+
 use crate::id::Id;
 use crate::output::RenderFrame;
+use crate::scripture::{self, ScriptureOptions, TranslationText};
 use crate::slides::{self, Slide, SlideOptions};
 use crate::song::Song;
 use crate::theme::Theme;
@@ -30,6 +33,11 @@ pub enum PresentationSource {
     },
     /// Free text typed by the operator.
     Text,
+    /// A Bible passage.
+    Scripture {
+        /// The passage.
+        passage: Passage,
+    },
 }
 
 /// A titled list of slides, styled with one theme.
@@ -76,11 +84,33 @@ impl Presentation {
         }
     }
 
+    /// Builds a presentation from a Bible passage in one or more
+    /// translations (shown side by side).
+    pub fn from_scripture(
+        passage: &Passage,
+        translations: &[TranslationText],
+        options: ScriptureOptions,
+        theme: Theme,
+    ) -> Self {
+        Self {
+            id: Id::new(),
+            source: PresentationSource::Scripture {
+                passage: passage.clone(),
+            },
+            title: scripture::title(passage, translations),
+            slides: scripture::slides(passage, translations, options),
+            theme,
+            footer: scripture::footer(translations),
+        }
+    }
+
     /// The fully resolved frame for the slide at `index`, if it exists.
     pub fn frame(&self, index: usize) -> Option<RenderFrame> {
         let slide = self.slides.get(index)?;
         Some(RenderFrame {
             text: slide.text.clone(),
+            scripture: slide.scripture.clone(),
+            caption: slide.caption.clone(),
             footer: self.footer.clone(),
             theme: self.theme.clone(),
         })

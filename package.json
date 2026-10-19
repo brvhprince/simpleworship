@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "pnpm --filter @simpleworship/desktop tauri dev",
     "build": "pnpm --filter @simpleworship/desktop tauri build",
-    "gen:bindings": "cargo test --workspace export_bindings && biome format --write packages/protocol/src/generated",
+    "gen:bindings": "node scripts/gen-bindings.mjs",
     "check": "pnpm -r check",
     "test": "cargo test --workspace && pnpm -r test",
     "lint": "biome check . && cargo clippy --workspace --all-targets -- -D warnings",

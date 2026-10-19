@@ -4,8 +4,8 @@ Free, open-source worship presentation software for macOS, Windows and Linux.
 It puts lyrics, scripture and media on the projector, and anyone familiar
 with EasyWorship should feel at home.
 
-> **Status: early development.** The output engine, the song library and
-> schedules work today; scripture, themes and media come next. See the
+> **Status: early development.** The output engine, songs, schedules and
+> scripture work today; themes and media come next. See the
 > [roadmap](#roadmap).
 
 ## What works today
@@ -31,6 +31,13 @@ with EasyWorship should feel at home.
   taken from the library, so later corrections show up.
 - **Crash protection:** every change is autosaved, and after a crash the
   schedule is offered back on the next start.
+- **Scripture:** type a reference the way you would say it (`jn 3:16-18`,
+  `1 cor 13`, `ps 23`, `rom 8:28, 31-39`) or pick book, chapter and verses.
+  Search the text by words. Show two translations side by side. Passages
+  are split into readable slides with verse numbers and a reference caption.
+- **Bibles:** the King James Version and the World English Bible are
+  included (both public domain). Import others from OSIS, Zefania,
+  OpenSong, USX or USFM files. See [Bible licensing](resources/bibles/README.md).
 
 ## Keyboard shortcuts
 
@@ -81,6 +88,7 @@ crates/
   sw-core/      Domain model and the presentation engine (pure Rust, no I/O)
   sw-db/        SQLite library storage with full-text search
   sw-files/     SimpleWorship's own file formats (.sws schedules)
+  sw-bible/     Bible books, reference parsing, and Bible file importers
 apps/
   desktop/      The Tauri app: operator window, output and stage windows
 packages/
@@ -106,7 +114,7 @@ projector, the stage display and every thumbnail look the same.
 | M1        | Output engine, monitors, live controls, transitions                 | ✅     |
 | M2        | Song library, editor, search, preview → live                        | ✅     |
 | M3        | Schedules: build, save/open, run a service                          | ✅     |
-| M4        | Scripture: Bible import, reference entry ("jn 3:16-18"), versions  |        |
+| M4        | Scripture: Bible import, reference entry ("jn 3:16-18"), versions  | ✅     |
 | M5        | Theme designer, image/video backgrounds, media library, per-item overrides |        |
 | M6        | Importers: EasyWorship 6/7, OpenLyrics, ProPresenter, ChordPro, CCLI |        |
 | M7        | Alerts, countdowns, presentations (PDF/PPTX), CCLI usage report     |        |

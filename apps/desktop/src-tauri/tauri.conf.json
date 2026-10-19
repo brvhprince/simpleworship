@@ -43,6 +43,10 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "resources": {
+      "../../../resources/bibles/eng-kjv2006_usfm.zip": "bibles/eng-kjv2006_usfm.zip",
+      "../../../resources/bibles/engwebp_usfm.zip": "bibles/engwebp_usfm.zip"
+    }
   }
 }

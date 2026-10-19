@@ -7,5 +7,11 @@ import type { Presentation, RenderFrame } from "@simpleworship/protocol";
 export function frameAt(presentation: Presentation, index: number): RenderFrame | null {
   const slide = presentation.slides[index];
   if (!slide) return null;
-  return { text: slide.text, footer: presentation.footer, theme: presentation.theme };
+  return {
+    text: slide.text,
+    scripture: slide.scripture,
+    caption: slide.caption,
+    footer: presentation.footer,
+    theme: presentation.theme,
+  };
 }

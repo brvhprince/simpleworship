@@ -6,5 +6,6 @@
 pub mod engine;
 pub mod outputs;
 pub mod schedule;
+pub mod scripture;
 pub mod songs;
 pub mod text;

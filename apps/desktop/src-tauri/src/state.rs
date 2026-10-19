@@ -1,5 +1,6 @@
 //! Application state shared by all commands.
 
+use std::path::PathBuf;
 use std::sync::{Mutex, MutexGuard};
 
 use sw_core::Engine;
@@ -26,6 +27,9 @@ pub struct AppState {
     recent: Mutex<RecentSchedules>,
     /// The autosave writer. It has its own thread, so it needs no lock.
     pub autosave: Autosave,
+    /// Where the library database lives. Long imports open their own
+    /// connection to it, so they never hold the shared one.
+    pub database_path: PathBuf,
 }
 
 impl AppState {
@@ -35,12 +39,14 @@ impl AppState {
         let data_dir = app.path().app_data_dir()?;
         std::fs::create_dir_all(&data_dir)?;
 
+        let database_path = data_dir.join(DATABASE_FILE);
         Ok(Self {
             engine: Mutex::new(Engine::new()),
             schedule_file: Mutex::new(ScheduleFile::default()),
-            database: Mutex::new(Database::open(data_dir.join(DATABASE_FILE))?),
+            database: Mutex::new(Database::open(&database_path)?),
             recent: Mutex::new(RecentSchedules::load(&data_dir)),
             autosave: Autosave::start(data_dir),
+            database_path,
         })
     }
 

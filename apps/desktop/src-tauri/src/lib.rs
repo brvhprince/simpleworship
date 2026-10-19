@@ -9,6 +9,7 @@
 //! - [`schedule_file`], [`autosave`] and [`recent`] handle `.sws` files:
 //!   unsaved changes, crash recovery and "Open Recent".
 //! - [`menu`] builds the native menu bar.
+//! - [`bibles`] imports Bibles in the background, including the bundled ones.
 //!
 //! The UI never changes state directly. It sends an engine
 //! [`Command`](sw_core::Command), and every window learns what changed from
@@ -16,6 +17,7 @@
 //! [`commands::engine::ENGINE_EVENT`].
 
 mod autosave;
+mod bibles;
 mod commands;
 mod error;
 mod files;
@@ -42,6 +44,7 @@ pub fn run() {
 
             menu::install(app.handle())?;
             menu::update_recent(app.handle(), &recent)?;
+            bibles::install_bundled(app.handle());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -65,6 +68,16 @@ pub fn run() {
             commands::schedule::autosave_leftover,
             commands::schedule::autosave_restore,
             commands::schedule::autosave_discard,
+            commands::scripture::bibles_list,
+            commands::scripture::bible_import,
+            commands::scripture::bible_rename,
+            commands::scripture::bible_delete,
+            commands::scripture::bible_outline,
+            commands::scripture::bible_chapter,
+            commands::scripture::bible_search,
+            commands::scripture::scripture_parse,
+            commands::scripture::scripture_show_in_preview,
+            commands::scripture::schedule_add_scripture,
             commands::text::text_show_in_preview,
             commands::outputs::monitors_list,
             commands::outputs::output_open,

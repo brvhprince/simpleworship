@@ -16,8 +16,11 @@
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
+use sw_bible::Passage;
+
 use crate::id::Id;
 use crate::presentation::Presentation;
+use crate::scripture::{self, ScriptureOptions, TranslationText};
 use crate::slides::SlideOptions;
 use crate::song::Song;
 use crate::theme::Theme;
@@ -66,6 +69,18 @@ pub enum ItemContent {
         /// The text; blank lines separate slides.
         text: String,
     },
+    /// A Bible passage in one or more translations, with a copy of the text.
+    Scripture {
+        /// The passage.
+        passage: Passage,
+        /// The passage written out, e.g. "John 3:16–18", for showing in
+        /// the schedule without needing the book names.
+        reference: String,
+        /// The text in each translation, shown side by side.
+        translations: Vec<TranslationText>,
+        /// How the passage is split into slides.
+        options: ScriptureOptions,
+    },
 }
 
 impl ScheduleItem {
@@ -79,10 +94,15 @@ impl ScheduleItem {
     }
 
     /// The title shown in the schedule list.
-    pub fn title(&self) -> &str {
+    pub fn title(&self) -> String {
         match &self.content {
-            ItemContent::Song { song } => &song.title,
-            ItemContent::Text { title, .. } => title,
+            ItemContent::Song { song } => song.title.clone(),
+            ItemContent::Text { title, .. } => title.clone(),
+            ItemContent::Scripture {
+                passage,
+                translations,
+                ..
+            } => scripture::title(passage, translations),
         }
     }
 
@@ -95,6 +115,12 @@ impl ScheduleItem {
             ItemContent::Text { title, text } => {
                 Presentation::from_text(title.clone(), text, theme.clone())
             }
+            ItemContent::Scripture {
+                passage,
+                translations,
+                options,
+                ..
+            } => Presentation::from_scripture(passage, translations, *options, theme.clone()),
         }
     }
 }
@@ -175,7 +201,7 @@ mod tests {
         })
     }
 
-    fn titles(schedule: &Schedule) -> Vec<&str> {
+    fn titles(schedule: &Schedule) -> Vec<String> {
         schedule.items.iter().map(ScheduleItem::title).collect()
     }
 
@@ -214,8 +240,8 @@ mod tests {
         let mut s = schedule(&["A", "B", "C"]);
         let b = s.items[1].id;
 
-        assert_eq!(s.after(b).map(ScheduleItem::title), Some("C"));
-        assert_eq!(s.before(b).map(ScheduleItem::title), Some("A"));
+        assert_eq!(s.after(b).map(ScheduleItem::title).as_deref(), Some("C"));
+        assert_eq!(s.before(b).map(ScheduleItem::title).as_deref(), Some("A"));
         assert_eq!(s.before(s.items[0].id), None);
 
         assert!(s.remove(b));

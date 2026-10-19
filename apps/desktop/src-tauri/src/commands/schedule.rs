@@ -100,7 +100,7 @@ fn songs_in(schedule: &Schedule) -> impl Iterator<Item = &sw_core::Song> {
         .iter()
         .filter_map(|item| match &item.content {
             ItemContent::Song { song } => Some(song),
-            ItemContent::Text { .. } => None,
+            ItemContent::Text { .. } | ItemContent::Scripture { .. } => None,
         })
 }
 

@@ -8,6 +8,7 @@
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
+use crate::scripture::ScriptureSlide;
 use crate::theme::Theme;
 
 /// One slide, resolved and ready to draw.
@@ -15,8 +16,13 @@ use crate::theme::Theme;
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "bindings.ts")]
 pub struct RenderFrame {
-    /// The slide text. Lines are separated by `\n`.
+    /// The slide text. Lines are separated by `\n`. For scripture this is a
+    /// plain-text version; draw [`RenderFrame::scripture`] instead.
     pub text: String,
+    /// Scripture verses in columns, when the slide is scripture.
+    pub scripture: Option<ScriptureSlide>,
+    /// A line shown with the slide, e.g. the reference "John 3:16–17 (KJV)".
+    pub caption: Option<String>,
     /// Small print under the text, if any.
     pub footer: Option<String>,
     /// The theme to draw with.

@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 use crate::lyrics::{Section, SectionLabel};
+use crate::scripture::ScriptureSlide;
 
 /// One slide: the text shown on screen at a time.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -24,6 +25,11 @@ pub struct Slide {
     /// `true` for the first slide of a section. Jump-to-section shortcuts
     /// land on these slides, and the UI shows the section name above them.
     pub starts_section: bool,
+    /// A line shown with the slide, e.g. the reference "John 3:16–17 (KJV)".
+    pub caption: Option<String>,
+    /// For scripture: the verses laid out in columns, one per translation.
+    /// `text` then holds a plain-text version of the first column.
+    pub scripture: Option<ScriptureSlide>,
 }
 
 /// Options that control how text is split into slides.
@@ -63,6 +69,8 @@ fn slides_for_section(section: &Section, options: SlideOptions) -> Vec<Slide> {
             text,
             section: section.label.clone(),
             starts_section: index == 0,
+            caption: None,
+            scripture: None,
         })
         .collect()
 }

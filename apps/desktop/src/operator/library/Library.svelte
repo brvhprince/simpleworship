@@ -5,6 +5,7 @@
   so the layout already matches what operators know from EasyWorship.
 -->
 <script lang="ts">
+  import ScriptureTab from "./ScriptureTab.svelte";
   import SongsTab from "./SongsTab.svelte";
   import TextTab from "./TextTab.svelte";
 
@@ -17,7 +18,7 @@
   const tabs: Tab[] = [
     { id: "songs", label: "Songs", available: true },
     { id: "text", label: "Text", available: true },
-    { id: "scripture", label: "Scripture", available: false },
+    { id: "scripture", label: "Scripture", available: true },
     { id: "media", label: "Media", available: false },
     { id: "presentations", label: "Presentations", available: false },
     { id: "themes", label: "Themes", available: false },
@@ -45,6 +46,8 @@
   <div class="panel" role="tabpanel">
     {#if current === "songs"}
       <SongsTab />
+    {:else if current === "scripture"}
+      <ScriptureTab />
     {:else if current === "text"}
       <TextTab />
     {/if}

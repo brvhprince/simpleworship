@@ -6,14 +6,20 @@
 
 import type {
   AutosaveInfo,
+  BibleInfo,
+  BookOutline,
   MonitorInfo,
   OutputKind,
   OutputTarget,
+  Passage,
   Presentation,
   RecentSchedule,
+  ReferenceFeedback,
   ScheduleFileStatus,
+  ScriptureOptions,
   Song,
   SongSummary,
+  Verse,
 } from "@simpleworship/protocol";
 import { invoke } from "@tauri-apps/api/core";
 
@@ -84,6 +90,51 @@ export const restoreAutosave = () => invoke<void>("autosave_restore");
 
 /** Throws the autosaved schedule away. */
 export const discardAutosave = () => invoke<void>("autosave_discard");
+
+// ── Scripture ────────────────────────────────────────────────────────────
+
+/** Every installed Bible. */
+export const listBibles = () => invoke<BibleInfo[]>("bibles_list");
+
+/** Imports a Bible file; resolves when it is ready (this takes a few seconds). */
+export const importBible = (path: string) => invoke<BibleInfo>("bible_import", { path });
+
+/** Renames a Bible. */
+export const renameBible = (id: string, name: string, abbreviation: string) =>
+  invoke<void>("bible_rename", { id, name, abbreviation });
+
+/** Deletes a Bible and its verses. */
+export const deleteBible = (id: string) => invoke<void>("bible_delete", { id });
+
+/** Which books and chapters a Bible has. */
+export const bibleOutline = (id: string) => invoke<BookOutline[]>("bible_outline", { id });
+
+/** Every verse of one chapter. */
+export const bibleChapter = (id: string, book: number, chapter: number) =>
+  invoke<Verse[]>("bible_chapter", { id, book, chapter });
+
+/** Verses containing the given words, best matches first. */
+export const searchBible = (id: string, query: string) =>
+  invoke<Verse[]>("bible_search", { id, query });
+
+/** Parses a reference as it is typed ("jn 3:16" → John 3:16). */
+export const parseReference = (text: string) =>
+  invoke<ReferenceFeedback>("scripture_parse", { text });
+
+/** Loads a passage into the preview pane, in the given translations. */
+export const showScriptureInPreview = (
+  passage: Passage,
+  bibleIds: string[],
+  options: ScriptureOptions,
+) => invoke<void>("scripture_show_in_preview", { passage, bibleIds, options });
+
+/** Adds a passage to the schedule at `index`, or at the end. */
+export const addScriptureToSchedule = (
+  passage: Passage,
+  bibleIds: string[],
+  options: ScriptureOptions,
+  index: number | null = null,
+) => invoke<void>("schedule_add_scripture", { passage, bibleIds, options, index });
 
 // ── Outputs ──────────────────────────────────────────────────────────────
 

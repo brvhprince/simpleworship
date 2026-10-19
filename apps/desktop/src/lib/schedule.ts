@@ -12,6 +12,10 @@ export function itemTitle(item: ScheduleItem): string {
       return item.content.song.title || "Untitled song";
     case "text":
       return item.content.title || "Text";
+    case "scripture": {
+      const abbreviations = item.content.translations.map((t) => t.abbreviation).join(" · ");
+      return `${item.content.reference} (${abbreviations})`;
+    }
   }
 }
 
@@ -22,5 +26,7 @@ export function itemKind(item: ScheduleItem): string {
       return "Song";
     case "text":
       return "Text";
+    case "scripture":
+      return "Bible";
   }
 }

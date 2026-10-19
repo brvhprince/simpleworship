@@ -1,12 +1,14 @@
 <!--
   @component
-  Draws the text of a slide (and its footer) on the canvas, shrinking the
-  text to fit when the theme asks for it.
+  Draws the text of a slide on the canvas: song lyrics, or scripture in one
+  or two columns. Below it sit the caption (e.g. "John 3:16–17 (KJV)") and
+  the footer (copyright). The text shrinks to fit when the theme asks for it.
 -->
 <script lang="ts">
   import type { RenderFrame } from "@simpleworship/protocol";
   import { autofit } from "./autofit.ts";
-  import { footerStyle, textBoxStyle, textStyle } from "./styles.ts";
+  import ScriptureText from "./ScriptureText.svelte";
+  import { captionStyle, footerStyle, textBoxStyle, textStyle } from "./styles.ts";
 
   interface Props {
     frame: RenderFrame;
@@ -24,14 +26,27 @@
   use:autofit={{
     enabled: theme.textBox.autoFit,
     maxSize: theme.text.fontSize,
-    content: [frame.text, theme.text, theme.textBox],
+    content: [frame.text, frame.scripture, theme.text, theme.textBox],
   }}
 >
-  <div class="text" style={textStyle(theme.text)}>{frame.text}</div>
+  {#if frame.scripture}
+    <div class="text columns" style={textStyle(theme.text)}>
+      <ScriptureText scripture={frame.scripture} />
+    </div>
+  {:else}
+    <div class="text" style={textStyle(theme.text)}>{frame.text}</div>
+  {/if}
 </div>
 
-{#if showFooter}
-  <div class="footer" style={footerStyle(theme.footer, theme.text.align)}>{frame.footer}</div>
+{#if frame.caption || showFooter}
+  <div class="bottom" style:text-align={theme.text.align}>
+    {#if frame.caption}
+      <div style={captionStyle(theme)}>{frame.caption}</div>
+    {/if}
+    {#if showFooter}
+      <div style={footerStyle(theme.footer, theme.text.align)}>{frame.footer}</div>
+    {/if}
+  </div>
 {/if}
 
 <style>
@@ -49,10 +64,20 @@
     overflow-wrap: normal;
   }
 
-  .footer {
+  /* Scripture: translations side by side, sharing one font size. */
+  .columns {
+    display: flex;
+    gap: 1.2em;
+    white-space: normal;
+  }
+
+  .bottom {
     position: absolute;
     left: 120px;
     right: 120px;
     bottom: 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
   }
 </style>
