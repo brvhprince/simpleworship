@@ -80,7 +80,7 @@ impl<'db> Songs<'db> {
     pub fn get(&self, id: Id) -> Result<Option<Song>, DbError> {
         let mut statement = self.conn.prepare_cached(
             "SELECT id, title, author, copyright, ccli_number, lyrics, arrangement,
-                    created_at, updated_at
+                    created_at, updated_at, theme_id
              FROM songs
              WHERE id = ?1 AND deleted_at IS NULL",
         )?;
@@ -105,8 +105,8 @@ impl<'db> Songs<'db> {
         self.conn
             .prepare_cached(
                 "INSERT INTO songs (id, title, author, copyright, ccli_number, lyrics,
-                                    arrangement, created_at, updated_at)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+                                    arrangement, created_at, updated_at, theme_id)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
                  ON CONFLICT (id) DO UPDATE SET
                      title = excluded.title,
                      author = excluded.author,
@@ -114,6 +114,7 @@ impl<'db> Songs<'db> {
                      ccli_number = excluded.ccli_number,
                      lyrics = excluded.lyrics,
                      arrangement = excluded.arrangement,
+                     theme_id = excluded.theme_id,
                      updated_at = excluded.updated_at,
                      deleted_at = NULL",
             )?
@@ -127,6 +128,7 @@ impl<'db> Songs<'db> {
                 saved.arrangement,
                 saved.created_at,
                 saved.updated_at,
+                saved.theme_id.map(|id| id.to_string()),
             ])?;
 
         Ok(saved)
@@ -159,12 +161,24 @@ fn read_song(row: &Row<'_>) -> rusqlite::Result<Song> {
         arrangement: row.get(6)?,
         created_at: row.get(7)?,
         updated_at: row.get(8)?,
+        theme_id: read_optional_id(row, 9)?,
     })
+}
+
+/// Reads an [`Id`] that may be NULL.
+pub(crate) fn read_optional_id(row: &Row<'_>, column: usize) -> rusqlite::Result<Option<Id>> {
+    let text: Option<String> = row.get(column)?;
+    text.map(|text| {
+        text.parse().map_err(|err| {
+            rusqlite::Error::FromSqlConversionFailure(column, Type::Text, Box::new(err))
+        })
+    })
+    .transpose()
 }
 
 /// Reads an [`Id`] stored as text. A malformed id is reported as a normal
 /// rusqlite conversion error.
-fn read_id(row: &Row<'_>, column: usize) -> rusqlite::Result<Id> {
+pub(crate) fn read_id(row: &Row<'_>, column: usize) -> rusqlite::Result<Id> {
     let text: String = row.get(column)?;
     text.parse()
         .map_err(|err| rusqlite::Error::FromSqlConversionFailure(column, Type::Text, Box::new(err)))

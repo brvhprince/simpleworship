@@ -1,6 +1,7 @@
 //! The song library.
 
-use sw_core::{Command, Id, Presentation, SlideOptions, Song, SongSummary, Theme};
+use sw_core::themes::ContentKind;
+use sw_core::{Command, Id, ItemLook, Presentation, SlideOptions, Song, SongSummary};
 use tauri::{AppHandle, State};
 
 use crate::commands::engine::dispatch;
@@ -48,8 +49,12 @@ pub fn song_delete(state: State<'_, AppState>, id: Id) -> AppResult<bool> {
 /// Builds the slides for a (possibly unsaved) song, so the editor can show
 /// how the lyrics will be split while the operator types.
 #[tauri::command]
-pub fn song_presentation(song: Song) -> Presentation {
-    presentation_for(&song)
+pub fn song_presentation(state: State<'_, AppState>, song: Song) -> Presentation {
+    let engine = state.engine();
+    let look = engine
+        .themes()
+        .resolve(ContentKind::Song, song.theme_id, &ItemLook::default());
+    Presentation::from_song(&song, look, SlideOptions::default())
 }
 
 /// Loads a song from the library into the preview pane.
@@ -60,18 +65,11 @@ pub fn song_show_in_preview(app: AppHandle, state: State<'_, AppState>, id: Id) 
         .songs()
         .get(id)?
         .ok_or(AppError::SongNotFound)?;
-    let presentation = presentation_for(&song);
     dispatch(
         &app,
         &state,
-        Command::ShowInPreview {
-            presentation: Box::new(presentation),
+        Command::PreviewSong {
+            song: Box::new(song),
         },
     )
-}
-
-/// The one place that decides how songs look. Per-song themes and slide
-/// options arrive with the theme designer (M5).
-fn presentation_for(song: &Song) -> Presentation {
-    Presentation::from_song(song, Theme::default(), SlideOptions::default())
 }

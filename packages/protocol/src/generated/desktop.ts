@@ -16,6 +16,38 @@ export type AutosaveInfo = {
 };
 
 /**
+ * Where media files and thumbnails are, so the UI can build their URLs.
+ */
+export type MediaFolderPaths = {
+  /**
+   * The folder with the media files.
+   */
+  media: string;
+  /**
+   * The folder with the thumbnails.
+   */
+  thumbnails: string;
+};
+
+/**
+ * Progress of a media import, for the progress bar.
+ */
+export type MediaProgress = {
+  /**
+   * The file being copied.
+   */
+  name: string;
+  /**
+   * Bytes copied so far.
+   */
+  copied: number;
+  /**
+   * The file's size.
+   */
+  total: number;
+};
+
+/**
  * A connected display, as shown in the output picker.
  */
 export type MonitorInfo = {

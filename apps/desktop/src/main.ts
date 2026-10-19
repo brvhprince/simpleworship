@@ -4,12 +4,18 @@
  */
 
 import "@simpleworship/ui/tokens.css";
+import "@simpleworship/renderer/fonts.css";
 import { mount } from "svelte";
 import App from "./App.svelte";
+import { mediaFolders } from "./lib/api.ts";
 
 const target = document.getElementById("app");
 if (!target) {
   throw new Error("index.html is missing the #app element");
 }
 
-export default mount(App, { target });
+// Media URLs are built from these folders, so fetch them before anything
+// is drawn.
+const folders = await mediaFolders();
+
+export default mount(App, { target, props: { folders } });

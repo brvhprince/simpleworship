@@ -10,6 +10,9 @@
 /** Payload type for a library song; the data is the song id. */
 export const SONG_DRAG_TYPE = "application/x-simpleworship-song";
 
+/** Payload type for a media library item; the data is its id. */
+export const MEDIA_DRAG_TYPE = "application/x-simpleworship-media";
+
 /** Payload type for a schedule item being reordered; the data is its id. */
 export const ITEM_DRAG_TYPE = "application/x-simpleworship-schedule-item";
 

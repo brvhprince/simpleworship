@@ -16,8 +16,11 @@
 mod bibles;
 mod error;
 mod fts;
+mod media;
 mod migrations;
+mod settings;
 mod songs;
+mod themes;
 
 use std::path::Path;
 
@@ -25,7 +28,10 @@ use rusqlite::Connection;
 
 pub use bibles::Bibles;
 pub use error::DbError;
+pub use media::Media;
+pub use settings::Settings;
 pub use songs::Songs;
+pub use themes::Themes;
 
 /// An open library database.
 pub struct Database {
@@ -53,7 +59,9 @@ impl Database {
         // connection); wait for it instead of failing straight away.
         conn.busy_timeout(std::time::Duration::from_secs(10))?;
         migrations::run(&mut conn)?;
-        Ok(Self { conn })
+        let database = Self { conn };
+        database.themes().add_starters()?;
+        Ok(database)
     }
 
     /// Access to the song library.
@@ -64,5 +72,20 @@ impl Database {
     /// Access to the installed Bibles.
     pub fn bibles(&self) -> Bibles<'_> {
         Bibles::new(&self.conn)
+    }
+
+    /// Access to the theme library.
+    pub fn themes(&self) -> Themes<'_> {
+        Themes::new(&self.conn)
+    }
+
+    /// Access to the media library's records.
+    pub fn media(&self) -> Media<'_> {
+        Media::new(&self.conn)
+    }
+
+    /// Access to application settings.
+    pub fn settings(&self) -> Settings<'_> {
+        Settings::new(&self.conn)
     }
 }

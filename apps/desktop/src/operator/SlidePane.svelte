@@ -24,9 +24,11 @@
     onactivate?: (index: number) => void;
     /** Buttons for the pane header. */
     actions?: Snippet;
+    /** Controls shown under the large view (the live pane's video controls). */
+    below?: Snippet;
   }
 
-  let { kind, pane, output = null, onselect, onactivate, actions }: Props = $props();
+  let { kind, pane, output = null, onselect, onactivate, actions, below }: Props = $props();
 
   const selectedFrame = $derived(pane ? frameAt(pane.presentation, pane.selected) : null);
 
@@ -50,12 +52,15 @@
   <div class="main-view">
     <ScaledCanvas>
       {#if kind === "live" && output}
-        <OutputView {output} />
+        <!-- Muted: only the projector plays sound. -->
+        <OutputView {output} muted />
       {:else if selectedFrame}
         <SlideView frame={selectedFrame} />
       {/if}
     </ScaledCanvas>
   </div>
+
+  {@render below?.()}
 
   <ol class="slides" bind:this={slideList}>
     {#if pane}

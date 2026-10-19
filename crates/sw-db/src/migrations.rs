@@ -21,6 +21,7 @@ fn migrations() -> Migrations<'static> {
     Migrations::new(vec![
         M::up(include_str!("../migrations/0001_songs.sql")),
         M::up(include_str!("../migrations/0002_bibles.sql")),
+        M::up(include_str!("../migrations/0003_themes_media.sql")),
     ])
 }
 

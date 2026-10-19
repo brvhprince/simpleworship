@@ -29,6 +29,9 @@ pub struct Song {
     pub lyrics: String,
     /// Optional section order, e.g. `"V1 C V2 C B C"`. Empty means document order.
     pub arrangement: String,
+    /// The song's own theme, if it should not use the default song theme.
+    #[serde(default)]
+    pub theme_id: Option<Id>,
     /// When the song was first saved.
     #[ts(type = "number")]
     pub created_at: Timestamp,
@@ -48,6 +51,7 @@ impl Song {
             ccli_number: String::new(),
             lyrics: String::new(),
             arrangement: String::new(),
+            theme_id: None,
             created_at: 0,
             updated_at: 0,
         }

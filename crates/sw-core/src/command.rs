@@ -13,12 +13,17 @@
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
+use sw_bible::Passage;
+
 use crate::engine::PaneState;
 use crate::id::Id;
+use crate::media::{MediaItem, MediaRef};
 use crate::output::{OutputState, Transition};
 use crate::presentation::Presentation;
 use crate::schedule::{Schedule, ScheduleItem};
+use crate::scripture::{ScriptureOptions, TranslationText};
 use crate::song::Song;
+use crate::themes::{ItemLook, ThemeLibrary};
 
 /// A request to change the live state.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
@@ -29,11 +34,39 @@ use crate::song::Song;
 )]
 #[ts(export, export_to = "bindings.ts")]
 pub enum Command {
-    /// Load a presentation into the preview pane, with its first slide selected.
+    /// Load a ready-made presentation into the preview pane, with its first
+    /// slide selected. Prefer the `Preview…` commands below, which let the
+    /// engine pick the theme.
     ShowInPreview {
         /// The presentation to load. Boxed because it is much larger than
         /// every other command; JSON and TypeScript see a plain object.
         presentation: Box<Presentation>,
+    },
+    /// Load a song from the library into the preview pane.
+    PreviewSong {
+        /// The song.
+        song: Box<Song>,
+    },
+    /// Load free text into the preview pane; blank lines separate slides.
+    PreviewText {
+        /// Title shown in the operator window.
+        title: String,
+        /// The text.
+        text: String,
+    },
+    /// Load a Bible passage into the preview pane.
+    PreviewScripture {
+        /// The passage.
+        passage: Passage,
+        /// Its text in each translation, shown side by side.
+        translations: Vec<TranslationText>,
+        /// How it is split into slides.
+        options: ScriptureOptions,
+    },
+    /// Load an image or video from the media library into the preview pane.
+    PreviewMedia {
+        /// The media item.
+        media: Box<MediaItem>,
     },
     /// Select a slide in the preview pane.
     SelectPreviewSlide {
@@ -86,6 +119,41 @@ pub enum Command {
         /// The new transition.
         transition: Transition,
     },
+    /// Set (or remove) the church logo shown by the Logo button.
+    SetLogoImage {
+        /// The logo image, or `None` to show the background instead.
+        logo: Option<MediaRef>,
+    },
+
+    // ── Video ────────────────────────────────────────────────────────────
+    /// Play the live video.
+    PlayVideo,
+    /// Pause the live video.
+    PauseVideo,
+    /// Move the live video to a position.
+    SeekVideo {
+        /// Position in milliseconds.
+        #[ts(type = "number")]
+        position_ms: u64,
+    },
+    /// Turn looping of the live video on or off.
+    SetVideoLoop {
+        /// `true` to loop.
+        on: bool,
+    },
+    /// Mute or unmute the live video's sound on every screen.
+    SetVideoMuted {
+        /// `true` to mute.
+        on: bool,
+    },
+
+    // ── Themes ───────────────────────────────────────────────────────────
+    /// Replace the theme library and defaults. Panes whose theme changed
+    /// are redrawn with the new version.
+    SetThemes {
+        /// The themes and defaults.
+        library: Box<ThemeLibrary>,
+    },
 
     // ── Schedule ─────────────────────────────────────────────────────────
     /// Replace the whole schedule, e.g. after opening a file or choosing
@@ -112,6 +180,13 @@ pub enum Command {
     RemoveScheduleItem {
         /// The item to remove.
         id: Id,
+    },
+    /// Give an item its own theme or background (or remove them).
+    SetScheduleItemLook {
+        /// The item to change.
+        id: Id,
+        /// The new look.
+        look: Box<ItemLook>,
     },
     /// Change an item's operator notes.
     SetScheduleItemNotes {
@@ -166,5 +241,10 @@ pub enum EngineEvent {
     ScheduleChanged {
         /// The new schedule.
         schedule: Schedule,
+    },
+    /// The theme library or the default themes changed.
+    ThemesChanged {
+        /// The new library.
+        themes: ThemeLibrary,
     },
 }

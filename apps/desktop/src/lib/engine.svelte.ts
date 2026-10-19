@@ -12,6 +12,7 @@ import type {
   OutputState,
   PaneState,
   Schedule,
+  ThemeLibrary,
   Transport,
 } from "@simpleworship/protocol";
 import { tauriTransport } from "./tauri-transport.ts";
@@ -22,6 +23,11 @@ const ERROR_TIMEOUT_MS = 6000;
 export class EngineStore {
   /** The order of service. */
   schedule: Schedule = $state.raw({ items: [] });
+  /** The themes and the default theme for each kind of content. */
+  themes: ThemeLibrary = $state.raw({
+    themes: [],
+    defaults: { song: null, scripture: null, text: null },
+  });
   /** The preview pane, or `null` if empty. */
   preview: PaneState | null = $state.raw(null);
   /** The live pane, or `null` if nothing is live. */
@@ -76,11 +82,15 @@ export class EngineStore {
       case "scheduleChanged":
         this.schedule = event.schedule;
         break;
+      case "themesChanged":
+        this.themes = event.themes;
+        break;
     }
   }
 
   #applySnapshot(snapshot: EngineSnapshot): void {
     this.schedule = snapshot.schedule;
+    this.themes = snapshot.themes;
     this.preview = snapshot.preview;
     this.live = snapshot.live;
     // An event may already have delivered a newer output than this snapshot.

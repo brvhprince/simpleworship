@@ -12,4 +12,8 @@ pub enum DbError {
     /// The schema could not be created or upgraded.
     #[error("could not upgrade the database schema: {0}")]
     Migration(#[from] rusqlite_migration::Error),
+
+    /// A stored JSON value (a theme or a setting) could not be read.
+    #[error("stored data is damaged: {0}")]
+    Json(#[from] serde_json::Error),
 }

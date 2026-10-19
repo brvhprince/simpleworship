@@ -5,9 +5,11 @@
   so the layout already matches what operators know from EasyWorship.
 -->
 <script lang="ts">
+  import MediaTab from "./MediaTab.svelte";
   import ScriptureTab from "./ScriptureTab.svelte";
   import SongsTab from "./SongsTab.svelte";
   import TextTab from "./TextTab.svelte";
+  import ThemesTab from "./ThemesTab.svelte";
 
   interface Tab {
     id: string;
@@ -19,9 +21,9 @@
     { id: "songs", label: "Songs", available: true },
     { id: "text", label: "Text", available: true },
     { id: "scripture", label: "Scripture", available: true },
-    { id: "media", label: "Media", available: false },
+    { id: "media", label: "Media", available: true },
     { id: "presentations", label: "Presentations", available: false },
-    { id: "themes", label: "Themes", available: false },
+    { id: "themes", label: "Themes", available: true },
   ];
 
   let current = $state("songs");
@@ -50,6 +52,10 @@
       <ScriptureTab />
     {:else if current === "text"}
       <TextTab />
+    {:else if current === "media"}
+      <MediaTab />
+    {:else if current === "themes"}
+      <ThemesTab />
     {/if}
   </div>
 </section>

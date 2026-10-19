@@ -10,4 +10,7 @@
 
 pub mod schedule_file;
 
-pub use schedule_file::{ScheduleFileError, read_schedule, write_schedule};
+pub use schedule_file::{
+    MediaSource, ScheduleContents, ScheduleFileError, ScheduleReader, read_schedule,
+    write_schedule, write_schedule_to,
+};

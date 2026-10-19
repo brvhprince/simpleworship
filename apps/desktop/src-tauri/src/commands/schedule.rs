@@ -4,20 +4,19 @@
 //! commands sent with `engine_dispatch`. The commands here are the ones that
 //! need something the engine does not have: the library, or the disk.
 
-use std::fs;
 use std::path::PathBuf;
 
 use sw_core::{Command, Id, ItemContent, Schedule, ScheduleItem};
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, Manager, State};
 
 use crate::autosave::AutosaveInfo;
-use crate::commands::engine::dispatch;
+use crate::commands::{self, engine::dispatch};
 use crate::error::{AppError, AppResult};
-use crate::files::write_atomically;
 use crate::menu;
 use crate::recent::RecentSchedule;
 use crate::schedule_file::{self, ScheduleFileStatus, with_schedule_extension};
 use crate::state::AppState;
+use crate::{media, schedule_archive};
 
 // ── Adding items ─────────────────────────────────────────────────────────
 
@@ -100,7 +99,9 @@ fn songs_in(schedule: &Schedule) -> impl Iterator<Item = &sw_core::Song> {
         .iter()
         .filter_map(|item| match &item.content {
             ItemContent::Song { song } => Some(song),
-            ItemContent::Text { .. } | ItemContent::Scripture { .. } => None,
+            ItemContent::Text { .. }
+            | ItemContent::Scripture { .. }
+            | ItemContent::Media { .. } => None,
         })
 }
 
@@ -133,43 +134,78 @@ pub fn schedule_new(app: AppHandle, state: State<'_, AppState>) -> AppResult<()>
     replace_schedule(&app, &state, Schedule::default(), None, false)
 }
 
-/// Opens a `.sws` file.
+/// Opens a `.sws` file. Themes and media it carries that this computer's
+/// library lacks are added. Runs in the background (it may copy videos).
 #[tauri::command]
-pub fn schedule_open(app: AppHandle, state: State<'_, AppState>, path: String) -> AppResult<()> {
-    let path = PathBuf::from(path);
-    let mut schedule = sw_files::read_schedule(&fs::read(&path)?)?;
-    prefer_library_songs(&state, &mut schedule)?;
+pub async fn schedule_open(app: AppHandle, path: String) -> AppResult<()> {
+    let open = move || -> AppResult<()> {
+        let state = app.state::<AppState>();
+        let path = PathBuf::from(path);
 
-    replace_schedule(&app, &state, schedule, Some(path.clone()), false)?;
-    remember_recent(&app, &state, &path);
-    Ok(())
+        let (mut schedule, themes_added) = {
+            let database = state.database();
+            schedule_archive::read(&path, &database, &state.media_folders)?
+        };
+        if themes_added {
+            commands::themes::sync_themes(&app, &state)?;
+        }
+        media::announce(&app);
+        prefer_library_songs(&state, &mut schedule)?;
+
+        replace_schedule(&app, &state, schedule, Some(path.clone()), false)?;
+        remember_recent(&app, &state, &path);
+        Ok(())
+    };
+    tauri::async_runtime::spawn_blocking(open).await?
 }
 
 /// Saves the schedule. With a `path` this is "Save As"; without one it
-/// saves to the current file.
+/// saves to the current file. With `include_media` (the default) the
+/// images and videos it uses are embedded, so it works on any computer.
+/// Runs in the background (it may copy videos).
 #[tauri::command]
-pub fn schedule_save(
+pub async fn schedule_save(
     app: AppHandle,
-    state: State<'_, AppState>,
     path: Option<String>,
+    include_media: Option<bool>,
 ) -> AppResult<()> {
-    let engine = state.engine();
-    let mut file = state.schedule_file();
+    let save = move || -> AppResult<()> {
+        let state = app.state::<AppState>();
 
-    let target = match path {
-        Some(path) => with_schedule_extension(PathBuf::from(path)),
-        None => file.path.clone().ok_or(AppError::NoSchedulePath)?,
+        // Take a snapshot quickly, then write without holding any lock.
+        let (contents, target) = {
+            let engine = state.engine();
+            let file = state.schedule_file();
+            let target = match path {
+                Some(path) => with_schedule_extension(PathBuf::from(path)),
+                None => file.path.clone().ok_or(AppError::NoSchedulePath)?,
+            };
+            let database = state.database();
+            let contents = schedule_archive::gather(engine.schedule(), engine.themes(), &database)?;
+            (contents, target)
+        };
+        schedule_archive::write(
+            &target,
+            &contents,
+            &state.media_folders,
+            include_media.unwrap_or(true),
+        )?;
+
+        // Only call it "saved" if nothing changed while the file was written.
+        let engine = state.engine();
+        let mut file = state.schedule_file();
+        file.path = Some(target.clone());
+        if *engine.schedule() == contents.schedule {
+            file.dirty = false;
+            state.autosave.discard();
+        }
+        schedule_file::announce(&app, &file.status());
+        drop((file, engine));
+
+        remember_recent(&app, &state, &target);
+        Ok(())
     };
-    write_atomically(&target, &sw_files::write_schedule(engine.schedule())?)?;
-
-    file.path = Some(target.clone());
-    file.dirty = false;
-    state.autosave.discard();
-    schedule_file::announce(&app, &file.status());
-
-    drop((file, engine));
-    remember_recent(&app, &state, &target);
-    Ok(())
+    tauri::async_runtime::spawn_blocking(save).await?
 }
 
 /// The recently used schedule files, most recent first.

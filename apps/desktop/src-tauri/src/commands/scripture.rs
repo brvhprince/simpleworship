@@ -6,8 +6,8 @@ use serde::{Deserialize, Serialize};
 use sw_bible::reference::{self, Passage};
 use sw_bible::{BookId, VersePoint, VerseRange};
 use sw_core::{
-    BibleInfo, BookOutline, Command, Id, ItemContent, Presentation, ScheduleItem, ScriptureOptions,
-    Theme, TranslationText, Verse,
+    BibleInfo, BookOutline, Command, Id, ItemContent, ScheduleItem, ScriptureOptions,
+    TranslationText, Verse,
 };
 use tauri::{AppHandle, State};
 use ts_rs::TS;
@@ -140,13 +140,13 @@ pub fn scripture_show_in_preview(
     options: ScriptureOptions,
 ) -> AppResult<()> {
     let translations = translations(&state, &passage, &bible_ids)?;
-    let presentation =
-        Presentation::from_scripture(&passage, &translations, options, Theme::default());
     dispatch(
         &app,
         &state,
-        Command::ShowInPreview {
-            presentation: Box::new(presentation),
+        Command::PreviewScripture {
+            passage,
+            translations,
+            options,
         },
     )
 }

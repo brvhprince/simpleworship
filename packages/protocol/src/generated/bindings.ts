@@ -30,16 +30,24 @@ export type Background =
   | {
       type: "image";
       /**
-       * Absolute path to the image file.
+       * The image in the media library.
        */
-      path: string;
+      media: MediaRef;
+      /**
+       * How the image fills the screen.
+       */
+      fit: MediaFit;
     }
   | {
       type: "video";
       /**
-       * Absolute path to the video file.
+       * The video in the media library.
        */
-      path: string;
+      media: MediaRef;
+      /**
+       * How the video fills the screen.
+       */
+      fit: MediaFit;
       /**
        * Restart the video when it ends.
        */
@@ -117,6 +125,46 @@ export type Command =
       presentation: Presentation;
     }
   | {
+      type: "previewSong";
+      /**
+       * The song.
+       */
+      song: Song;
+    }
+  | {
+      type: "previewText";
+      /**
+       * Title shown in the operator window.
+       */
+      title: string;
+      /**
+       * The text.
+       */
+      text: string;
+    }
+  | {
+      type: "previewScripture";
+      /**
+       * The passage.
+       */
+      passage: Passage;
+      /**
+       * Its text in each translation, shown side by side.
+       */
+      translations: Array<TranslationText>;
+      /**
+       * How it is split into slides.
+       */
+      options: ScriptureOptions;
+    }
+  | {
+      type: "previewMedia";
+      /**
+       * The media item.
+       */
+      media: MediaItem;
+    }
+  | {
       type: "selectPreviewSlide";
       /**
        * Zero-based slide index.
@@ -177,6 +225,43 @@ export type Command =
       transition: Transition;
     }
   | {
+      type: "setLogoImage";
+      /**
+       * The logo image, or `None` to show the background instead.
+       */
+      logo: MediaRef | null;
+    }
+  | { type: "playVideo" }
+  | { type: "pauseVideo" }
+  | {
+      type: "seekVideo";
+      /**
+       * Position in milliseconds.
+       */
+      positionMs: number;
+    }
+  | {
+      type: "setVideoLoop";
+      /**
+       * `true` to loop.
+       */
+      on: boolean;
+    }
+  | {
+      type: "setVideoMuted";
+      /**
+       * `true` to mute.
+       */
+      on: boolean;
+    }
+  | {
+      type: "setThemes";
+      /**
+       * The themes and defaults.
+       */
+      library: ThemeLibrary;
+    }
+  | {
       type: "replaceSchedule";
       /**
        * The new schedule.
@@ -211,6 +296,17 @@ export type Command =
        * The item to remove.
        */
       id: Id;
+    }
+  | {
+      type: "setScheduleItemLook";
+      /**
+       * The item to change.
+       */
+      id: Id;
+      /**
+       * The new look.
+       */
+      look: ItemLook;
     }
   | {
       type: "setScheduleItemNotes";
@@ -299,6 +395,13 @@ export type EngineEvent =
        * The new schedule.
        */
       schedule: Schedule;
+    }
+  | {
+      type: "themesChanged";
+      /**
+       * The new library.
+       */
+      themes: ThemeLibrary;
     };
 
 /**
@@ -310,6 +413,10 @@ export type EngineSnapshot = {
    * The order of service.
    */
   schedule: Schedule;
+  /**
+   * The themes and the default theme for each kind of content.
+   */
+  themes: ThemeLibrary;
   /**
    * The preview pane.
    */
@@ -400,7 +507,116 @@ export type ItemContent =
        * How the passage is split into slides.
        */
       options: ScriptureOptions;
+    }
+  | {
+      type: "media";
+      /**
+       * The media item (the file travels with a saved schedule).
+       */
+      media: MediaItem;
     };
+
+/**
+ * How a schedule item overrides the normal look.
+ */
+export type ItemLook = {
+  /**
+   * A theme for this item only (a copy; see the [module docs](self)).
+   */
+  theme: ThemeRecord | null;
+  /**
+   * A background for this item only, replacing the theme's.
+   */
+  background: Background | null;
+};
+
+/**
+ * The outcome of resolving a look: the theme to draw with, and what it
+ * came from, so it can be refreshed when the library changes.
+ */
+export type Look = {
+  /**
+   * The library theme used, if any. `None` for an embedded copy that the
+   * library does not have, or when the library is empty.
+   */
+  themeId: Id | null;
+  /**
+   * The theme, with any background override already applied.
+   */
+  theme: Theme;
+  /**
+   * The background override, kept so it can be re-applied when the
+   * theme is refreshed.
+   */
+  backgroundOverride: Background | null;
+};
+
+/**
+ * How an image or video fills a screen of a different shape.
+ */
+export type MediaFit = "cover" | "contain";
+
+/**
+ * An image or video in the media library.
+ */
+export type MediaItem = {
+  /**
+   * Unique identifier.
+   */
+  id: Id;
+  /**
+   * Image or video.
+   */
+  kind: MediaKind;
+  /**
+   * The name shown in the library, usually the original file name
+   * without its extension.
+   */
+  name: string;
+  /**
+   * The file name inside the library's media folder.
+   */
+  file: string;
+  /**
+   * Width in pixels, if known.
+   */
+  width: number | null;
+  /**
+   * Height in pixels, if known.
+   */
+  height: number | null;
+  /**
+   * Length of a video in milliseconds, if known.
+   */
+  durationMs: number | null;
+  /**
+   * File size in bytes.
+   */
+  sizeBytes: number;
+  /**
+   * When it was imported.
+   */
+  createdAt: number;
+};
+
+/**
+ * What kind of file a media item is.
+ */
+export type MediaKind = "image" | "video";
+
+/**
+ * A pointer to a file in the media library.
+ */
+export type MediaRef = {
+  /**
+   * The media item's id.
+   */
+  id: Id;
+  /**
+   * Its file name inside the library's media folder, e.g. `"0192….mp4"`.
+   */
+  file: string;
+};
 
 /**
  * An outline drawn around each glyph.
@@ -432,6 +648,15 @@ export type OutputState = {
    * How to animate into this state.
    */
   transition: Transition;
+  /**
+   * Playback of the live video background, if there is one.
+   */
+  video: VideoPlayback | null;
+  /**
+   * The church logo, shown when [`DisplayFlags::logo`] is on. Without
+   * one, the Logo button shows the background with no text.
+   */
+  logo: MediaRef | null;
   /**
    * Increases by one every time the output changes. Lets renderers that
    * connect late, or miss an event, tell whether they are up to date.
@@ -479,9 +704,20 @@ export type Presentation = {
    */
   slides: Array<Slide>;
   /**
-   * The theme every slide is drawn with.
+   * The theme every slide is drawn with (with any background override
+   * already applied).
    */
   theme: Theme;
+  /**
+   * The library theme `theme` came from, so edits to it can be shown
+   * straight away. `None` if it did not come from the library.
+   */
+  themeId: Id | null;
+  /**
+   * A background chosen for this item only, re-applied when the theme
+   * is refreshed.
+   */
+  backgroundOverride: Background | null;
   /**
    * Small print shown under the lyrics, e.g. copyright and CCLI number.
    */
@@ -506,6 +742,13 @@ export type PresentationSource =
        * The passage.
        */
       passage: Passage;
+    }
+  | {
+      type: "media";
+      /**
+       * The media item's id.
+       */
+      mediaId: Id;
     };
 
 /**
@@ -562,6 +805,10 @@ export type ScheduleItem = {
    * What the item shows.
    */
   content: ItemContent;
+  /**
+   * A theme or background for this item only.
+   */
+  look: ItemLook;
 };
 
 /**
@@ -756,6 +1003,10 @@ export type Song = {
    */
   arrangement: string;
   /**
+   * The song's own theme, if it should not use the default song theme.
+   */
+  themeId: Id | null;
+  /**
    * When the song was first saved.
    */
   createdAt: number;
@@ -892,6 +1143,57 @@ export type Theme = {
 };
 
 /**
+ * Which theme each kind of content uses by default.
+ */
+export type ThemeDefaults = {
+  /**
+   * Theme for songs.
+   */
+  song: Id | null;
+  /**
+   * Theme for scripture.
+   */
+  scripture: Id | null;
+  /**
+   * Theme for free text.
+   */
+  text: Id | null;
+};
+
+/**
+ * Every theme, plus the defaults. The host sends this to the engine at
+ * startup and whenever a theme changes.
+ */
+export type ThemeLibrary = {
+  /**
+   * The themes, in the order the operator sees them.
+   */
+  themes: Array<ThemeRecord>;
+  /**
+   * The default theme for each kind of content.
+   */
+  defaults: ThemeDefaults;
+};
+
+/**
+ * A theme in the library.
+ */
+export type ThemeRecord = {
+  /**
+   * Unique identifier.
+   */
+  id: Id;
+  /**
+   * The theme (including its name).
+   */
+  theme: Theme;
+  /**
+   * One of the starter themes that ship with SimpleWorship.
+   */
+  builtin: boolean;
+};
+
+/**
  * How the output changes from one frame to the next.
  */
 export type Transition = {
@@ -979,3 +1281,40 @@ export type VerseLine = {
  * Vertical placement of the text block inside the text box.
  */
 export type VerticalAlign = "top" | "middle" | "bottom";
+
+/**
+ * Where the live video is, shared by every screen that shows it.
+ *
+ * Instead of streaming the position many times a second, the engine says
+ * "at wall-clock time `anchor`, the video was at `position_ms`, and it is
+ * (or is not) playing". Each screen works out the current position from
+ * its own clock with [`VideoPlayback::position_at`], so the projector, the
+ * operator's live pane and any future remote screen stay in step.
+ */
+export type VideoPlayback = {
+  /**
+   * The video this playback belongs to.
+   */
+  mediaId: Id;
+  /**
+   * Whether the video is playing.
+   */
+  playing: boolean;
+  /**
+   * The position, in milliseconds, at `anchor`.
+   */
+  positionMs: number;
+  /**
+   * When `position_ms` was measured (milliseconds since the Unix epoch).
+   */
+  anchor: number;
+  /**
+   * Start again from the beginning at the end.
+   */
+  loop: boolean;
+  /**
+   * Silence the video's sound on every screen. Starts from the
+   * background's "play sound" setting; the operator can change it live.
+   */
+  muted: boolean;
+};

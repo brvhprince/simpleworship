@@ -4,9 +4,8 @@ Free, open-source worship presentation software for macOS, Windows and Linux.
 It puts lyrics, scripture and media on the projector, and anyone familiar
 with EasyWorship should feel at home.
 
-> **Status: early development.** The output engine, songs, schedules and
-> scripture work today; themes and media come next. See the
-> [roadmap](#roadmap).
+> **Status: early development.** The output engine, songs, schedules,
+> scripture, themes and media work today. See the [roadmap](#roadmap).
 
 ## What works today
 
@@ -38,6 +37,17 @@ with EasyWorship should feel at home.
 - **Bibles:** the King James Version and the World English Bible are
   included (both public domain). Import others from OSIS, Zefania,
   OpenSong, USX or USFM files. See [Bible licensing](resources/bibles/README.md).
+- **Themes:** design how slides look, with a live preview: fonts, colours,
+  outline, shadow, and a text area you drag into place. Backgrounds can be
+  a colour, a gradient, an image or a looping video. Pick a default theme
+  for songs, scripture and text; give a song its own theme; or change just
+  one schedule item's theme or background.
+- **Media:** an image and video library. Videos can be backgrounds or
+  schedule items, with play, pause and seek in the live pane; every screen
+  stays in step. A video background keeps playing smoothly while the lyrics
+  change. Set any image as the logo for the Logo button.
+- **Portable schedules:** saved schedules carry their themes and media, so
+  they look the same on the church computer.
 
 ## Keyboard shortcuts
 
@@ -51,6 +61,20 @@ with EasyWorship should feel at home.
 | ↑ / ↓ and Delete (in the schedule)   | Preview the previous / next item, remove the item |
 | ⌘/Ctrl + N, O, S, Shift+S            | New, Open, Save, Save As schedule         |
 | V, C, B, P, T, I, E (+ a number)     | Jump to Verse 2, Chorus, Bridge, …        |
+
+## Video formats
+
+SimpleWorship plays videos with the system's own video support, so it
+needs no extra codecs on macOS and Windows. **MP4 files with H.264 video
+and AAC sound play everywhere** and are the safest choice. Other formats
+(HEVC, WebM, MOV) depend on the computer.
+
+On **Linux**, video playback uses GStreamer. Install its codec packages,
+for example on Ubuntu or Debian:
+
+```sh
+sudo apt install gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-libav
+```
 
 ## Getting started (development)
 
@@ -115,9 +139,9 @@ projector, the stage display and every thumbnail look the same.
 | M2        | Song library, editor, search, preview → live                        | ✅     |
 | M3        | Schedules: build, save/open, run a service                          | ✅     |
 | M4        | Scripture: Bible import, reference entry ("jn 3:16-18"), versions  | ✅     |
-| M5        | Theme designer, image/video backgrounds, media library, per-item overrides |        |
+| M5        | Theme designer, image/video backgrounds, media library, per-item overrides | ✅     |
 | M6        | Importers: EasyWorship 6/7, OpenLyrics, ProPresenter, ChordPro, CCLI |        |
-| M7        | Alerts, countdowns, presentations (PDF/PPTX), CCLI usage report     |        |
+| M7        | Alerts, countdowns, background audio, presentations (PDF/PPTX), CCLI report |        |
 | M8        | Installers, auto-update, translations                               |        |
 
 Later: remote control from a phone, NDI / stream output, multi-operator

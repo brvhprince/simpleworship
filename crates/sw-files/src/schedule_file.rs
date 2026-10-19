@@ -1,11 +1,15 @@
 //! The `.sws` schedule file.
 //!
-//! A `.sws` file is a zip archive, so it can grow to carry images, videos
-//! and fonts alongside the schedule (planned with the media library). Today
-//! it contains a single entry:
+//! A `.sws` file is a zip archive containing:
 //!
-//! - `schedule.json`: `{ "formatVersion", "generator", "schedule" }`. The
-//!   schedule uses the same JSON shape as the engine's IPC messages.
+//! - `schedule.json`: `{ "formatVersion", "generator", "schedule", "themes" }`.
+//!   The schedule uses the same JSON shape as the engine's IPC messages.
+//!   `themes` holds copies of the library themes the items use, and
+//!   `media` describes the embedded media files, so the schedule looks the
+//!   same on another computer.
+//! - `media/<file>`: the images and videos the schedule uses, when it was
+//!   saved with media. They are stored without recompression (they are
+//!   already compressed) and are streamed, never loaded into memory whole.
 //!
 //! ## Versioning
 //!
@@ -14,27 +18,42 @@
 //! clear message instead of silently losing data. Unknown fields are
 //! ignored, so adding optional fields does not need a new version.
 //!
-//! | Version | Added                 |
-//! | ------- | --------------------- |
-//! | 1       | songs and text items  |
-//! | 2       | scripture items       |
+//! | Version | Added                          |
+//! | ------- | ------------------------------ |
+//! | 1       | songs and text items           |
+//! | 2       | scripture items                |
+//! | 3       | media items and media files    |
 //!
 //! A file is written with the *lowest* version that can hold it, so a
 //! schedule without scripture still opens in versions that only know v1.
 
-use std::io::{Cursor, Read, Write};
+use std::io::{Cursor, Read, Seek, Write};
 
 use serde::{Deserialize, Serialize};
-use sw_core::{ItemContent, Schedule};
+use sw_core::{ItemContent, MediaItem, Schedule, ThemeRecord};
 use thiserror::Error;
 use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipArchive, ZipWriter};
 
 /// The newest format version this build reads (and writes, when needed).
-pub const FORMAT_VERSION: u32 = 2;
+pub const FORMAT_VERSION: u32 = 3;
 
 /// Name of the schedule entry inside the archive.
 const SCHEDULE_ENTRY: &str = "schedule.json";
+
+/// Folder of the media entries inside the archive.
+const MEDIA_FOLDER: &str = "media/";
+
+/// Everything in `schedule.json`, apart from the bookkeeping.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct ScheduleContents {
+    /// The schedule.
+    pub schedule: Schedule,
+    /// Copies of the library themes the items use.
+    pub themes: Vec<ThemeRecord>,
+    /// The media library records of the embedded media files.
+    pub media: Vec<MediaItem>,
+}
 
 /// The contents of `schedule.json`.
 #[derive(Debug, Serialize, Deserialize)]
@@ -47,6 +66,20 @@ struct ScheduleDocument {
     generator: String,
     /// The schedule itself.
     schedule: Schedule,
+    /// Copies of the themes the items use (absent before version 3).
+    #[serde(default)]
+    themes: Vec<ThemeRecord>,
+    /// Records of the embedded media files (absent before version 3).
+    #[serde(default)]
+    media: Vec<MediaItem>,
+}
+
+/// A media file to embed: its file name in the media folder, and its data.
+pub struct MediaSource<'a> {
+    /// The file name, e.g. `"0192….mp4"`.
+    pub file: String,
+    /// Where to read the data from (usually the open file).
+    pub data: Box<dyn Read + 'a>,
 }
 
 /// Why a schedule file could not be read or written.
@@ -72,74 +105,174 @@ pub enum ScheduleFileError {
     #[error("the schedule file is damaged: {0}")]
     Damaged(#[from] serde_json::Error),
 
-    /// Writing the archive failed.
-    #[error("could not create the schedule file: {0}")]
-    Write(String),
+    /// Reading or writing the archive failed.
+    #[error("could not read or write the schedule file: {0}")]
+    Io(String),
 }
 
-/// Reads a schedule from the bytes of a `.sws` file.
+impl ScheduleFileError {
+    fn io(error: impl std::fmt::Display) -> Self {
+        Self::Io(error.to_string())
+    }
+}
+
+// ── Reading ──────────────────────────────────────────────────────────────
+
+/// Reads just the schedule from the bytes of a small `.sws` file (such as
+/// an autosave). For files that may contain media, use [`ScheduleReader`].
 pub fn read_schedule(bytes: &[u8]) -> Result<Schedule, ScheduleFileError> {
-    let mut archive =
-        ZipArchive::new(Cursor::new(bytes)).map_err(|_| ScheduleFileError::NotASchedule)?;
-    let mut entry = archive
-        .by_name(SCHEDULE_ENTRY)
-        .map_err(|_| ScheduleFileError::NotASchedule)?;
-
-    let mut json = Vec::new();
-    entry
-        .read_to_end(&mut json)
-        .map_err(|_| ScheduleFileError::NotASchedule)?;
-
-    // Check the version before parsing the rest, so a newer file gives the
-    // "please update" message rather than a confusing parse error.
-    #[derive(Deserialize)]
-    #[serde(rename_all = "camelCase")]
-    struct VersionOnly {
-        format_version: u32,
-    }
-    let VersionOnly { format_version } = serde_json::from_slice(&json)?;
-    if format_version > FORMAT_VERSION {
-        return Err(ScheduleFileError::NewerVersion {
-            found: format_version,
-            supported: FORMAT_VERSION,
-        });
-    }
-
-    let document: ScheduleDocument = serde_json::from_slice(&json)?;
-    Ok(document.schedule)
+    Ok(ScheduleReader::new(Cursor::new(bytes))?
+        .contents()?
+        .schedule)
 }
 
-/// Writes a schedule as the bytes of a `.sws` file.
+/// An open `.sws` file, read piece by piece.
+pub struct ScheduleReader<R: Read + Seek> {
+    archive: ZipArchive<R>,
+}
+
+impl<R: Read + Seek> ScheduleReader<R> {
+    /// Opens a `.sws` file.
+    pub fn new(reader: R) -> Result<Self, ScheduleFileError> {
+        let archive = ZipArchive::new(reader).map_err(|_| ScheduleFileError::NotASchedule)?;
+        Ok(Self { archive })
+    }
+
+    /// Reads `schedule.json`.
+    pub fn contents(&mut self) -> Result<ScheduleContents, ScheduleFileError> {
+        let mut entry = self
+            .archive
+            .by_name(SCHEDULE_ENTRY)
+            .map_err(|_| ScheduleFileError::NotASchedule)?;
+        let mut json = Vec::new();
+        entry
+            .read_to_end(&mut json)
+            .map_err(|_| ScheduleFileError::NotASchedule)?;
+
+        // Check the version before parsing the rest, so a newer file gives
+        // the "please update" message rather than a confusing parse error.
+        #[derive(Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct VersionOnly {
+            format_version: u32,
+        }
+        let VersionOnly { format_version } = serde_json::from_slice(&json)?;
+        if format_version > FORMAT_VERSION {
+            return Err(ScheduleFileError::NewerVersion {
+                found: format_version,
+                supported: FORMAT_VERSION,
+            });
+        }
+
+        let document: ScheduleDocument = serde_json::from_slice(&json)?;
+        Ok(ScheduleContents {
+            schedule: document.schedule,
+            themes: document.themes,
+            media: document.media,
+        })
+    }
+
+    /// The file names of the embedded media files.
+    pub fn media_files(&self) -> Vec<String> {
+        self.archive
+            .file_names()
+            .flatten()
+            .filter_map(|name| name.strip_prefix(MEDIA_FOLDER).map(str::to_owned))
+            .filter(|file| is_plain_file_name(file))
+            .collect()
+    }
+
+    /// Copies the embedded media file `file` into `out`. Returns how many
+    /// bytes were copied.
+    pub fn copy_media(
+        &mut self,
+        file: &str,
+        out: &mut impl Write,
+    ) -> Result<u64, ScheduleFileError> {
+        if !is_plain_file_name(file) {
+            return Err(ScheduleFileError::NotASchedule);
+        }
+        let mut entry = self
+            .archive
+            .by_name(&format!("{MEDIA_FOLDER}{file}"))
+            .map_err(ScheduleFileError::io)?;
+        std::io::copy(&mut entry, out).map_err(ScheduleFileError::io)
+    }
+}
+
+/// A media file name must be a single name: no folders and no `..`, so a
+/// crafted schedule file can never write outside the media folder.
+fn is_plain_file_name(file: &str) -> bool {
+    !file.is_empty() && !file.contains(['/', '\\']) && file != "." && file != ".."
+}
+
+// ── Writing ──────────────────────────────────────────────────────────────
+
+/// Writes a schedule without themes or media as the bytes of a `.sws` file
+/// (used for autosaves, which stay small).
 pub fn write_schedule(schedule: &Schedule) -> Result<Vec<u8>, ScheduleFileError> {
-    let document = ScheduleDocument {
-        format_version: version_needed(schedule),
-        generator: format!("SimpleWorship {}", env!("CARGO_PKG_VERSION")),
+    let contents = ScheduleContents {
         schedule: schedule.clone(),
+        ..ScheduleContents::default()
+    };
+    let cursor = write_schedule_to(Cursor::new(Vec::new()), &contents, Vec::new())?;
+    Ok(cursor.into_inner())
+}
+
+/// Writes a `.sws` file to `out`, embedding `media`. Returns `out`.
+pub fn write_schedule_to<W: Write + Seek>(
+    out: W,
+    contents: &ScheduleContents,
+    media: Vec<MediaSource<'_>>,
+) -> Result<W, ScheduleFileError> {
+    let document = ScheduleDocument {
+        format_version: version_needed(&contents.schedule, !media.is_empty()),
+        generator: format!("SimpleWorship {}", env!("CARGO_PKG_VERSION")),
+        schedule: contents.schedule.clone(),
+        themes: contents.themes.clone(),
+        media: contents.media.clone(),
     };
     // Pretty-printed, so a curious user (or a bug report) can read it.
     let json = serde_json::to_vec_pretty(&document)?;
 
-    let write_error = |error: &dyn std::fmt::Display| ScheduleFileError::Write(error.to_string());
-    let mut archive = ZipWriter::new(Cursor::new(Vec::new()));
-    let options = SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
-
+    let mut archive = ZipWriter::new(out);
+    let compressed = SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
     archive
-        .start_file(SCHEDULE_ENTRY, options)
-        .map_err(|e| write_error(&e))?;
-    archive.write_all(&json).map_err(|e| write_error(&e))?;
-    let cursor = archive.finish().map_err(|e| write_error(&e))?;
+        .start_file(SCHEDULE_ENTRY, compressed)
+        .map_err(ScheduleFileError::io)?;
+    archive.write_all(&json).map_err(ScheduleFileError::io)?;
 
-    Ok(cursor.into_inner())
+    // Large files need the 64-bit zip extension; images and videos are
+    // already compressed, so they are stored as they are.
+    let stored = SimpleFileOptions::default()
+        .compression_method(CompressionMethod::Stored)
+        .large_file(true);
+    for mut source in media {
+        if !is_plain_file_name(&source.file) {
+            continue;
+        }
+        archive
+            .start_file(format!("{MEDIA_FOLDER}{}", source.file), stored)
+            .map_err(ScheduleFileError::io)?;
+        std::io::copy(&mut source.data, &mut archive).map_err(ScheduleFileError::io)?;
+    }
+
+    archive.finish().map_err(ScheduleFileError::io)
 }
 
 /// The lowest format version that can hold `schedule` (see the table in
 /// the [module docs](self)).
-fn version_needed(schedule: &Schedule) -> u32 {
-    let has_scripture = schedule
-        .items
-        .iter()
-        .any(|item| matches!(item.content, ItemContent::Scripture { .. }));
-    if has_scripture { 2 } else { 1 }
+fn version_needed(schedule: &Schedule, has_media_files: bool) -> u32 {
+    let has =
+        |wanted: fn(&ItemContent) -> bool| schedule.items.iter().any(|item| wanted(&item.content));
+
+    if has_media_files || has(|content| matches!(content, ItemContent::Media { .. })) {
+        3
+    } else if has(|content| matches!(content, ItemContent::Scripture { .. })) {
+        2
+    } else {
+        1
+    }
 }
 
 #[cfg(test)]
@@ -253,5 +386,50 @@ mod tests {
             read_schedule(&bytes),
             Err(ScheduleFileError::Damaged(_))
         ));
+    }
+
+    #[test]
+    fn embeds_media_and_themes() {
+        let contents = ScheduleContents {
+            schedule: sample_schedule(),
+            themes: sw_core::themes::starter_library().themes,
+            media: Vec::new(),
+        };
+        let video_bytes = vec![7u8; 100_000];
+        let media = vec![MediaSource {
+            file: "clip.mp4".into(),
+            data: Box::new(Cursor::new(video_bytes.clone())),
+        }];
+        let written = write_schedule_to(Cursor::new(Vec::new()), &contents, media)
+            .unwrap()
+            .into_inner();
+        assert_eq!(written_version(&written), 3, "embedded media needs v3");
+
+        let mut reader = ScheduleReader::new(Cursor::new(written)).unwrap();
+        assert_eq!(reader.contents().unwrap(), contents);
+        assert_eq!(reader.media_files(), ["clip.mp4"]);
+
+        let mut copy = Vec::new();
+        assert_eq!(reader.copy_media("clip.mp4", &mut copy).unwrap(), 100_000);
+        assert_eq!(copy, video_bytes);
+    }
+
+    #[test]
+    fn media_names_cannot_escape_the_media_folder() {
+        let mut archive = ZipWriter::new(Cursor::new(Vec::new()));
+        archive
+            .start_file(SCHEDULE_ENTRY, SimpleFileOptions::default())
+            .unwrap();
+        archive
+            .write_all(br#"{"formatVersion": 3, "generator": "x", "schedule": {"items": []}}"#)
+            .unwrap();
+        archive
+            .start_file("media/../../evil.sh", SimpleFileOptions::default())
+            .unwrap();
+        let bytes = archive.finish().unwrap().into_inner();
+
+        let mut reader = ScheduleReader::new(Cursor::new(bytes)).unwrap();
+        assert!(reader.media_files().is_empty());
+        assert!(reader.copy_media("../../evil.sh", &mut Vec::new()).is_err());
     }
 }

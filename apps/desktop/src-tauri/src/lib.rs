@@ -10,6 +10,8 @@
 //!   unsaved changes, crash recovery and "Open Recent".
 //! - [`menu`] builds the native menu bar.
 //! - [`bibles`] imports Bibles in the background, including the bundled ones.
+//! - [`media`] copies images and videos into the media library;
+//!   [`schedule_archive`] carries themes and media inside saved schedules.
 //!
 //! The UI never changes state directly. It sends an engine
 //! [`Command`](sw_core::Command), and every window learns what changed from
@@ -21,8 +23,10 @@ mod bibles;
 mod commands;
 mod error;
 mod files;
+mod media;
 mod menu;
 mod recent;
+mod schedule_archive;
 mod schedule_file;
 mod state;
 mod windows;
@@ -45,6 +49,11 @@ pub fn run() {
             menu::install(app.handle())?;
             menu::update_recent(app.handle(), &recent)?;
             bibles::install_bundled(app.handle());
+
+            // Give the engine the theme library and the logo.
+            let state = app.state::<AppState>();
+            commands::themes::sync_themes(app.handle(), &state)?;
+            commands::themes::sync_logo(app.handle(), &state)?;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -78,6 +87,20 @@ pub fn run() {
             commands::scripture::scripture_parse,
             commands::scripture::scripture_show_in_preview,
             commands::scripture::schedule_add_scripture,
+            commands::themes::theme_save,
+            commands::themes::theme_delete,
+            commands::themes::theme_set_defaults,
+            commands::themes::fonts_list,
+            commands::themes::logo_set,
+            commands::media::media_folders,
+            commands::media::media_list,
+            commands::media::media_import,
+            commands::media::media_update_details,
+            commands::media::media_save_thumbnail,
+            commands::media::media_rename,
+            commands::media::media_delete,
+            commands::media::media_show_in_preview,
+            commands::media::schedule_add_media,
             commands::text::text_show_in_preview,
             commands::outputs::monitors_list,
             commands::outputs::output_open,

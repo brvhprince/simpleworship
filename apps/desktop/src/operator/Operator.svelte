@@ -13,10 +13,12 @@
 -->
 <script lang="ts">
   import type { Command } from "@simpleworship/protocol";
+  import { getMediaUrls } from "@simpleworship/renderer";
   import { Button } from "@simpleworship/ui";
   import { onMount } from "svelte";
   import { bibles } from "../lib/bibles.svelte.ts";
   import { engine } from "../lib/engine.svelte.ts";
+  import { media } from "../lib/media.svelte.ts";
   import { scheduleFile } from "../lib/schedule-file.svelte.ts";
   import {
     commandForKey,
@@ -29,9 +31,17 @@
   import SchedulePanel from "./SchedulePanel.svelte";
   import SlidePane from "./SlidePane.svelte";
   import Toolbar from "./Toolbar.svelte";
+  import VideoControls from "./VideoControls.svelte";
+
+  const urls = getMediaUrls();
 
   onMount(() => {
-    const connections = [engine.connect(), scheduleFile.connect(), bibles.connect()];
+    const connections = [
+      engine.connect(),
+      scheduleFile.connect(),
+      bibles.connect(),
+      media.connect(urls),
+    ];
     for (const connection of connections) {
       connection.catch((error) => engine.showError(error));
     }
@@ -118,6 +128,9 @@
     output={engine.output}
     onselect={(index) => engine.dispatch({ type: "selectLiveSlide", index })}
   >
+    {#snippet below()}
+      <VideoControls />
+    {/snippet}
     {#snippet actions()}
       <Button disabled={!engine.live} onclick={() => engine.dispatch({ type: "clearLive" })}>
         Clear

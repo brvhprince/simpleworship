@@ -49,6 +49,8 @@ describe("backgroundCss", () => {
     expect(backgroundCss({ type: "linearGradient", from: "red", to: "blue", angleDeg: 90 })).toBe(
       "linear-gradient(90deg, red, blue)",
     );
-    expect(backgroundCss({ type: "image", path: "/a.png" })).toBeNull();
+    expect(
+      backgroundCss({ type: "image", media: { id: "m", file: "a.png" }, fit: "cover" }),
+    ).toBeNull();
   });
 });

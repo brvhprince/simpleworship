@@ -16,6 +16,8 @@ export function itemTitle(item: ScheduleItem): string {
       const abbreviations = item.content.translations.map((t) => t.abbreviation).join(" · ");
       return `${item.content.reference} (${abbreviations})`;
     }
+    case "media":
+      return item.content.media.name;
   }
 }
 
@@ -28,5 +30,7 @@ export function itemKind(item: ScheduleItem): string {
       return "Text";
     case "scripture":
       return "Bible";
+    case "media":
+      return item.content.media.kind === "video" ? "Video" : "Image";
   }
 }

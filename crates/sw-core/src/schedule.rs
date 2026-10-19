@@ -19,14 +19,15 @@ use ts_rs::TS;
 use sw_bible::Passage;
 
 use crate::id::Id;
+use crate::media::MediaItem;
 use crate::presentation::Presentation;
 use crate::scripture::{self, ScriptureOptions, TranslationText};
 use crate::slides::SlideOptions;
 use crate::song::Song;
-use crate::theme::Theme;
+use crate::themes::{ContentKind, ItemLook, ThemeLibrary};
 
 /// The order of service.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "bindings.ts")]
 pub struct Schedule {
@@ -35,7 +36,7 @@ pub struct Schedule {
 }
 
 /// One entry in a schedule.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "bindings.ts")]
 pub struct ScheduleItem {
@@ -46,6 +47,9 @@ pub struct ScheduleItem {
     pub notes: String,
     /// What the item shows.
     pub content: ItemContent,
+    /// A theme or background for this item only.
+    #[serde(default)]
+    pub look: ItemLook,
 }
 
 /// What a schedule item shows.
@@ -81,6 +85,11 @@ pub enum ItemContent {
         /// How the passage is split into slides.
         options: ScriptureOptions,
     },
+    /// An image or video from the media library, shown on its own.
+    Media {
+        /// The media item (the file travels with a saved schedule).
+        media: MediaItem,
+    },
 }
 
 impl ScheduleItem {
@@ -90,6 +99,7 @@ impl ScheduleItem {
             id: Id::new(),
             notes: String::new(),
             content,
+            look: ItemLook::default(),
         }
     }
 
@@ -103,24 +113,37 @@ impl ScheduleItem {
                 translations,
                 ..
             } => scripture::title(passage, translations),
+            ItemContent::Media { media } => media.name.clone(),
         }
     }
 
-    /// Builds the slides for this item.
-    pub fn presentation(&self, theme: &Theme) -> Presentation {
+    /// Builds the slides for this item, styled from `themes` (see
+    /// [`crate::themes`] for how the theme is chosen).
+    pub fn presentation(&self, themes: &ThemeLibrary) -> Presentation {
+        let look = |kind, own_theme| themes.resolve(kind, own_theme, &self.look);
         match &self.content {
-            ItemContent::Song { song } => {
-                Presentation::from_song(song, theme.clone(), SlideOptions::default())
-            }
+            ItemContent::Song { song } => Presentation::from_song(
+                song,
+                look(ContentKind::Song, song.theme_id),
+                SlideOptions::default(),
+            ),
             ItemContent::Text { title, text } => {
-                Presentation::from_text(title.clone(), text, theme.clone())
+                Presentation::from_text(title.clone(), text, look(ContentKind::Text, None))
             }
             ItemContent::Scripture {
                 passage,
                 translations,
                 options,
                 ..
-            } => Presentation::from_scripture(passage, translations, *options, theme.clone()),
+            } => Presentation::from_scripture(
+                passage,
+                translations,
+                *options,
+                look(ContentKind::Scripture, None),
+            ),
+            ItemContent::Media { media } => {
+                Presentation::from_media(media, look(ContentKind::Text, None))
+            }
         }
     }
 }

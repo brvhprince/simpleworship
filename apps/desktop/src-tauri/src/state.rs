@@ -30,6 +30,17 @@ pub struct AppState {
     /// Where the library database lives. Long imports open their own
     /// connection to it, so they never hold the shared one.
     pub database_path: PathBuf,
+    /// The media library's folders.
+    pub media_folders: MediaFolders,
+}
+
+/// Where media files and their thumbnails are kept.
+#[derive(Clone, Debug)]
+pub struct MediaFolders {
+    /// The imported images and videos.
+    pub media: PathBuf,
+    /// A small JPEG preview per media item, `<id>.jpg`.
+    pub thumbnails: PathBuf,
 }
 
 impl AppState {
@@ -40,6 +51,13 @@ impl AppState {
         std::fs::create_dir_all(&data_dir)?;
 
         let database_path = data_dir.join(DATABASE_FILE);
+        let media_folders = MediaFolders {
+            media: data_dir.join("media"),
+            thumbnails: data_dir.join("thumbnails"),
+        };
+        std::fs::create_dir_all(&media_folders.media)?;
+        std::fs::create_dir_all(&media_folders.thumbnails)?;
+
         Ok(Self {
             engine: Mutex::new(Engine::new()),
             schedule_file: Mutex::new(ScheduleFile::default()),
@@ -47,6 +65,7 @@ impl AppState {
             recent: Mutex::new(RecentSchedules::load(&data_dir)),
             autosave: Autosave::start(data_dir),
             database_path,
+            media_folders,
         })
     }
 

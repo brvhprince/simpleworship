@@ -13,12 +13,24 @@
 <script lang="ts">
   import type { ScheduleItem } from "@simpleworship/protocol";
   import { Button } from "@simpleworship/ui";
-  import { addMissingScheduleSongs, addSongToSchedule, missingScheduleSongs } from "../lib/api.ts";
-  import { finalIndex, ITEM_DRAG_TYPE, insertionIndex, SONG_DRAG_TYPE } from "../lib/drag.ts";
+  import {
+    addMediaToSchedule,
+    addMissingScheduleSongs,
+    addSongToSchedule,
+    missingScheduleSongs,
+  } from "../lib/api.ts";
+  import {
+    finalIndex,
+    ITEM_DRAG_TYPE,
+    insertionIndex,
+    MEDIA_DRAG_TYPE,
+    SONG_DRAG_TYPE,
+  } from "../lib/drag.ts";
   import { engine } from "../lib/engine.svelte.ts";
   import { library } from "../lib/library.svelte.ts";
   import { itemKind, itemTitle } from "../lib/schedule.ts";
   import { scheduleFile } from "../lib/schedule-file.svelte.ts";
+  import ItemLookEditor from "./ItemLookEditor.svelte";
 
   const items = $derived(engine.schedule.items);
   const previewId = $derived(engine.preview?.scheduleItem ?? null);
@@ -85,7 +97,7 @@
 
   function isOurDrag(event: DragEvent): boolean {
     const types = event.dataTransfer?.types ?? [];
-    return types.includes(SONG_DRAG_TYPE) || types.includes(ITEM_DRAG_TYPE);
+    return [SONG_DRAG_TYPE, ITEM_DRAG_TYPE, MEDIA_DRAG_TYPE].some((type) => types.includes(type));
   }
 
   function startDrag(event: DragEvent, item: ScheduleItem) {
@@ -122,14 +134,16 @@
 
     const itemId = data.getData(ITEM_DRAG_TYPE);
     const songId = data.getData(SONG_DRAG_TYPE);
+    const mediaId = data.getData(MEDIA_DRAG_TYPE);
     if (itemId) {
       const from = items.findIndex((item) => item.id === itemId);
       if (from !== -1) {
         engine.dispatch({ type: "moveScheduleItem", id: itemId, to: finalIndex(from, insertion) });
       }
-    } else if (songId) {
+    } else if (songId || mediaId) {
       try {
-        await addSongToSchedule(songId, insertion);
+        if (songId) await addSongToSchedule(songId, insertion);
+        else await addMediaToSchedule(mediaId, insertion);
       } catch (error) {
         engine.showError(error);
       }
@@ -202,6 +216,9 @@
   </div>
 
   {#if previewed}
+    <div class="details">
+      <ItemLookEditor item={previewed} />
+    </div>
     <label class="notes">
       Notes for “{itemTitle(previewed)}”
       <textarea
@@ -324,6 +341,11 @@
     margin: var(--sw-space-3);
     color: var(--sw-text-faint);
     line-height: 1.5;
+  }
+
+  .details {
+    padding: var(--sw-space-2) var(--sw-space-3) 0;
+    border-top: 1px solid var(--sw-border);
   }
 
   .notes {

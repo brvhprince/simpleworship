@@ -11,6 +11,7 @@
   import { Button, Dialog } from "@simpleworship/ui";
   import { untrack } from "svelte";
   import { saveSong, songPresentation } from "../../lib/api.ts";
+  import { engine } from "../../lib/engine.svelte.ts";
   import { frameAt } from "../../lib/frames.ts";
   import { overrideMenuItem } from "../../lib/menu.ts";
   import { withModifier } from "../../lib/platform.ts";
@@ -107,9 +108,18 @@
         <code>[Chorus]</code>
         or <code>[Bridge]</code>. A blank line starts a new slide.
       </p>
-      <label class="wide">
+      <label>
         Order (optional)
         <input bind:value={draft.arrangement} placeholder="V1 C V2 C B C">
+      </label>
+      <label>
+        Theme
+        <select bind:value={draft.themeId}>
+          <option value={null}>Default song theme</option>
+          {#each engine.themes.themes as theme (theme.id)}
+            <option value={theme.id}>{theme.theme.name}</option>
+          {/each}
+        </select>
       </label>
     </div>
 

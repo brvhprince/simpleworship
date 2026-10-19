@@ -11,11 +11,13 @@ use ts_rs::TS;
 use sw_bible::Passage;
 
 use crate::id::Id;
+use crate::media::{MediaItem, MediaKind};
 use crate::output::RenderFrame;
 use crate::scripture::{self, ScriptureOptions, TranslationText};
 use crate::slides::{self, Slide, SlideOptions};
 use crate::song::Song;
-use crate::theme::Theme;
+use crate::theme::{Background, MediaFit, Theme};
+use crate::themes::{Look, ThemeLibrary};
 
 /// Where a presentation's slides came from.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
@@ -38,6 +40,11 @@ pub enum PresentationSource {
         /// The passage.
         passage: Passage,
     },
+    /// An image or video from the media library, shown on its own.
+    Media {
+        /// The media item's id.
+        media_id: Id,
+    },
 }
 
 /// A titled list of slides, styled with one theme.
@@ -53,35 +60,118 @@ pub struct Presentation {
     pub title: String,
     /// The slides, in the order they are shown.
     pub slides: Vec<Slide>,
-    /// The theme every slide is drawn with.
+    /// The theme every slide is drawn with (with any background override
+    /// already applied).
     pub theme: Theme,
+    /// The library theme `theme` came from, so edits to it can be shown
+    /// straight away. `None` if it did not come from the library.
+    pub theme_id: Option<Id>,
+    /// A background chosen for this item only, re-applied when the theme
+    /// is refreshed.
+    pub background_override: Option<Background>,
     /// Small print shown under the lyrics, e.g. copyright and CCLI number.
     pub footer: Option<String>,
 }
 
 impl Presentation {
     /// Builds a presentation from a song, following its arrangement.
-    pub fn from_song(song: &Song, theme: Theme, options: SlideOptions) -> Self {
-        Self {
-            id: Id::new(),
-            source: PresentationSource::Song { song_id: song.id },
-            title: song.title.clone(),
-            slides: slides::slides_from_sections(&song.ordered_sections(), options),
-            theme,
-            footer: song.footer(),
-        }
+    pub fn from_song(song: &Song, look: impl Into<Look>, options: SlideOptions) -> Self {
+        Self::new(
+            PresentationSource::Song { song_id: song.id },
+            song.title.clone(),
+            slides::slides_from_sections(&song.ordered_sections(), options),
+            look.into(),
+            song.footer(),
+        )
     }
 
     /// Builds a presentation from free text. Blank lines separate slides.
-    pub fn from_text(title: impl Into<String>, text: &str, theme: Theme) -> Self {
+    pub fn from_text(title: impl Into<String>, text: &str, look: impl Into<Look>) -> Self {
+        Self::new(
+            PresentationSource::Text,
+            title.into(),
+            slides::slides_from_text(text, SlideOptions::default()),
+            look.into(),
+            None,
+        )
+    }
+
+    /// Builds a one-slide presentation that shows an image or video on its
+    /// own, fitted to the screen with black bars rather than cropped.
+    pub fn from_media(media: &MediaItem, look: impl Into<Look>) -> Self {
+        let background = match media.kind {
+            MediaKind::Image => Background::Image {
+                media: media.as_ref(),
+                fit: MediaFit::Contain,
+            },
+            MediaKind::Video => Background::Video {
+                media: media.as_ref(),
+                fit: MediaFit::Contain,
+                looping: false,
+                play_audio: true,
+            },
+        };
+        let mut look: Look = look.into();
+        // Black around the picture, whatever the theme says.
+        look.background_override = Some(background.clone());
+        look.theme.background = background;
+
+        let slide = Slide {
+            text: String::new(),
+            section: None,
+            starts_section: false,
+            caption: None,
+            scripture: None,
+        };
+        Self::new(
+            PresentationSource::Media { media_id: media.id },
+            media.name.clone(),
+            vec![slide],
+            look,
+            None,
+        )
+    }
+
+    fn new(
+        source: PresentationSource,
+        title: String,
+        slides: Vec<Slide>,
+        look: Look,
+        footer: Option<String>,
+    ) -> Self {
         Self {
             id: Id::new(),
-            source: PresentationSource::Text,
-            title: title.into(),
-            slides: slides::slides_from_text(text, SlideOptions::default()),
-            theme,
-            footer: None,
+            source,
+            title,
+            slides,
+            theme: look.theme,
+            theme_id: look.theme_id,
+            background_override: look.background_override,
+            footer,
         }
+    }
+
+    /// The look this presentation was built with.
+    pub fn look(&self) -> Look {
+        Look {
+            theme_id: self.theme_id,
+            theme: self.theme.clone(),
+            background_override: self.background_override.clone(),
+        }
+    }
+
+    /// Picks up a newer version of this presentation's library theme.
+    /// Returns whether anything changed.
+    pub fn restyle(&mut self, library: &ThemeLibrary) -> bool {
+        let Some(record) = self.theme_id.and_then(|id| library.get(id)) else {
+            return false;
+        };
+        let look = self.look().restyled(&record.theme);
+        if look.theme == self.theme {
+            return false;
+        }
+        self.theme = look.theme;
+        true
     }
 
     /// Builds a presentation from a Bible passage in one or more
@@ -90,18 +180,17 @@ impl Presentation {
         passage: &Passage,
         translations: &[TranslationText],
         options: ScriptureOptions,
-        theme: Theme,
+        look: impl Into<Look>,
     ) -> Self {
-        Self {
-            id: Id::new(),
-            source: PresentationSource::Scripture {
+        Self::new(
+            PresentationSource::Scripture {
                 passage: passage.clone(),
             },
-            title: scripture::title(passage, translations),
-            slides: scripture::slides(passage, translations, options),
-            theme,
-            footer: scripture::footer(translations),
-        }
+            scripture::title(passage, translations),
+            scripture::slides(passage, translations, options),
+            look.into(),
+            scripture::footer(translations),
+        )
     }
 
     /// The fully resolved frame for the slide at `index`, if it exists.

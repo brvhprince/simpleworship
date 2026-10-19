@@ -5,16 +5,28 @@
   (see `src-tauri/src/windows.rs`). Without a view it is the operator window.
 -->
 <script lang="ts">
-  import { setMediaResolver } from "@simpleworship/renderer";
+  import type { MediaFolderPaths, MediaRef } from "@simpleworship/protocol";
+  import { setMediaUrls } from "@simpleworship/renderer";
   import { convertFileSrc } from "@tauri-apps/api/core";
   import Operator from "./operator/Operator.svelte";
   import Output from "./output/Output.svelte";
   import Stage from "./stage/Stage.svelte";
 
+  interface Props {
+    /** Where media files and thumbnails live (fetched in `main.ts`). */
+    folders: MediaFolderPaths;
+  }
+
+  let { folders }: Props = $props();
+
   const view = new URLSearchParams(window.location.search).get("view") ?? "operator";
 
-  // Media in themes are file paths; Tauri's asset protocol makes them loadable.
-  setMediaResolver((path) => convertFileSrc(path));
+  // Media files are served by Tauri's asset protocol, limited to these
+  // folders (see `assetProtocol` in tauri.conf.json).
+  setMediaUrls({
+    file: (media: MediaRef) => convertFileSrc(`${folders.media}/${media.file}`),
+    thumbnail: (media: MediaRef) => convertFileSrc(`${folders.thumbnails}/${media.id}.jpg`),
+  });
 </script>
 
 {#if view === "output"}

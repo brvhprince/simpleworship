@@ -1,7 +1,8 @@
 <!--
   @component
   A still picture of one slide: background plus text, with no transitions.
-  Used for preview panes and thumbnails. Wrap it in a `ScaledCanvas`.
+  Used for preview panes and thumbnails, so video backgrounds show their
+  thumbnail instead of playing. Wrap it in a `ScaledCanvas`.
 -->
 <script lang="ts">
   import type { RenderFrame } from "@simpleworship/protocol";
@@ -18,7 +19,7 @@
 </script>
 
 {#if showBackground}
-  <BackgroundLayer background={frame.theme.background} />
+  <BackgroundLayer background={frame.theme.background} still />
 {/if}
 {#if showText}
   <TextLayer {frame} />

@@ -3,13 +3,19 @@
 //! All sizes are in pixels on a **1920×1080 reference canvas**. Renderers scale
 //! the whole canvas to the real screen, so a theme looks the same on a 720p
 //! projector, a 4K TV and a small preview thumbnail.
+//!
+//! Themes are stored as JSON. Every struct here has `#[serde(default)]`, so
+//! a theme saved by an older version, which lacks a newer setting, still
+//! loads: the missing setting simply takes its default value.
 
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
+use crate::media::MediaRef;
+
 /// A complete visual style for slides.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", default)]
 #[ts(export, export_to = "bindings.ts")]
 pub struct Theme {
     /// Display name, e.g. "Default".
@@ -64,15 +70,22 @@ pub enum Background {
         /// Direction in degrees; 180 runs top to bottom.
         angle_deg: f32,
     },
-    /// A still image, scaled to cover the screen.
+    /// A still image.
     Image {
-        /// Absolute path to the image file.
-        path: String,
+        /// The image in the media library.
+        media: MediaRef,
+        /// How the image fills the screen.
+        #[serde(default)]
+        fit: MediaFit,
     },
-    /// A video, scaled to cover the screen.
+    /// A video. Playback (play, pause, position) is controlled from the live
+    /// pane and shared by every screen; see [`crate::output::VideoPlayback`].
     Video {
-        /// Absolute path to the video file.
-        path: String,
+        /// The video in the media library.
+        media: MediaRef,
+        /// How the video fills the screen.
+        #[serde(default)]
+        fit: MediaFit,
         /// Restart the video when it ends.
         #[serde(rename = "loop")]
         looping: bool,
@@ -81,9 +94,33 @@ pub enum Background {
     },
 }
 
+impl Background {
+    /// The media file this background shows, if it is an image or video.
+    pub fn media(&self) -> Option<&MediaRef> {
+        match self {
+            Background::Image { media, .. } | Background::Video { media, .. } => Some(media),
+            Background::Color { .. } | Background::LinearGradient { .. } => None,
+        }
+    }
+}
+
+/// How an image or video fills a screen of a different shape.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "bindings.ts")]
+pub enum MediaFit {
+    /// Fill the whole screen, cropping the edges if needed. Best for
+    /// backgrounds.
+    #[default]
+    Cover,
+    /// Show all of it, with black bars if needed. Best for photos and
+    /// videos shown on their own.
+    Contain,
+}
+
 /// Font and decoration for slide text.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", default)]
 #[ts(export, export_to = "bindings.ts")]
 pub struct TextStyle {
     /// CSS font family list, e.g. `"Open Sans, Arial, sans-serif"`.
@@ -188,7 +225,7 @@ pub enum VerticalAlign {
 
 /// The rectangle the slide text is laid out in.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", default)]
 #[ts(export, export_to = "bindings.ts")]
 pub struct TextBox {
     /// Distance from the top edge, in reference pixels.
@@ -220,7 +257,7 @@ impl Default for TextBox {
 
 /// Style of the footer line (copyright and CCLI information).
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "camelCase", default)]
 #[ts(export, export_to = "bindings.ts")]
 pub struct FooterStyle {
     /// Show the footer at all.

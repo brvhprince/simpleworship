@@ -8,6 +8,8 @@ import type {
   AutosaveInfo,
   BibleInfo,
   BookOutline,
+  MediaFolderPaths,
+  MediaItem,
   MonitorInfo,
   OutputKind,
   OutputTarget,
@@ -19,6 +21,8 @@ import type {
   ScriptureOptions,
   Song,
   SongSummary,
+  ThemeDefaults,
+  ThemeRecord,
   Verse,
 } from "@simpleworship/protocol";
 import { invoke } from "@tauri-apps/api/core";
@@ -76,8 +80,12 @@ export const newSchedule = () => invoke<void>("schedule_new");
 /** Opens a `.sws` file (without asking about unsaved changes). */
 export const openSchedule = (path: string) => invoke<void>("schedule_open", { path });
 
-/** Saves to `path` ("Save As"), or to the current file when `path` is null. */
-export const saveSchedule = (path: string | null) => invoke<void>("schedule_save", { path });
+/**
+ * Saves to `path` ("Save As"), or to the current file when `path` is null.
+ * With `includeMedia` (the default) images and videos are embedded.
+ */
+export const saveSchedule = (path: string | null, includeMedia = true) =>
+  invoke<void>("schedule_save", { path, includeMedia });
 
 /** Recently used schedule files, most recent first. */
 export const recentSchedules = () => invoke<RecentSchedule[]>("schedule_recent");
@@ -136,6 +144,59 @@ export const addScriptureToSchedule = (
   index: number | null = null,
 ) => invoke<void>("schedule_add_scripture", { passage, bibleIds, options, index });
 
+// ── Themes and fonts ─────────────────────────────────────────────────────
+// The theme library itself arrives with the engine state (`engine.themes`).
+
+/** Creates or updates a theme. */
+export const saveTheme = (theme: ThemeRecord) => invoke<void>("theme_save", { theme });
+
+/** Deletes a theme; content that used it falls back to the default. */
+export const deleteTheme = (id: string) => invoke<void>("theme_delete", { id });
+
+/** Chooses the default theme for songs, scripture and text. */
+export const setThemeDefaults = (defaults: ThemeDefaults) =>
+  invoke<void>("theme_set_defaults", { defaults });
+
+/** Font families: the bundled ones first, then the installed ones. */
+export const listFonts = () => invoke<string[]>("fonts_list");
+
+/** Sets (or, with `null`, removes) the church logo. */
+export const setLogo = (mediaId: string | null) => invoke<void>("logo_set", { mediaId });
+
+// ── Media ────────────────────────────────────────────────────────────────
+
+/** Where media files and thumbnails live. */
+export const mediaFolders = () => invoke<MediaFolderPaths>("media_folders");
+
+/** Every media item, newest first. */
+export const listMedia = () => invoke<MediaItem[]>("media_list");
+
+/** Copies files into the media library (in the background, with progress). */
+export const importMedia = (paths: string[]) => invoke<MediaItem[]>("media_import", { paths });
+
+/** Records a video's size and length, measured by the webview. */
+export const updateMediaDetails = (
+  id: string,
+  details: { width: number | null; height: number | null; durationMs: number | null },
+) => invoke<void>("media_update_details", { id, ...details });
+
+/** Stores a media item's thumbnail (JPEG bytes). */
+export const saveMediaThumbnail = (id: string, jpeg: Uint8Array) =>
+  invoke<void>("media_save_thumbnail", { id, jpeg: Array.from(jpeg) });
+
+/** Renames a media item. */
+export const renameMedia = (id: string, name: string) => invoke<void>("media_rename", { id, name });
+
+/** Deletes a media item and its file. */
+export const deleteMedia = (id: string) => invoke<void>("media_delete", { id });
+
+/** Shows an image or video on its own in the preview pane. */
+export const showMediaInPreview = (id: string) => invoke<void>("media_show_in_preview", { id });
+
+/** Adds an image or video to the schedule at `index`, or at the end. */
+export const addMediaToSchedule = (id: string, index: number | null = null) =>
+  invoke<void>("schedule_add_media", { id, index });
+
 // ── Outputs ──────────────────────────────────────────────────────────────
 
 /** Lists the connected monitors. */
@@ -158,6 +219,7 @@ export function newSong(): Song {
     ccliNumber: "",
     lyrics: "",
     arrangement: "",
+    themeId: null,
     createdAt: 0,
     updatedAt: 0,
   };

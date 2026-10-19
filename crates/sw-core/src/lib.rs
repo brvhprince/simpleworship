@@ -17,6 +17,7 @@ pub mod command;
 pub mod engine;
 pub mod id;
 pub mod lyrics;
+pub mod media;
 pub mod output;
 pub mod presentation;
 pub mod schedule;
@@ -24,15 +25,20 @@ pub mod scripture;
 pub mod slides;
 pub mod song;
 pub mod theme;
+pub mod themes;
 pub mod time;
 
 pub use command::{Command, EngineEvent};
 pub use engine::{Engine, EngineError, EngineSnapshot, PaneState};
 pub use id::Id;
-pub use output::{DisplayFlags, OutputState, RenderFrame, Transition, TransitionKind};
+pub use media::{MediaItem, MediaKind, MediaRef};
+pub use output::{
+    DisplayFlags, OutputState, RenderFrame, Transition, TransitionKind, VideoPlayback,
+};
 pub use presentation::{Presentation, PresentationSource};
 pub use schedule::{ItemContent, Schedule, ScheduleItem};
 pub use scripture::{BibleInfo, BookOutline, ScriptureOptions, TranslationText, Verse};
 pub use slides::{Slide, SlideOptions};
 pub use song::{Song, SongSummary};
-pub use theme::Theme;
+pub use theme::{Background, MediaFit, Theme};
+pub use themes::{ItemLook, Look, ThemeDefaults, ThemeLibrary, ThemeRecord};

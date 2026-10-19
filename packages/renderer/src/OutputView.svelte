@@ -13,20 +13,27 @@
   Each layer cross-fades on its own: the outgoing and incoming versions are
   both on screen for the length of the transition.
 
-  Until a logo image can be configured (planned with the media library), the
-  Logo button shows the background without any text.
+  The Logo button shows the church logo on black, or, if no logo is set,
+  the background without any text.
+
+  - `muted`: silence videos (the operator's live pane), so only the
+    projector plays sound.
 -->
 <script lang="ts">
   import type { OutputState, RenderFrame } from "@simpleworship/protocol";
   import { fade } from "svelte/transition";
   import BackgroundLayer from "./BackgroundLayer.svelte";
+  import { getMediaUrls } from "./media.ts";
   import TextLayer from "./TextLayer.svelte";
 
   interface Props {
     output: OutputState;
+    muted?: boolean;
   }
 
-  let { output }: Props = $props();
+  let { output, muted = false }: Props = $props();
+
+  const urls = getMediaUrls();
 
   /** One version of a layer. `key` changes whenever the layer looks different. */
   interface Layer {
@@ -45,6 +52,8 @@
       ? [{ key: JSON.stringify(output.frame.theme.background), frame: output.frame }]
       : [],
   );
+
+  const showLogo = $derived(flags.logo && output.logo !== null);
 
   const textLayers: Layer[] = $derived(
     output.frame && !flags.hideText && !flags.logo
@@ -69,7 +78,7 @@
 
 {#each backgroundLayers as layer (layer.key)}
   <div class="layer" transition:fade={{ duration }}>
-    <BackgroundLayer background={layer.frame.theme.background} />
+    <BackgroundLayer background={layer.frame.theme.background} playback={output.video} {muted} />
   </div>
 {/each}
 
@@ -78,6 +87,12 @@
     <TextLayer frame={layer.frame} />
   </div>
 {/each}
+
+{#if showLogo && output.logo}
+  <div class="layer logo" transition:fade={{ duration }}>
+    <img src={urls.file(output.logo)} alt="">
+  </div>
+{/if}
 
 {#if flags.black}
   <div class="layer black" transition:fade={{ duration }}></div>
@@ -89,7 +104,14 @@
     inset: 0;
   }
 
-  .black {
+  .black,
+  .logo {
     background: #000;
+  }
+
+  .logo img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
   }
 </style>

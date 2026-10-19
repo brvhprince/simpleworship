@@ -8,8 +8,11 @@
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
+use crate::id::Id;
+use crate::media::MediaRef;
 use crate::scripture::ScriptureSlide;
 use crate::theme::Theme;
+use crate::time::Timestamp;
 
 /// One slide, resolved and ready to draw.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
@@ -88,8 +91,56 @@ pub struct OutputState {
     pub flags: DisplayFlags,
     /// How to animate into this state.
     pub transition: Transition,
+    /// Playback of the live video background, if there is one.
+    pub video: Option<VideoPlayback>,
+    /// The church logo, shown when [`DisplayFlags::logo`] is on. Without
+    /// one, the Logo button shows the background with no text.
+    pub logo: Option<MediaRef>,
     /// Increases by one every time the output changes. Lets renderers that
     /// connect late, or miss an event, tell whether they are up to date.
     #[ts(type = "number")]
     pub revision: u64,
+}
+
+/// Where the live video is, shared by every screen that shows it.
+///
+/// Instead of streaming the position many times a second, the engine says
+/// "at wall-clock time `anchor`, the video was at `position_ms`, and it is
+/// (or is not) playing". Each screen works out the current position from
+/// its own clock with [`VideoPlayback::position_at`], so the projector, the
+/// operator's live pane and any future remote screen stay in step.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "bindings.ts")]
+pub struct VideoPlayback {
+    /// The video this playback belongs to.
+    pub media_id: Id,
+    /// Whether the video is playing.
+    pub playing: bool,
+    /// The position, in milliseconds, at `anchor`.
+    #[ts(type = "number")]
+    pub position_ms: u64,
+    /// When `position_ms` was measured (milliseconds since the Unix epoch).
+    #[ts(type = "number")]
+    pub anchor: Timestamp,
+    /// Start again from the beginning at the end.
+    #[serde(rename = "loop")]
+    pub looping: bool,
+    /// Silence the video's sound on every screen. Starts from the
+    /// background's "play sound" setting; the operator can change it live.
+    pub muted: bool,
+}
+
+impl VideoPlayback {
+    /// The position in milliseconds at wall-clock time `now`. For a looping
+    /// video this keeps counting past the end; the renderer wraps it using
+    /// the video's real duration.
+    pub fn position_at(&self, now: Timestamp) -> u64 {
+        if self.playing {
+            let elapsed = u64::try_from(now - self.anchor).unwrap_or(0);
+            self.position_ms + elapsed
+        } else {
+            self.position_ms
+        }
+    }
 }
