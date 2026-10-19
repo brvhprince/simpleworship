@@ -1,8 +1,12 @@
 <!--
   @component
   An alert over the slides: a still banner, or a ticker scrolling from
-  right to left. Every screen positions the ticker from the alert's start
-  time, so they all scroll in step.
+  right to left.
+
+  The ticker is a CSS animation, so the GPU moves it smoothly instead of a
+  script nudging it every frame (which made the text shimmer). Every
+  screen starts the animation part-way through, as far as the alert's start
+  time says, so they all scroll in step, even an output opened later.
 
   `onend` fires once when the alert has run its course (its seconds are up,
   or the ticker has scrolled across the set number of times). A still
@@ -25,32 +29,44 @@
   let { alert, onend }: Props = $props();
 
   let text: HTMLSpanElement;
-  let offset = $state(CANVAS_WIDTH);
+  /** The text's width in canvas pixels, once measured (the ticker waits for it). */
+  let textWidth: number | null = $state(null);
+  /** How far into the scrolling this screen joined, in milliseconds. */
+  let joinedAt = $state(0);
   let ended = false;
 
+  const isTicker = $derived(alert.style === "ticker");
+  /** One pass: from just off the right edge until the end leaves the left. */
+  const passMs = $derived(
+    textWidth === null ? 0 : ((CANVAS_WIDTH + textWidth) / TICKER_SPEED) * 1000,
+  );
+  const passes = $derived(alert.end.type === "afterPasses" ? String(alert.end.passes) : "infinite");
+
   onMount(() => {
-    let frame = requestAnimationFrame(function step() {
-      const elapsed = Date.now() - alert.startedAt;
-      if (alert.style === "ticker" && text) {
-        // One pass: from off the right edge until the end leaves the left.
-        const passLength = CANVAS_WIDTH + text.offsetWidth;
-        const travelled = (elapsed / 1000) * TICKER_SPEED;
-        offset = CANVAS_WIDTH - (travelled % passLength);
-        const passes = travelled / passLength;
-        if (alert.end.type === "afterPasses" && passes >= alert.end.passes) finish();
-      }
-      if (alert.end.type === "afterSeconds" && elapsed >= alert.end.seconds * 1000) finish();
-      if (
-        alert.style === "banner" &&
-        alert.end.type === "afterPasses" &&
-        elapsed >= alert.end.passes * BANNER_PASS_MS
-      ) {
-        finish();
-      }
-      frame = requestAnimationFrame(step);
+    // Measure once the fonts are ready; the width decides the speed.
+    void document.fonts.ready.then(() => {
+      if (!text) return;
+      textWidth = text.offsetWidth;
+      joinedAt = Date.now() - alert.startedAt;
     });
-    return () => cancelAnimationFrame(frame);
+
+    const total = totalMs();
+    if (total === null) return;
+    const timer = setTimeout(finish, Math.max(0, total - (Date.now() - alert.startedAt)));
+    return () => clearTimeout(timer);
   });
+
+  /** How long the alert stays up, or `null` for a ticker counting its passes (see `onanimationend`). */
+  function totalMs(): number | null {
+    switch (alert.end.type) {
+      case "afterSeconds":
+        return alert.end.seconds * 1000;
+      case "afterPasses":
+        return isTicker ? null : alert.end.passes * BANNER_PASS_MS;
+      case "manual":
+        return null;
+    }
+  }
 
   function finish() {
     if (!ended) {
@@ -60,11 +76,17 @@
   }
 </script>
 
-<div class="alert {alert.position}" class:ticker={alert.style === "ticker"}>
+<div class="alert {alert.position}" class:ticker={isTicker}>
   <span
     bind:this={text}
     class="text"
-    style:transform={alert.style === "ticker" ? `translateX(${offset}px)` : undefined}
+    class:scrolling={isTicker && textWidth !== null}
+    style:--from="{CANVAS_WIDTH}px"
+    style:--to="{-(textWidth ?? 0)}px"
+    style:animation-duration="{passMs}ms"
+    style:animation-delay="{-joinedAt}ms"
+    style:animation-iteration-count={passes}
+    onanimationend={finish}
   >
     {alert.text}
   </span>
@@ -103,6 +125,26 @@
   .ticker .text {
     position: absolute;
     left: 0;
+    /* Hidden until measured, so it does not flash in the wrong place. */
+    visibility: hidden;
+    /* Its own GPU layer: moving it never redraws the text. */
     will-change: transform;
+    backface-visibility: hidden;
+  }
+
+  .ticker .text.scrolling {
+    visibility: visible;
+    animation-name: scroll;
+    animation-timing-function: linear;
+    animation-fill-mode: both;
+  }
+
+  @keyframes scroll {
+    from {
+      transform: translate3d(var(--from), 0, 0);
+    }
+    to {
+      transform: translate3d(var(--to), 0, 0);
+    }
   }
 </style>

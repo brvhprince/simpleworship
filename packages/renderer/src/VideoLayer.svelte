@@ -9,7 +9,7 @@
   import type { MediaFit, MediaRef, VideoPlayback } from "@simpleworship/protocol";
   import { onMount } from "svelte";
   import { getMediaUrls } from "./media.ts";
-  import { needsCorrection, targetSeconds } from "./video-sync.ts";
+  import { correctionFor, driftSeconds, isBuffering, targetSeconds } from "./video-sync.ts";
 
   interface Props {
     media: MediaRef;
@@ -24,20 +24,50 @@
   let { media, fit, playback, muted }: Props = $props();
 
   /** How often to check for drift, in milliseconds. */
-  const SYNC_INTERVAL_MS = 1000;
+  const SYNC_INTERVAL_MS = 500;
+
+  /** After a seek, give the player this long to settle before seeking again. */
+  const SEEK_COOLDOWN_MS = 3000;
+
+  /** How far off the operator's own changes (a seek) may land, in seconds. */
+  const OPERATOR_SEEK_S = 0.25;
 
   const urls = getMediaUrls();
   let video: HTMLVideoElement;
+  let lastSeekAt = 0;
+  /**
+   * The timeline last acted on, to tell the operator's changes (seek, play,
+   * pause) from drift. Compared by value: every engine event brings a new
+   * copy of the same playback, e.g. when the lyrics change.
+   */
+  let handled = "";
 
   /** Silent if this copy is muted, or the operator muted the video. */
   const silent = $derived(muted || (playback?.muted ?? false));
 
-  /** Brings the element in line with the shared playback state. */
+  /**
+   * Brings the element in line with the shared playback state: straight
+   * away when the operator changed something (seek, play, pause), gently
+   * for drift (see `video-sync.ts`).
+   */
   function sync() {
     if (!video || !playback) return;
-    const target = targetSeconds(playback, Date.now(), video.duration);
-    if (needsCorrection(video.currentTime, target)) {
-      video.currentTime = target;
+    const now = Date.now();
+    const target = targetSeconds(playback, now, video.duration);
+    const drift = driftSeconds(video.currentTime, target, video.duration, playback.loop);
+    const timeline = `${playback.positionMs}@${playback.anchor}:${playback.playing}`;
+    const changed = handled !== timeline;
+    handled = timeline;
+
+    if (changed && Math.abs(drift) > OPERATOR_SEEK_S) {
+      seekTo(target, now);
+    } else if (!isBuffering(video) && playback.playing) {
+      const correction = correctionFor(drift);
+      if (correction.seek) {
+        if (now - lastSeekAt > SEEK_COOLDOWN_MS) seekTo(target, now);
+      } else {
+        video.playbackRate = correction.rate;
+      }
     }
     video.loop = playback.loop;
     video.muted = silent;
@@ -52,6 +82,12 @@
     } else if (!playback.playing && !video.paused) {
       video.pause();
     }
+  }
+
+  function seekTo(seconds: number, now: number) {
+    video.currentTime = seconds;
+    video.playbackRate = 1;
+    lastSeekAt = now;
   }
 
   // Re-sync whenever the engine changes the playback (play, pause, seek,

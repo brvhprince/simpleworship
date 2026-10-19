@@ -7,6 +7,11 @@
   The engine holds the playlist and the position (an anchor plus the clock,
   like video); this element follows it, fades out when asked, and tells the
   engine when a track ends.
+
+  Only this one element plays the music, so once it is playing it keeps its
+  own time: it moves only when the operator changes something (a seek, a
+  new track). Correcting it against the clock would make it seek whenever
+  it paused to load, which empties its buffer and makes it stutter.
 -->
 <script lang="ts">
   import { getMediaUrls } from "@simpleworship/renderer";
@@ -14,19 +19,24 @@
   import { engine } from "../lib/engine.svelte.ts";
   import { formatDuration } from "../lib/format.ts";
 
-  /** How far (in seconds) playback may drift before it is corrected. */
-  const DRIFT_TOLERANCE_S = 0.5;
+  /** How far off the operator's own changes (a seek) may land, in seconds. */
+  const OPERATOR_SEEK_S = 0.25;
 
   const urls = getMediaUrls();
   let element: HTMLAudioElement;
   /** The fade already reported as finished, so the pause is sent once. */
   let finishedFade: number | null = null;
   let now = $state(Date.now());
+  /** Where the element really is, in milliseconds, for the position display. */
+  let playedMs: number | null = $state(null);
+  /** The timeline last acted on, compared by value (see `follow`). */
+  let handled = "";
 
   const audio = $derived(engine.audio);
   const track = $derived(audio?.playlist[audio.index] ?? null);
   const position = $derived.by(() => {
     if (!audio) return 0;
+    if (playedMs !== null) return playedMs;
     const elapsed = audio.playing ? Math.max(0, now - audio.anchor) : 0;
     return audio.positionMs + elapsed;
   });
@@ -52,13 +62,23 @@
       return;
     }
     const src = urls.file({ id: track.id, file: track.file });
-    if (element.getAttribute("src") !== src) element.src = src;
+    if (element.getAttribute("src") !== src) {
+      element.src = src;
+      handled = "";
+    }
 
-    const target =
-      (audio.playing
-        ? audio.positionMs + Math.max(0, Date.now() - audio.anchor)
-        : audio.positionMs) / 1000;
-    if (Math.abs(element.currentTime - target) > DRIFT_TOLERANCE_S) element.currentTime = target;
+    // Move the playhead only when the operator changed the timeline. Every
+    // engine event brings a fresh copy of the same state, hence by value.
+    const timeline = `${audio.index}:${audio.positionMs}@${audio.anchor}:${audio.playing}`;
+    if (timeline !== handled) {
+      handled = timeline;
+      const target =
+        (audio.playing
+          ? audio.positionMs + Math.max(0, Date.now() - audio.anchor)
+          : audio.positionMs) / 1000;
+      if (Math.abs(element.currentTime - target) > OPERATOR_SEEK_S) element.currentTime = target;
+    }
+    playedMs = element.readyState > 0 ? Math.round(element.currentTime * 1000) : null;
 
     element.volume = fadedVolume();
     if (audio.playing && element.paused) void element.play().catch(() => {});

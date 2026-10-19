@@ -1,39 +1,58 @@
 import type { VideoPlayback } from "@simpleworship/protocol";
 import { describe, expect, it } from "vitest";
-import { needsCorrection, targetSeconds } from "./video-sync.ts";
+import { correctionFor, driftSeconds, targetSeconds } from "./video-sync.ts";
 
-const playback = (overrides: Partial<VideoPlayback> = {}): VideoPlayback => ({
+const playing: VideoPlayback = {
   mediaId: "v",
   playing: true,
-  positionMs: 0,
-  anchor: 1_000,
-  loop: false,
+  positionMs: 2_000,
+  anchor: 10_000,
+  loop: true,
   muted: false,
-  ...overrides,
-});
+};
 
 describe("targetSeconds", () => {
   it("counts on from the anchor while playing", () => {
-    expect(targetSeconds(playback({ positionMs: 2_000 }), 4_000, 60)).toBe(5);
+    expect(targetSeconds(playing, 13_000, 60)).toBe(5);
   });
 
-  it("stays put while paused", () => {
-    expect(targetSeconds(playback({ playing: false, positionMs: 2_000 }), 99_000, 60)).toBe(2);
+  it("stands still while paused", () => {
+    expect(targetSeconds({ ...playing, playing: false }, 99_000, 60)).toBe(2);
   });
 
-  it("wraps looping videos and stops the others at the end", () => {
-    expect(targetSeconds(playback({ loop: true }), 1_000 + 25_000, 10)).toBe(5);
-    expect(targetSeconds(playback({ loop: false }), 1_000 + 25_000, 10)).toBe(10);
+  it("wraps a looping video and stops one that does not loop", () => {
+    expect(targetSeconds(playing, 20_000, 10)).toBe(2);
+    expect(targetSeconds({ ...playing, loop: false }, 20_000, 10)).toBe(10);
   });
 
-  it("copes with an unknown duration", () => {
-    expect(targetSeconds(playback(), 4_000, Number.NaN)).toBe(3);
+  it("does not wrap before the duration is known", () => {
+    expect(targetSeconds(playing, 20_000, Number.NaN)).toBe(12);
   });
 });
 
-describe("needsCorrection", () => {
-  it("ignores tiny drift", () => {
-    expect(needsCorrection(10.1, 10)).toBe(false);
-    expect(needsCorrection(11, 10)).toBe(true);
+describe("driftSeconds", () => {
+  it("is positive when ahead and negative when behind", () => {
+    expect(driftSeconds(10.5, 10, 60, false)).toBeCloseTo(0.5);
+    expect(driftSeconds(9.5, 10, 60, false)).toBeCloseTo(-0.5);
+  });
+
+  it("goes the short way round a loop", () => {
+    expect(driftSeconds(9.9, 0.1, 10, true)).toBeCloseTo(-0.2);
+    expect(driftSeconds(0.1, 9.9, 10, true)).toBeCloseTo(0.2);
+  });
+});
+
+describe("correctionFor", () => {
+  it("leaves tiny drift alone", () => {
+    expect(correctionFor(0.05)).toEqual({ seek: false, rate: 1 });
+  });
+
+  it("catches up gently instead of seeking", () => {
+    expect(correctionFor(0.8)).toEqual({ seek: false, rate: 0.95 });
+    expect(correctionFor(-0.8)).toEqual({ seek: false, rate: 1.05 });
+  });
+
+  it("only jumps for a large drift", () => {
+    expect(correctionFor(5)).toEqual({ seek: true });
   });
 });
