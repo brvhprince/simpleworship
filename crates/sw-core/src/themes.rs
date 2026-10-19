@@ -19,8 +19,8 @@ use ts_rs::TS;
 
 use crate::id::Id;
 use crate::theme::{
-    Background, FooterStyle, HorizontalAlign, Outline, Shadow, TextBox, TextStyle, Theme,
-    VerticalAlign,
+    Background, FooterStyle, HorizontalAlign, Outline, Placement, Shadow, TextBox, TextStyle,
+    Theme, VerticalAlign,
 };
 
 /// A theme in the library.
@@ -47,6 +47,10 @@ pub struct ThemeDefaults {
     pub scripture: Option<Id>,
     /// Theme for free text.
     pub text: Option<Id>,
+    /// Theme for presentations and slideshows. When unset, they use the
+    /// free-text theme.
+    #[serde(default)]
+    pub presentation: Option<Id>,
 }
 
 /// The kinds of content that have their own default theme.
@@ -58,6 +62,8 @@ pub enum ContentKind {
     Scripture,
     /// Free text and everything else.
     Text,
+    /// Presentations and slideshows.
+    Presentation,
 }
 
 /// Every theme, plus the defaults. The host sends this to the engine at
@@ -172,6 +178,7 @@ impl ThemeLibrary {
             ContentKind::Song => self.defaults.song,
             ContentKind::Scripture => self.defaults.scripture,
             ContentKind::Text => self.defaults.text,
+            ContentKind::Presentation => self.defaults.presentation.or(self.defaults.text),
         };
         id.and_then(|id| self.get(id))
             .or_else(|| self.themes.first())
@@ -213,6 +220,7 @@ pub fn starter_library() -> ThemeLibrary {
             song: Some(id(starter_ids::DEFAULT)),
             scripture: Some(id(starter_ids::SCRIPTURE)),
             text: Some(id(starter_ids::DEFAULT)),
+            presentation: None,
         },
     }
 }
@@ -297,6 +305,12 @@ fn lower_third() -> Theme {
             visible: false,
             ..FooterStyle::default()
         },
+        // The text sits low already; the reference follows it.
+        caption: FooterStyle {
+            placement: Placement::AfterText,
+            ..FooterStyle::caption()
+        },
+        ..Theme::default()
     }
 }
 

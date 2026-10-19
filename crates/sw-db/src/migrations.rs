@@ -25,6 +25,9 @@ fn migrations() -> Migrations<'static> {
         M::up(include_str!(
             "../migrations/0004_audio_presentations_usage.sql"
         )),
+        M::up(include_str!(
+            "../migrations/0005_editable_presentations.sql"
+        )),
     ])
 }
 

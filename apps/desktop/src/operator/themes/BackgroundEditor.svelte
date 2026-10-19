@@ -19,8 +19,19 @@
   let pendingType: "image" | "video" | null = $state(null);
   const shownType = $derived(pendingType ?? value.type);
 
+  // A different background from outside (another slide or theme) starts
+  // with nothing pending.
+  $effect.pre(() => {
+    void value;
+    pendingType = null;
+  });
+
   /** Switching type keeps what can be kept (colours, the chosen media). */
   function setType(type: Background["type"]) {
+    // Leaving image/video before a file was picked: nothing is pending now.
+    pendingType = null;
+    // Back to the type it already is: keep its colours as they were.
+    if (type === value.type) return;
     switch (type) {
       case "color":
         onchange({ type, color: value.type === "linearGradient" ? value.from : "#000000" });

@@ -23,6 +23,25 @@ export function itemTitle(item: ScheduleItem): string {
     case "slides":
     case "playlist":
       return item.content.name;
+    case "deck":
+      return item.content.deck.name || "Presentation";
+  }
+}
+
+/**
+ * Whether pictures and slides can be dropped onto the item to add slides
+ * to it (mirrors `ScheduleItem::as_deck` in Rust).
+ */
+export function canHoldSlides(item: ScheduleItem): boolean {
+  switch (item.content.type) {
+    case "deck":
+    case "slides":
+    case "text":
+      return true;
+    case "media":
+      return item.content.media.kind !== "audio";
+    default:
+      return false;
   }
 }
 
@@ -43,5 +62,7 @@ export function itemKind(item: ScheduleItem): string {
       return "Slides";
     case "playlist":
       return "Music";
+    case "deck":
+      return `Slides · ${item.content.deck.slides.length}`;
   }
 }

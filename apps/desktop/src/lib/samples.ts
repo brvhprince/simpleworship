@@ -11,6 +11,7 @@ export function sampleLyrics(theme: Theme): RenderFrame {
     text: "Amazing grace, how sweet the sound\nThat saved a wretch like me",
     scripture: null,
     caption: null,
+    rich: null,
     countdown: null,
     footer: "John Newton · Public Domain",
     theme,
@@ -26,11 +27,13 @@ export function sampleScripture(theme: Theme): RenderFrame {
     text: `16 ${text}`,
     scripture: {
       columns: [{ translation: "KJV", verses: [{ number: 16, text, continued: false }] }],
-      verseNumbers: true,
+      // As the theme says, so the designer shows its verse-number setting.
+      verseNumbers: null,
     },
     caption: "John 3:16 (KJV)",
+    rich: null,
     countdown: null,
-    footer: null,
+    footer: "King James Version · Public Domain",
     theme,
   };
 }

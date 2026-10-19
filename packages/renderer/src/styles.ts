@@ -3,7 +3,13 @@
  * rules are easy to unit-test (see `styles.test.ts`).
  */
 
-import type { Background, FooterStyle, TextBox, TextStyle, Theme } from "@simpleworship/protocol";
+import type {
+  Background,
+  FooterStyle,
+  TextBox,
+  TextStyle,
+  VerseNumberStyle,
+} from "@simpleworship/protocol";
 
 /** Joins `property: value` pairs into an inline style string, skipping empty values. */
 function css(declarations: Record<string, string | number | null | undefined>): string {
@@ -53,28 +59,39 @@ export function textStyle(style: TextStyle): string {
   });
 }
 
-/** Style of the footer line (copyright, CCLI number). */
-export function footerStyle(footer: FooterStyle, align: TextStyle["align"]): string {
+/**
+ * Style of a line of small print: the footer (copyright, CCLI number) or
+ * the scripture reference. Empty font and colour follow the slide text.
+ *
+ * In its own box the font size is left to {@link autofit} (pass
+ * `withSize: false`); straight after the text it is fixed.
+ */
+export function labelStyle(label: FooterStyle, text: TextStyle, withSize: boolean): string {
   return css({
-    "font-size": `${footer.fontSize}px`,
-    color: footer.color,
-    "text-align": align,
+    "font-size": withSize ? `${label.fontSize}px` : null,
+    "font-family": label.fontFamily || text.fontFamily,
+    "font-weight": label.bold ? 700 : 400,
+    color: label.color || text.color,
+    "text-align": label.align ?? text.align,
+    "line-height": 1.25,
+    "text-shadow": text.shadow
+      ? `${text.shadow.offsetX}px ${text.shadow.offsetY}px ${text.shadow.blur}px ${text.shadow.color}`
+      : null,
   });
 }
 
 /**
- * Style of the caption under scripture ("John 3:16–17 (KJV)"): like the
- * footer but larger and in the text colour, because the audience reads it.
+ * Style of the verse numbers in scripture. Without a colour of their own
+ * they are the verse text's colour, slightly faded.
  */
-export function captionStyle(theme: Theme): string {
+export function verseNumberStyle(numbers: VerseNumberStyle): string {
   return css({
-    "font-size": `${Math.round(theme.footer.fontSize * 1.4)}px`,
-    "font-family": theme.text.fontFamily,
-    "font-weight": 600,
-    color: theme.text.color,
-    "text-shadow": theme.text.shadow
-      ? `${theme.text.shadow.offsetX}px ${theme.text.shadow.offsetY}px ${theme.text.shadow.blur}px ${theme.text.shadow.color}`
-      : null,
+    "font-size": `${numbers.sizePercent / 100}em`,
+    color: numbers.color || null,
+    opacity: numbers.color ? null : 0.8,
+    "vertical-align": numbers.superscript ? "super" : "baseline",
+    "line-height": numbers.superscript ? 0 : null,
+    "font-weight": numbers.bold ? 700 : null,
   });
 }
 

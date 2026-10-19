@@ -15,7 +15,7 @@
   import type { Command } from "@simpleworship/protocol";
   import { getMediaUrls } from "@simpleworship/renderer";
   import { Button } from "@simpleworship/ui";
-  import { onMount } from "svelte";
+  import { onMount, untrack } from "svelte";
   import { bibles } from "../lib/bibles.svelte.ts";
   import { dialogs } from "../lib/dialogs.svelte.ts";
   import { engine } from "../lib/engine.svelte.ts";
@@ -41,6 +41,31 @@
   import VideoControls from "./VideoControls.svelte";
 
   const urls = getMediaUrls();
+
+  // Presentations set to move on by themselves: this window keeps time and
+  // tells the engine when the live slide's time is up. Stepping through by
+  // hand restarts the clock (the engine ignores a timer for a slide the
+  // operator already left).
+  const advanceTimer = $derived.by(() => {
+    const live = engine.live;
+    const seconds = live?.presentation.autoAdvance?.seconds;
+    return live && seconds
+      ? { presentationId: live.presentation.id, from: live.selected, seconds }
+      : null;
+  });
+  // Compared by value, so other engine updates do not restart the clock.
+  const advanceKey = $derived(JSON.stringify(advanceTimer));
+  $effect(() => {
+    void advanceKey;
+    const timing = untrack(() => advanceTimer);
+    if (!timing) return;
+    const { presentationId, from, seconds } = timing;
+    const timer = setTimeout(
+      () => engine.dispatch({ type: "autoAdvance", presentationId, from }),
+      seconds * 1000,
+    );
+    return () => clearTimeout(timer);
+  });
 
   onMount(() => {
     const connections = [

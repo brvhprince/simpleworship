@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { finalIndex, insertionIndex } from "./drag.ts";
+import { dropTarget, finalIndex, insertionIndex, mediaIds } from "./drag.ts";
 
 const row = { top: 100, height: 40 } as DOMRectReadOnly;
 
@@ -24,5 +24,26 @@ describe("finalIndex", () => {
   it("dropping an item next to itself does not move it", () => {
     expect(finalIndex(2, 2)).toBe(2);
     expect(finalIndex(2, 3)).toBe(2);
+  });
+});
+
+describe("dropTarget", () => {
+  const row = { top: 100, height: 40 } as DOMRectReadOnly;
+
+  it("adds to the row when dropped on its middle, if it can take slides", () => {
+    expect(dropTarget(3, 120, row, true)).toEqual({ kind: "into", index: 3 });
+    expect(dropTarget(3, 104, row, true)).toEqual({ kind: "between", index: 3 });
+    expect(dropTarget(3, 138, row, true)).toEqual({ kind: "between", index: 4 });
+  });
+
+  it("only inserts between rows that cannot take slides", () => {
+    expect(dropTarget(3, 120, row, false)).toEqual({ kind: "between", index: 3 });
+  });
+});
+
+describe("mediaIds", () => {
+  it("reads one id per line", () => {
+    expect(mediaIds("a\nb\n")).toEqual(["a", "b"]);
+    expect(mediaIds("a")).toEqual(["a"]);
   });
 });

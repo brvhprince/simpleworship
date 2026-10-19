@@ -11,6 +11,7 @@ import type {
   BibleInfo,
   BookOutline,
   CountdownSlide,
+  DeckSlide,
   FoundSource,
   ImportedSong,
   ImportPreview,
@@ -242,7 +243,7 @@ export const addPlaylistToSchedule = (
 
 // ── Presentations ────────────────────────────────────────────────────────
 
-/** Every imported presentation, newest first. */
+/** Every presentation, most recently changed first. */
 export const listPresentations = () => invoke<SlideDeck[]>("presentations_list");
 
 /** Whether PowerPoint/Keynote files can be imported (LibreOffice found). */
@@ -261,9 +262,27 @@ export const addPresentationPage = (deck: string, page: number, jpeg: Uint8Array
     headers: { "x-deck": deck, "x-page": String(page) },
   });
 
-/** Removes the temporary PDF; deletes `failedDeck` too if the import failed. */
-export const finishPresentation = (file: string, failedDeck: string | null = null) =>
-  invoke<void>("presentation_finish", { file, failedDeck });
+/**
+ * Removes the temporary PDF and saves the imported deck, or deletes the
+ * deck if the import `failed`.
+ */
+export const finishPresentation = (file: string, deck: string | null, failed = false) =>
+  invoke<void>("presentation_finish", { file, deck, failed });
+
+/** One presentation. */
+export const getPresentation = (id: string) => invoke<SlideDeck>("presentation_get", { id });
+
+/** Saves a presentation (and updates its copies in the schedule). */
+export const savePresentation = (deck: SlideDeck) =>
+  invoke<SlideDeck>("presentation_save", { deck });
+
+/** The slides a deck makes, styled as shown (it need not be saved). */
+export const deckPresentation = (deck: SlideDeck) =>
+  invoke<Presentation>("deck_presentation", { deck });
+
+/** Picture slides for media items, in order (sound is left out). */
+export const pictureSlides = (mediaIds: string[]) =>
+  invoke<DeckSlide[]>("deck_picture_slides", { mediaIds });
 
 /** Deletes a presentation and its pages. */
 export const deletePresentation = (id: string) => invoke<void>("presentation_delete", { id });
@@ -275,6 +294,18 @@ export const showPresentationInPreview = (id: string) =>
 /** Adds a presentation to the schedule at `index`, or at the end. */
 export const addPresentationToSchedule = (id: string, index: number | null = null) =>
   invoke<void>("schedule_add_presentation", { id, index });
+
+/** Adds pictures and videos to the schedule as one slideshow item. */
+export const addSlideshowToSchedule = (mediaIds: string[], index: number | null = null) =>
+  invoke<void>("schedule_add_slideshow", { mediaIds, index });
+
+/** Adds pictures and videos to the end of schedule item `id`. */
+export const appendMediaToItem = (id: string, mediaIds: string[]) =>
+  invoke<void>("schedule_append_media", { id, mediaIds });
+
+/** Adds a presentation's slides to the end of schedule item `id`. */
+export const appendPresentationToItem = (id: string, deckId: string) =>
+  invoke<void>("schedule_append_presentation", { id, deckId });
 
 // ── Settings and reports ─────────────────────────────────────────────────
 

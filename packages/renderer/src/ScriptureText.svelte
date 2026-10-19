@@ -1,19 +1,25 @@
 <!--
   @component
-  The verses of a scripture slide: one column per translation, with small
-  raised verse numbers. Used inside `TextLayer`, which handles position,
-  font and auto-fit.
+  The verses of a scripture slide: one column per translation, with verse
+  numbers styled by the theme. The Scripture tab can turn the numbers on or
+  off for one passage (`scripture.verseNumbers`); otherwise the theme
+  decides. Used inside `TextLayer`, which handles position, font and
+  auto-fit.
 -->
 <script lang="ts">
-  import type { ScriptureSlide } from "@simpleworship/protocol";
+  import type { ScriptureSlide, ScriptureStyle } from "@simpleworship/protocol";
+  import { verseNumberStyle } from "./styles.ts";
 
   interface Props {
     scripture: ScriptureSlide;
+    style: ScriptureStyle;
   }
 
-  let { scripture }: Props = $props();
+  let { scripture, style }: Props = $props();
 
   const parallel = $derived(scripture.columns.length > 1);
+  const showNumbers = $derived(scripture.verseNumbers ?? style.verseNumbers.visible);
+  const numberStyle = $derived(verseNumberStyle(style.verseNumbers));
 </script>
 
 {#each scripture.columns as column (column.translation)}
@@ -23,8 +29,8 @@
     {/if}
     <p>
       {#each column.verses as line, index (index)}
-        {#if scripture.verseNumbers && !line.continued}
-          <sup class="number">{line.number}</sup>
+        {#if showNumbers && !line.continued}
+          <span class="number" style={numberStyle}>{line.number}</span>
         {/if}
         {line.text}{" "}
       {/each}
@@ -50,10 +56,6 @@
   }
 
   .number {
-    font-size: 0.55em;
-    vertical-align: super;
-    line-height: 0;
     margin-right: 0.15em;
-    opacity: 0.8;
   }
 </style>

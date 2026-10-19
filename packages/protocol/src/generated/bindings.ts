@@ -146,6 +146,20 @@ export type AudioState = {
 };
 
 /**
+ * Moving through a deck by itself.
+ */
+export type AutoAdvance = {
+  /**
+   * Seconds each slide stays on screen.
+   */
+  seconds: number;
+  /**
+   * After the last slide, start again from the first.
+   */
+  loop: boolean;
+};
+
+/**
  * What is drawn behind the slide text.
  */
 export type Background =
@@ -583,6 +597,72 @@ export type Command =
        * The saved song.
        */
       song: Song;
+    }
+  | {
+      type: "refreshDeck";
+      /**
+       * The saved deck.
+       */
+      deck: SlideDeck;
+    }
+  | {
+      type: "appendSlides";
+      /**
+       * The schedule item.
+       */
+      id: Id;
+      /**
+       * The slides to add.
+       */
+      slides: Array<DeckSlide>;
+    }
+  | {
+      type: "moveItemSlide";
+      /**
+       * The schedule item.
+       */
+      id: Id;
+      /**
+       * The slide's position now.
+       */
+      from: number;
+      /**
+       * Where it goes.
+       */
+      to: number;
+    }
+  | {
+      type: "removeItemSlide";
+      /**
+       * The schedule item.
+       */
+      id: Id;
+      /**
+       * The slide's position.
+       */
+      index: number;
+    }
+  | {
+      type: "setItemAutoAdvance";
+      /**
+       * The schedule item.
+       */
+      id: Id;
+      /**
+       * How long each slide stays, and whether to loop.
+       */
+      autoAdvance: AutoAdvance | null;
+    }
+  | {
+      type: "autoAdvance";
+      /**
+       * The live presentation the timer was started for.
+       */
+      presentationId: Id;
+      /**
+       * The slide it was started for.
+       */
+      from: number;
     };
 
 /**
@@ -644,6 +724,32 @@ export type CountdownTarget =
        */
       minute: number;
     };
+
+/**
+ * One slide of a deck.
+ */
+export type DeckSlide = {
+  /**
+   * Identifies the slide, so the editor can keep track of it while it moves.
+   */
+  id: Id;
+  /**
+   * The text, with markup for bold, italic and underline. May be empty.
+   */
+  text: string;
+  /**
+   * A background for this slide only: a picture, video or colour.
+   */
+  background: Background | null;
+  /**
+   * A theme for this slide only, instead of the deck's.
+   */
+  themeId: Id | null;
+  /**
+   * Adjustments to the theme's text for this slide.
+   */
+  style: SlideStyle;
+};
 
 /**
  * The operator's "panic buttons". Each one hides part of the output without
@@ -783,11 +889,16 @@ export type Fade = {
 };
 
 /**
- * Style of the footer line (copyright and CCLI information).
+ * Style and place of a line of small print: the footer (copyright and
+ * CCLI information) or the scripture reference.
+ *
+ * It sits in its own box that the theme designer lets the operator drag,
+ * or straight after the slide text. Empty font and colour mean "the same
+ * as the slide text".
  */
 export type FooterStyle = {
   /**
-   * Show the footer at all.
+   * Show it at all.
    */
   visible: boolean;
   /**
@@ -795,9 +906,29 @@ export type FooterStyle = {
    */
   fontSize: number;
   /**
-   * CSS color.
+   * CSS color, or empty for the slide text's colour.
    */
   color: string;
+  /**
+   * CSS font family list, or empty for the slide text's font.
+   */
+  fontFamily: string;
+  /**
+   * Bold.
+   */
+  bold: boolean;
+  /**
+   * Alignment, or `None` to line up with the slide text.
+   */
+  align: HorizontalAlign | null;
+  /**
+   * In its own box, or straight after the slide text.
+   */
+  placement: Placement;
+  /**
+   * Its box, when [`FooterStyle::placement`] is [`Placement::Box`].
+   */
+  textBox: TextBox;
 };
 
 /**
@@ -876,6 +1007,14 @@ export type ItemContent =
        * What it counts down to and what happens at zero.
        */
       countdown: CountdownSlide;
+    }
+  | {
+      type: "deck";
+      /**
+       * The deck. Its id links it back to the library (a slideshow made
+       * in the schedule is not in the library).
+       */
+      deck: SlideDeck;
     }
   | {
       type: "slides";
@@ -1077,6 +1216,11 @@ export type PaneState = {
 };
 
 /**
+ * Where a line of small print goes.
+ */
+export type Placement = "box" | "afterText";
+
+/**
  * A titled list of slides, styled with one theme.
  */
 export type Presentation = {
@@ -1115,6 +1259,10 @@ export type Presentation = {
    * Small print shown under the lyrics, e.g. copyright and CCLI number.
    */
   footer: string | null;
+  /**
+   * Move to the next slide by itself (the operator window keeps time).
+   */
+  autoAdvance: AutoAdvance | null;
 };
 
 /**
@@ -1130,6 +1278,13 @@ export type PresentationSource =
     }
   | { type: "countdown" }
   | { type: "slides" }
+  | {
+      type: "deck";
+      /**
+       * The deck's id.
+       */
+      deckId: Id;
+    }
   | { type: "playlist" }
   | { type: "text" }
   | {
@@ -1164,6 +1319,11 @@ export type RenderFrame = {
    * A line shown with the slide, e.g. the reference "John 3:16–17 (KJV)".
    */
   caption: string | null;
+  /**
+   * The text in styled pieces, when it has bold, italic or underline.
+   * Draw this instead of `text` when it is there.
+   */
+  rich: Array<TextRun> | null;
   /**
    * A live countdown, when the slide is one.
    */
@@ -1238,9 +1398,10 @@ export type ScriptureOptions = {
    */
   maxChars: number;
   /**
-   * Show verse numbers before each verse.
+   * Show verse numbers before each verse, or `None` to do as the theme
+   * says (see [`VerseNumberStyle`](crate::theme::VerseNumberStyle)).
    */
-  verseNumbers: boolean;
+  verseNumbers: boolean | null;
 };
 
 /**
@@ -1252,9 +1413,23 @@ export type ScriptureSlide = {
    */
   columns: Array<ScriptureColumn>;
   /**
-   * Whether verse numbers are shown.
+   * Whether verse numbers are shown, or `None` to do as the theme says.
    */
-  verseNumbers: boolean;
+  verseNumbers: boolean | null;
+};
+
+/**
+ * Settings that only apply to scripture slides.
+ */
+export type ScriptureStyle = {
+  /**
+   * How verse numbers look.
+   */
+  verseNumbers: VerseNumberStyle;
+  /**
+   * Show the reference on every slide of a passage, or only on the first.
+   */
+  referenceOnEverySlide: boolean;
 };
 
 /**
@@ -1363,29 +1538,55 @@ export type Slide = {
    * For a countdown slide: what it counts down to.
    */
   countdown: CountdownSlide | null;
+  /**
+   * The text in styled pieces (bold, italic, underline), when a
+   * presentation slide uses any. `text` then holds the plain version.
+   */
+  rich: Array<TextRun> | null;
+  /**
+   * A theme for this slide only (a presentation slide can have its own).
+   */
+  look: Look | null;
+  /**
+   * Adjustments to the theme's text for this slide only.
+   */
+  style: SlideStyle | null;
 };
 
 /**
- * An imported presentation (a PDF, or a converted PowerPoint): a name and
- * one picture per page.
+ * A presentation: a named, ordered list of slides.
  */
 export type SlideDeck = {
   /**
-   * Unique identifier (the pages' `collection`).
+   * Unique identifier. Pages imported from a PDF are media items with
+   * this as their `collection`.
    */
   id: Id;
   /**
-   * The presentation's name, usually the file name.
+   * The name, e.g. "Announcements" or the PDF's file name.
    */
   name: string;
   /**
-   * The pages, in order.
+   * A theme for the whole deck, instead of the default for presentations.
    */
-  pages: Array<MediaItem>;
+  themeId: Id | null;
   /**
-   * When it was imported.
+   * The slides, in order.
+   */
+  slides: Array<DeckSlide>;
+  /**
+   * Move to the next slide by itself, e.g. for announcements before the
+   * service.
+   */
+  autoAdvance: AutoAdvance | null;
+  /**
+   * When it was created.
    */
   createdAt: number;
+  /**
+   * When it was last changed.
+   */
+  updatedAt: number;
 };
 
 /**
@@ -1397,6 +1598,24 @@ export type SlideOptions = {
    * and blank lines split slides.
    */
   maxLines: number | null;
+};
+
+/**
+ * Changes to the theme's text style for one slide. `None` keeps the theme's.
+ */
+export type SlideStyle = {
+  /**
+   * Font size in reference pixels.
+   */
+  fontSize: number | null;
+  /**
+   * CSS colour of the text.
+   */
+  color: string | null;
+  /**
+   * Horizontal alignment.
+   */
+  align: HorizontalAlign | null;
 };
 
 /**
@@ -1573,6 +1792,28 @@ export type TextBox = {
 };
 
 /**
+ * A piece of text in one style. Line breaks stay in the text as `\n`.
+ */
+export type TextRun = {
+  /**
+   * The text.
+   */
+  text: string;
+  /**
+   * Bold.
+   */
+  bold: boolean;
+  /**
+   * Italic.
+   */
+  italic: boolean;
+  /**
+   * Underlined.
+   */
+  underline: boolean;
+};
+
+/**
  * Font and decoration for slide text.
  */
 export type TextStyle = {
@@ -1640,9 +1881,17 @@ export type Theme = {
    */
   textBox: TextBox;
   /**
-   * How the footer (copyright / CCLI line) looks.
+   * How the footer (copyright / CCLI line) looks, and where it sits.
    */
   footer: FooterStyle;
+  /**
+   * How the scripture reference ("John 3:16 (KJV)") looks, and where it sits.
+   */
+  caption: FooterStyle;
+  /**
+   * Settings that only apply to scripture.
+   */
+  scripture: ScriptureStyle;
 };
 
 /**
@@ -1661,6 +1910,11 @@ export type ThemeDefaults = {
    * Theme for free text.
    */
   text: Id | null;
+  /**
+   * Theme for presentations and slideshows. When unset, they use the
+   * free-text theme.
+   */
+  presentation: Id | null;
 };
 
 /**
@@ -1783,6 +2037,32 @@ export type VerseLine = {
    * Continued parts show no verse number.
    */
   continued: boolean;
+};
+
+/**
+ * How the verse numbers in scripture look.
+ */
+export type VerseNumberStyle = {
+  /**
+   * Show them. The Scripture tab can override this for one passage.
+   */
+  visible: boolean;
+  /**
+   * CSS color, or empty for the verse text's colour (slightly faded).
+   */
+  color: string;
+  /**
+   * Size as a percentage of the verse text.
+   */
+  sizePercent: number;
+  /**
+   * Raised above the line (superscript), or in line with the text.
+   */
+  superscript: boolean;
+  /**
+   * Bold.
+   */
+  bold: boolean;
 };
 
 /**

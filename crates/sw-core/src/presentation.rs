@@ -11,7 +11,9 @@ use ts_rs::TS;
 use sw_bible::Passage;
 
 use crate::countdown::CountdownSlide;
+use crate::deck::{AutoAdvance, SlideDeck, SlideStyle};
 use crate::id::Id;
+use crate::markup;
 use crate::media::{MediaItem, MediaKind};
 use crate::output::RenderFrame;
 use crate::scripture::{self, ScriptureOptions, TranslationText};
@@ -36,8 +38,14 @@ pub enum PresentationSource {
     },
     /// A countdown.
     Countdown,
-    /// The pages of a presentation (an imported PDF or PowerPoint).
+    /// The pages of a presentation (an imported PDF or PowerPoint), from a
+    /// schedule saved before decks could be edited.
     Slides,
+    /// A slide deck: a presentation, imported PDF or slideshow.
+    Deck {
+        /// The deck's id.
+        deck_id: Id,
+    },
     /// A background-music playlist (it has no slides of its own to show).
     Playlist,
     /// Free text typed by the operator.
@@ -78,6 +86,9 @@ pub struct Presentation {
     pub background_override: Option<Background>,
     /// Small print shown under the lyrics, e.g. copyright and CCLI number.
     pub footer: Option<String>,
+    /// Move to the next slide by itself (the operator window keeps time).
+    #[serde(default)]
+    pub auto_advance: Option<AutoAdvance>,
 }
 
 impl Presentation {
@@ -158,6 +169,41 @@ impl Presentation {
         )
     }
 
+    /// Builds a presentation from a slide deck. `themes` provides the
+    /// themes that single slides use instead of the deck's.
+    pub fn from_deck(deck: &SlideDeck, look: impl Into<Look>, themes: &ThemeLibrary) -> Self {
+        let slides = deck
+            .slides
+            .iter()
+            .map(|slide| {
+                let runs = markup::parse(&slide.text);
+                Slide {
+                    rich: markup::has_styling(&runs).then(|| runs.clone()),
+                    background: slide.background.clone(),
+                    look: slide.theme_id.and_then(|id| themes.get(id)).map(|record| {
+                        Box::new(Look {
+                            theme_id: Some(record.id),
+                            theme: record.theme.clone(),
+                            background_override: None,
+                        })
+                    }),
+                    style: (!slide.style.is_empty()).then(|| slide.style.clone()),
+                    ..Slide::text(runs.into_iter().map(|run| run.text).collect::<String>())
+                }
+            })
+            .collect();
+        Self {
+            auto_advance: deck.auto_advance,
+            ..Self::new(
+                PresentationSource::Deck { deck_id: deck.id },
+                deck.name.clone(),
+                slides,
+                look.into(),
+                None,
+            )
+        }
+    }
+
     /// Builds the preview of a playlist: one slide naming its tracks. A
     /// playlist does not change the screen; sending it live plays it.
     pub fn from_playlist(
@@ -199,6 +245,7 @@ impl Presentation {
             theme_id: look.theme_id,
             background_override: look.background_override,
             footer,
+            auto_advance: None,
         }
     }
 
@@ -211,18 +258,30 @@ impl Presentation {
         }
     }
 
-    /// Picks up a newer version of this presentation's library theme.
-    /// Returns whether anything changed.
+    /// Picks up newer versions of the library themes this presentation
+    /// uses (its own, and any single slide's). Returns whether anything
+    /// changed.
     pub fn restyle(&mut self, library: &ThemeLibrary) -> bool {
-        let Some(record) = self.theme_id.and_then(|id| library.get(id)) else {
-            return false;
-        };
-        let look = self.look().restyled(&record.theme);
-        if look.theme == self.theme {
-            return false;
+        let mut changed = false;
+        if let Some(record) = self.theme_id.and_then(|id| library.get(id)) {
+            let look = self.look().restyled(&record.theme);
+            if look.theme != self.theme {
+                self.theme = look.theme;
+                changed = true;
+            }
         }
-        self.theme = look.theme;
-        true
+        for slide in &mut self.slides {
+            let Some(look) = &mut slide.look else {
+                continue;
+            };
+            if let Some(record) = look.theme_id.and_then(|id| library.get(id))
+                && record.theme != look.theme
+            {
+                **look = look.restyled(&record.theme);
+                changed = true;
+            }
+        }
+        changed
     }
 
     /// Builds a presentation from a Bible passage in one or more
@@ -245,16 +304,41 @@ impl Presentation {
     }
 
     /// The fully resolved frame for the slide at `index`, if it exists.
+    ///
+    /// The theme is the slide's own if it has one, then this item's
+    /// background override, then the slide's own background, then the
+    /// slide's text adjustments. Mirrored in `apps/desktop/src/lib/frames.ts`.
     pub fn frame(&self, index: usize) -> Option<RenderFrame> {
         let slide = self.slides.get(index)?;
-        let mut theme = self.theme.clone();
+        let mut theme = match &slide.look {
+            Some(look) => look.theme.clone(),
+            None => self.theme.clone(),
+        };
+        if let Some(background) = &self.background_override {
+            theme.background = background.clone();
+        }
         if let Some(background) = &slide.background {
             theme.background = background.clone();
         }
+        if let Some(style) = &slide.style {
+            apply_style(&mut theme, style);
+        }
+
+        // The reference can be shown on the first slide of a passage only.
+        let caption = if slide.scripture.is_some()
+            && index > 0
+            && !theme.scripture.reference_on_every_slide
+        {
+            None
+        } else {
+            slide.caption.clone()
+        };
+
         Some(RenderFrame {
             text: slide.text.clone(),
             scripture: slide.scripture.clone(),
-            caption: slide.caption.clone(),
+            caption,
+            rich: slide.rich.clone(),
             // The engine fills this in for a live countdown (it knows when
             // the countdown started).
             countdown: None,
@@ -275,7 +359,20 @@ impl Presentation {
 
 /// How an image or video looks shown on its own: the whole picture, with
 /// black bars if needed. Sound files have no picture.
-fn shown_on_its_own(media: &MediaItem) -> Option<Background> {
+/// Applies one slide's text adjustments to its theme.
+fn apply_style(theme: &mut Theme, style: &SlideStyle) {
+    if let Some(size) = style.font_size {
+        theme.text.font_size = size;
+    }
+    if let Some(color) = &style.color {
+        theme.text.color = color.clone();
+    }
+    if let Some(align) = style.align {
+        theme.text.align = align;
+    }
+}
+
+pub(crate) fn shown_on_its_own(media: &MediaItem) -> Option<Background> {
     match media.kind {
         MediaKind::Image => Some(Background::Image {
             media: media.as_ref(),
@@ -326,5 +423,76 @@ mod tests {
             "unnumbered picks the first verse"
         );
         assert_eq!(p.find_section("B"), None);
+    }
+
+    fn library_with(theme: Theme) -> (ThemeLibrary, Id) {
+        let mut library = crate::themes::starter_library();
+        let id = Id::new();
+        library.themes.push(crate::themes::ThemeRecord {
+            id,
+            theme,
+            builtin: false,
+        });
+        (library, id)
+    }
+
+    #[test]
+    fn deck_slides_carry_styling_their_own_theme_and_adjustments() {
+        let (library, red_id) = library_with(Theme {
+            name: "Red".into(),
+            ..Theme::default()
+        });
+        let mut deck = SlideDeck::new("Notices");
+        let mut special = crate::deck::DeckSlide::text("**Harvest** Sunday");
+        special.theme_id = Some(red_id);
+        special.style.font_size = Some(120.0);
+        deck.slides = vec![crate::deck::DeckSlide::text("Plain"), special];
+
+        let presentation = Presentation::from_deck(&deck, Theme::default(), &library);
+        let plain = presentation.frame(0).unwrap();
+        assert_eq!(plain.rich, None, "no styling, no runs");
+        assert_eq!(plain.theme.name, "Default");
+
+        let styled = presentation.frame(1).unwrap();
+        assert_eq!(styled.text, "Harvest Sunday");
+        assert!(styled.rich.unwrap()[0].bold);
+        assert_eq!(styled.theme.name, "Red");
+        assert_eq!(styled.theme.text.font_size, 120.0);
+    }
+
+    #[test]
+    fn slide_themes_follow_library_edits() {
+        let (mut library, id) = library_with(Theme::default());
+        let mut deck = SlideDeck::new("Notices");
+        let mut slide = crate::deck::DeckSlide::text("Hi");
+        slide.theme_id = Some(id);
+        deck.slides = vec![slide];
+        let mut presentation = Presentation::from_deck(&deck, Theme::default(), &library);
+
+        library.themes.last_mut().unwrap().theme.text.color = "#ff0000".into();
+        assert!(presentation.restyle(&library));
+        assert_eq!(presentation.frame(0).unwrap().theme.text.color, "#ff0000");
+    }
+
+    #[test]
+    fn the_reference_can_be_shown_on_the_first_slide_only() {
+        let mut theme = Theme::default();
+        theme.scripture.reference_on_every_slide = false;
+        let scripture = |caption: &str| Slide {
+            caption: Some(caption.into()),
+            scripture: Some(crate::scripture::ScriptureSlide {
+                columns: Vec::new(),
+                verse_numbers: None,
+            }),
+            ..Slide::text("")
+        };
+        let mut presentation = Presentation::from_text("x", "a", theme);
+        presentation.slides = vec![scripture("John 3:16"), scripture("John 3:17")];
+
+        assert_eq!(
+            presentation.frame(0).unwrap().caption.as_deref(),
+            Some("John 3:16")
+        );
+        assert_eq!(presentation.frame(1).unwrap().caption, None);
     }
 }

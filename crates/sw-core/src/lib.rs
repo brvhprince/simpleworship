@@ -17,9 +17,11 @@ pub mod alerts;
 pub mod audio;
 pub mod command;
 pub mod countdown;
+pub mod deck;
 pub mod engine;
 pub mod id;
 pub mod lyrics;
+pub mod markup;
 pub mod media;
 pub mod output;
 pub mod presentation;
@@ -34,9 +36,10 @@ pub mod time;
 pub mod usage;
 
 pub use command::{Command, EngineEvent};
+pub use deck::{AutoAdvance, DeckSlide, SlideDeck, SlideStyle};
 pub use engine::{Engine, EngineError, EngineSnapshot, PaneState};
 pub use id::Id;
-pub use media::{MediaItem, MediaKind, MediaRef, SlideDeck};
+pub use media::{MediaItem, MediaKind, MediaRef};
 pub use output::{
     DisplayFlags, OutputState, RenderFrame, Transition, TransitionKind, VideoPlayback,
 };

@@ -68,10 +68,27 @@ with EasyWorship should feel at home.
 - **Background music:** play sound files (MP3, M4A, WAV…) from the Media tab
   or as a schedule item, with skip, seek, volume, loop and a fade-out. Music
   plays on the operator computer and carries on while slides change.
-- **Presentations:** import PDF slides; each page becomes a slide. PowerPoint
-  and Keynote files are converted automatically when
-  [LibreOffice](https://www.libreoffice.org) is installed; otherwise save
-  them as PDF first.
+- **Presentations:** a built-in editor for announcements and sermon points:
+  text slides (with **bold**, *italic* and underline), pictures and videos,
+  in any order. A presentation has its own theme, and any slide can use a
+  different theme or background, text size, colour and alignment. Set it to
+  move on by itself every few seconds, looping, for announcements before the
+  service.
+- **Import PDF slides;** each page becomes a slide you can reorder, remove,
+  or put typed slides between. PowerPoint and Keynote files are converted
+  automatically when [LibreOffice](https://www.libreoffice.org) is
+  installed; otherwise save them as PDF first.
+- **Slideshows in the schedule:** drag several pictures onto the schedule
+  at once for one item you step through like a song (hold Alt / Option for
+  one item each). Drop pictures or a presentation onto a picture, text or
+  presentation item to add them as slides, and drag slides in the preview
+  to reorder them for that service.
+- **Scripture styling in the theme:** verse numbers (on or off, colour, size,
+  raised or inline, bold), and the reference as its own box: drag it
+  anywhere, or one click for a corner, an edge or straight after the text,
+  with its own size, colour and font. Show it on every slide or the first
+  only. The song footer can be placed the same way. Long passages still
+  flow onto the next slide when they would overflow the text box.
 - **CCLI reporting:** every song shown live is logged once per day. The Song
   Usage Report (File menu) lists them for any period and exports CSV. Put
   your CCLI licence number in Settings and it appears in every song footer.
@@ -174,7 +191,8 @@ projector, the stage display and every thumbnail look the same.
 | M5        | Theme designer, image/video backgrounds, media library, per-item overrides | ✅     |
 | M6        | Importers: EasyWorship 6/7, OpenLP, OpenLyrics, ProPresenter, ChordPro, CCLI | ✅     |
 | M7        | Alerts, countdowns, background audio, presentations (PDF/PPTX), CCLI report | ✅     |
-| M8        | Installers, auto-update, translations                               |        |
+| M8        | Presentation editor, slideshows, scripture styling (verse numbers, reference box) |        |
+| M9        | Installers, auto-update, translations                               |        |
 
 Later: remote control from a phone, NDI / stream output, multi-operator
 sync, and AI-assisted features.

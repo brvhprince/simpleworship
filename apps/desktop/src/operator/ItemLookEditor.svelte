@@ -1,7 +1,9 @@
 <!--
   @component
   The look of one schedule item: a theme for this item only, and optionally
-  a background of its own (which replaces the theme's background).
+  a background of its own (which replaces the theme's background). For a
+  presentation or slideshow, also whether it moves to the next slide by
+  itself.
 -->
 <script lang="ts">
   import type { Background, ItemLook, ScheduleItem } from "@simpleworship/protocol";
@@ -18,6 +20,22 @@
   const BLACK: Background = { type: "color", color: "#000000" };
 
   const themes = $derived(engine.themes.themes);
+
+  /** How long each slide can stay up when moving on by itself. */
+  const ADVANCE_SECONDS = [3, 5, 8, 10, 15, 20, 30, 60];
+
+  /** The item's presentation settings, when it is one. */
+  const deck = $derived(item.content.type === "deck" ? item.content.deck : null);
+  /** Pictures and imported pages can become a slideshow too. */
+  const canAdvance = $derived(deck !== null || item.content.type === "slides");
+
+  function setAdvance(seconds: number, loop: boolean) {
+    engine.dispatch({
+      type: "setItemAutoAdvance",
+      id: item.id,
+      autoAdvance: seconds > 0 ? { seconds, loop } : null,
+    });
+  }
 
   function setLook(look: ItemLook) {
     engine.dispatch({ type: "setScheduleItemLook", id: item.id, look });
@@ -58,6 +76,31 @@
       value={item.look.background}
       onchange={(background) => setLook({ ...item.look, background })}
     />
+  {/if}
+  {#if canAdvance}
+    {@const advance = deck?.autoAdvance ?? null}
+    <label class="row">
+      Next slide
+      <select
+        value={advance?.seconds ?? 0}
+        onchange={(e) => setAdvance(Number(e.currentTarget.value), advance?.loop ?? true)}
+      >
+        <option value={0}>When I press Next</option>
+        {#each ADVANCE_SECONDS as seconds (seconds)}
+          <option value={seconds}>Every {seconds} seconds</option>
+        {/each}
+      </select>
+    </label>
+    {#if advance}
+      <label class="row">
+        <input
+          type="checkbox"
+          checked={advance.loop}
+          onchange={(e) => setAdvance(advance.seconds, e.currentTarget.checked)}
+        >
+        Start again after the last slide
+      </label>
+    {/if}
   {/if}
 </div>
 

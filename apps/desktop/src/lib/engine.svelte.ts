@@ -28,7 +28,7 @@ export class EngineStore {
   /** The themes and the default theme for each kind of content. */
   themes: ThemeLibrary = $state.raw({
     themes: [],
-    defaults: { song: null, scripture: null, text: null },
+    defaults: { song: null, scripture: null, text: null, presentation: null },
   });
   /** The preview pane, or `null` if empty. */
   preview: PaneState | null = $state.raw(null);

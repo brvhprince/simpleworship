@@ -18,6 +18,7 @@
     ["song", "Songs"],
     ["scripture", "Scripture"],
     ["text", "Text"],
+    ["presentation", "Presentations"],
   ];
 
   let selectedId: string | null = $state(null);

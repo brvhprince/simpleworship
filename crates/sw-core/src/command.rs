@@ -17,6 +17,7 @@ use sw_bible::Passage;
 
 use crate::alerts::AlertRequest;
 use crate::audio::AudioState;
+use crate::deck::{AutoAdvance, DeckSlide, SlideDeck};
 use crate::engine::PaneState;
 use crate::id::Id;
 use crate::media::{MediaItem, MediaRef};
@@ -308,6 +309,56 @@ pub enum Command {
     RefreshSong {
         /// The saved song.
         song: Box<Song>,
+    },
+    /// A presentation was edited in the library: update its copies in the
+    /// schedule and any pane showing it.
+    RefreshDeck {
+        /// The saved deck.
+        deck: Box<SlideDeck>,
+    },
+
+    // ── Slides inside a schedule item ────────────────────────────────────
+    /// Adds slides to the end of a schedule item, e.g. pictures dropped onto
+    /// it. Pictures, videos, typed text and presentations can take more
+    /// slides; the item becomes a presentation of its own.
+    AppendSlides {
+        /// The schedule item.
+        id: Id,
+        /// The slides to add.
+        slides: Vec<DeckSlide>,
+    },
+    /// Moves one slide of a schedule item's presentation.
+    MoveItemSlide {
+        /// The schedule item.
+        id: Id,
+        /// The slide's position now.
+        from: usize,
+        /// Where it goes.
+        to: usize,
+    },
+    /// Removes one slide of a schedule item's presentation.
+    RemoveItemSlide {
+        /// The schedule item.
+        id: Id,
+        /// The slide's position.
+        index: usize,
+    },
+    /// Turns moving to the next slide by itself on (or off, with `None`)
+    /// for one schedule item.
+    SetItemAutoAdvance {
+        /// The schedule item.
+        id: Id,
+        /// How long each slide stays, and whether to loop.
+        auto_advance: Option<AutoAdvance>,
+    },
+    /// Time is up for the live slide of an auto-advancing presentation. Sent
+    /// by the operator window, which keeps time. Ignored if the operator has
+    /// moved on in the meantime.
+    AutoAdvance {
+        /// The live presentation the timer was started for.
+        presentation_id: Id,
+        /// The slide it was started for.
+        from: usize,
     },
 }
 

@@ -1,32 +1,49 @@
 <!--
   @component
-  An overlay for the theme designer's preview that shows the text box and
-  lets the operator move it (drag the middle) or resize it (drag a corner).
+  An overlay for the theme designer's preview that shows the boxes text
+  is laid out in (the slide text, the reference, the footer) and lets the
+  operator move one (drag the middle) or resize it (drag a corner).
+  Clicking a box picks it; only the picked box has corner handles.
 
   Place it over a 16:9 preview of the same size. Positions are in canvas
   pixels (1920×1080), like the theme itself.
 -->
-<script lang="ts">
+<script lang="ts" module>
   import type { TextBox } from "@simpleworship/protocol";
+
+  /** One box on the preview. */
+  export interface EditableBox {
+    id: string;
+    /** Shown on the box, e.g. "Reference". */
+    label: string;
+    box: TextBox;
+  }
+</script>
+
+<script lang="ts">
   import { CANVAS_HEIGHT, CANVAS_WIDTH } from "@simpleworship/renderer";
 
   interface Props {
-    box: TextBox;
-    onchange: (box: TextBox) => void;
+    boxes: EditableBox[];
+    /** The id of the picked box. */
+    active: string;
+    onselect: (id: string) => void;
+    onchange: (id: string, box: TextBox) => void;
   }
 
-  let { box, onchange }: Props = $props();
+  let { boxes, active, onselect, onchange }: Props = $props();
 
-  /** The smallest the box may become, in canvas pixels. */
-  const MIN_SIZE = 120;
+  /** The smallest a box may become, in canvas pixels. */
+  const MIN_SIZE = 40;
 
   type Handle = "move" | "top-left" | "top-right" | "bottom-left" | "bottom-right";
 
   let overlay: HTMLDivElement;
 
   /** Starts dragging; follows the pointer until it is released. */
-  function startDrag(event: PointerEvent, handle: Handle) {
+  function startDrag(event: PointerEvent, id: string, box: TextBox, handle: Handle) {
     event.preventDefault();
+    onselect(id);
     const start = { x: event.clientX, y: event.clientY, box: { ...box } };
     // Screen pixels → canvas pixels.
     const scale = CANVAS_WIDTH / overlay.getBoundingClientRect().width;
@@ -36,7 +53,7 @@
     const move = (moveEvent: PointerEvent) => {
       const dx = Math.round((moveEvent.clientX - start.x) * scale);
       const dy = Math.round((moveEvent.clientY - start.y) * scale);
-      onchange(dragged(start.box, handle, dx, dy));
+      onchange(id, dragged(start.box, handle, dx, dy));
     };
     const stop = () => {
       target.removeEventListener("pointermove", move);
@@ -77,26 +94,37 @@
 </script>
 
 <div class="overlay" bind:this={overlay}>
-  <div
-    class="box"
-    role="presentation"
-    style:top={percent(box.top, CANVAS_HEIGHT)}
-    style:right={percent(box.right, CANVAS_WIDTH)}
-    style:bottom={percent(box.bottom, CANVAS_HEIGHT)}
-    style:left={percent(box.left, CANVAS_WIDTH)}
-    onpointerdown={(e) => startDrag(e, "move")}
-  >
-    {#each ["top-left", "top-right", "bottom-left", "bottom-right"] as const as handle (handle)}
-      <span
-        class="handle {handle}"
-        role="presentation"
-        onpointerdown={(e) => {
-          e.stopPropagation();
-          startDrag(e, handle);
-        }}
-      ></span>
-    {/each}
-  </div>
+  <!-- The picked box last, so it is on top and easy to grab. -->
+  {#each [...boxes].sort(
+    (a, b) => Number(a.id === active) - Number(b.id === active),
+  ) as item (item.id)}
+    <div
+      class="box"
+      class:active={item.id === active}
+      role="presentation"
+      style:top={percent(item.box.top, CANVAS_HEIGHT)}
+      style:right={percent(item.box.right, CANVAS_WIDTH)}
+      style:bottom={percent(item.box.bottom, CANVAS_HEIGHT)}
+      style:left={percent(item.box.left, CANVAS_WIDTH)}
+      onpointerdown={(e) => startDrag(e, item.id, item.box, "move")}
+    >
+      {#if boxes.length > 1}
+        <span class="tag">{item.label}</span>
+      {/if}
+      {#if item.id === active}
+        {#each ["top-left", "top-right", "bottom-left", "bottom-right"] as const as handle (handle)}
+          <span
+            class="handle {handle}"
+            role="presentation"
+            onpointerdown={(e) => {
+              e.stopPropagation();
+              startDrag(e, item.id, item.box, handle);
+            }}
+          ></span>
+        {/each}
+      {/if}
+    </div>
+  {/each}
 </div>
 
 <style>
@@ -107,10 +135,30 @@
 
   .box {
     position: absolute;
-    border: 1px dashed rgba(255, 255, 255, 0.8);
-    outline: 1px dashed rgba(0, 0, 0, 0.6);
+    border: 1px dashed rgba(255, 255, 255, 0.45);
     cursor: move;
     touch-action: none;
+  }
+
+  .box.active {
+    border-color: rgba(255, 255, 255, 0.9);
+    outline: 1px dashed rgba(0, 0, 0, 0.6);
+  }
+
+  .tag {
+    position: absolute;
+    top: 2px;
+    left: 4px;
+    padding: 0 4px;
+    border-radius: 2px;
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    font-size: 10px;
+    pointer-events: none;
+  }
+
+  .box.active .tag {
+    background: var(--sw-accent);
   }
 
   .handle {

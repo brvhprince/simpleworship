@@ -40,6 +40,7 @@ use crate::alerts::Alert;
 use crate::audio::{AudioState, Fade};
 use crate::command::{Command, EngineEvent};
 use crate::countdown::{CountdownEnd, CountdownFrame};
+use crate::deck::SlideDeck;
 use crate::id::Id;
 use crate::media::{MediaItem, MediaKind, MediaRef};
 use crate::output::{DisplayFlags, OutputState, RenderFrame, Transition, VideoPlayback};
@@ -108,6 +109,10 @@ pub enum EngineError {
     /// A schedule item id that is not in the schedule (any more).
     #[error("that item is no longer in the schedule")]
     UnknownScheduleItem,
+    /// Slides were added to an item that cannot take more (a song,
+    /// scripture, a countdown or music).
+    #[error("slides can only be added to pictures, videos, text and presentations")]
+    CannotHoldSlides,
 }
 
 /// The presentation engine. See the [module docs](self).
@@ -521,8 +526,101 @@ impl Engine {
                 self.go_live(pane);
             }
             Command::RefreshSong { song } => self.refresh_song(&song),
+            Command::RefreshDeck { deck } => self.refresh_deck(&deck),
+
+            // ── Slides inside a schedule item ─────────────────────────────
+            Command::AppendSlides { id, slides } => {
+                self.edit_deck(id, |deck| deck.slides.extend(slides))?;
+            }
+            Command::MoveItemSlide { id, from, to } => self.edit_deck(id, |deck| {
+                if from < deck.slides.len() {
+                    let slide = deck.slides.remove(from);
+                    let to = to.min(deck.slides.len());
+                    deck.slides.insert(to, slide);
+                }
+            })?,
+            Command::RemoveItemSlide { id, index } => self.edit_deck(id, |deck| {
+                // Keep at least one slide; removing the item is a separate step.
+                if index < deck.slides.len() && deck.slides.len() > 1 {
+                    deck.slides.remove(index);
+                }
+            })?,
+            Command::SetItemAutoAdvance { id, auto_advance } => {
+                self.edit_deck(id, |deck| deck.auto_advance = auto_advance)?;
+            }
+            Command::AutoAdvance {
+                presentation_id,
+                from,
+            } => self.auto_advance(presentation_id, from),
         }
         Ok(())
+    }
+
+    /// Changes the deck of schedule item `id` (turning the item into one if
+    /// it can be), then refreshes any pane showing it.
+    fn edit_deck(
+        &mut self,
+        id: Id,
+        change: impl FnOnce(&mut SlideDeck),
+    ) -> Result<(), EngineError> {
+        let item = self
+            .schedule
+            .get_mut(id)
+            .ok_or(EngineError::UnknownScheduleItem)?;
+        let before = item.content.clone();
+        let deck = item.as_deck().ok_or(EngineError::CannotHoldSlides)?;
+        change(deck);
+        if item.content != before {
+            self.schedule_changed = true;
+            self.rebuild_panes_for(id);
+        }
+        Ok(())
+    }
+
+    /// Moves an auto-advancing live presentation on by one slide, starting
+    /// again at the end if it loops. Does nothing if the operator already
+    /// moved on, or the presentation is no longer live.
+    fn auto_advance(&mut self, presentation_id: Id, from: usize) {
+        let Some(pane) = self.live.as_mut() else {
+            return;
+        };
+        let Some(settings) = pane.presentation.auto_advance else {
+            return;
+        };
+        if pane.presentation.id != presentation_id || pane.selected != from {
+            return;
+        }
+        if from + 1 < pane.presentation.slides.len() {
+            pane.selected = from + 1;
+        } else if settings.looping {
+            pane.selected = 0;
+        }
+    }
+
+    /// Applies a library edit of a deck to the schedule and to any pane
+    /// showing it (see [`Engine::refresh_song`]).
+    fn refresh_deck(&mut self, deck: &SlideDeck) {
+        let changed_items = self.schedule.refresh_deck(deck);
+        if !changed_items.is_empty() {
+            self.schedule_changed = true;
+        }
+        for id in changed_items {
+            self.rebuild_panes_for(id);
+        }
+
+        let look = self.look(ContentKind::Presentation, deck.theme_id);
+        let presentation = Presentation::from_deck(deck, look, &self.themes);
+        for pane in [&mut self.preview, &mut self.live].into_iter().flatten() {
+            let shows_deck = matches!(
+                pane.presentation.source,
+                PresentationSource::Deck { deck_id } if deck_id == deck.id
+            );
+            if shows_deck && pane.schedule_item.is_none() {
+                pane.presentation = presentation.clone();
+                let last = pane.presentation.slides.len().saturating_sub(1);
+                pane.selected = pane.selected.min(last);
+            }
+        }
     }
 
     fn live_mut(&mut self) -> Result<&mut PaneState, EngineError> {
@@ -871,6 +969,7 @@ fn unscheduled(presentation: Presentation) -> PaneState {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::deck::{AutoAdvance, DeckSlide};
     use crate::schedule::ItemContent;
     use crate::theme::Theme;
 
@@ -1589,5 +1688,149 @@ mod tests {
                 .iter()
                 .any(|e| matches!(e, EngineEvent::SongWentLive { .. }))
         );
+    }
+
+    // ── Slides inside a schedule item ────────────────────────────────────
+
+    fn deck_item(texts: &[&str]) -> ScheduleItem {
+        let mut deck = SlideDeck::new("Notices");
+        deck.slides = texts.iter().map(|text| DeckSlide::text(*text)).collect();
+        ScheduleItem::new(ItemContent::Deck { deck })
+    }
+
+    fn item_slide_count(engine: &Engine, id: Id) -> usize {
+        engine
+            .schedule()
+            .get(id)
+            .unwrap()
+            .presentation(engine.themes())
+            .slides
+            .len()
+    }
+
+    #[test]
+    fn pictures_dropped_on_a_picture_make_a_slideshow() {
+        let item = ScheduleItem::new(ItemContent::Media {
+            media: video("Welcome"),
+        });
+        let id = item.id;
+        let mut engine = themed_engine(vec![item]);
+
+        let slides = vec![DeckSlide::picture(&video("Notices")).unwrap()];
+        let events = engine
+            .dispatch(Command::AppendSlides { id, slides })
+            .unwrap();
+        assert!(
+            events
+                .iter()
+                .any(|e| matches!(e, EngineEvent::ScheduleChanged { .. }))
+        );
+
+        let content = &engine.schedule().get(id).unwrap().content;
+        assert!(matches!(content, ItemContent::Deck { deck } if deck.name == "Welcome"));
+        assert_eq!(item_slide_count(&engine, id), 2);
+    }
+
+    #[test]
+    fn songs_cannot_take_extra_slides() {
+        let item = ScheduleItem::new(ItemContent::Song {
+            song: Song::new("Song"),
+        });
+        let id = item.id;
+        let mut engine = themed_engine(vec![item]);
+        let result = engine.dispatch(Command::AppendSlides {
+            id,
+            slides: vec![DeckSlide::text("x")],
+        });
+        assert_eq!(result, Err(EngineError::CannotHoldSlides));
+    }
+
+    #[test]
+    fn slides_in_an_item_can_be_reordered_and_removed() {
+        let item = deck_item(&["a", "b", "c"]);
+        let id = item.id;
+        let mut engine = themed_engine(vec![item]);
+        engine.dispatch(Command::ShowScheduleItem { id }).unwrap();
+
+        engine
+            .dispatch(Command::MoveItemSlide { id, from: 2, to: 0 })
+            .unwrap();
+        engine
+            .dispatch(Command::RemoveItemSlide { id, index: 1 })
+            .unwrap();
+
+        let texts: Vec<_> = engine
+            .snapshot()
+            .live
+            .unwrap()
+            .presentation
+            .slides
+            .iter()
+            .map(|slide| slide.text.clone())
+            .collect();
+        assert_eq!(texts, ["c", "b"], "the live pane follows the change");
+    }
+
+    #[test]
+    fn auto_advance_moves_on_and_loops_but_ignores_stale_timers() {
+        let item = deck_item(&["a", "b"]);
+        let id = item.id;
+        let mut engine = themed_engine(vec![item]);
+        engine
+            .dispatch(Command::SetItemAutoAdvance {
+                id,
+                auto_advance: Some(AutoAdvance {
+                    seconds: 8,
+                    looping: true,
+                }),
+            })
+            .unwrap();
+        engine.dispatch(Command::ShowScheduleItem { id }).unwrap();
+        let presentation_id = engine.snapshot().live.unwrap().presentation.id;
+
+        engine
+            .dispatch(Command::AutoAdvance {
+                presentation_id,
+                from: 0,
+            })
+            .unwrap();
+        assert_eq!(live_text(&engine).as_deref(), Some("b"));
+
+        // A timer for a slide the operator already left does nothing.
+        engine
+            .dispatch(Command::AutoAdvance {
+                presentation_id,
+                from: 0,
+            })
+            .unwrap();
+        assert_eq!(live_text(&engine).as_deref(), Some("b"));
+
+        engine
+            .dispatch(Command::AutoAdvance {
+                presentation_id,
+                from: 1,
+            })
+            .unwrap();
+        assert_eq!(live_text(&engine).as_deref(), Some("a"), "loops back");
+    }
+
+    #[test]
+    fn library_edits_of_a_deck_reach_the_schedule() {
+        let item = deck_item(&["old"]);
+        let id = item.id;
+        let ItemContent::Deck { deck } = &item.content else {
+            unreachable!()
+        };
+        let mut edited = deck.clone();
+        edited.slides[0].text = "new".into();
+        let mut engine = themed_engine(vec![item]);
+        engine.dispatch(Command::ShowScheduleItem { id }).unwrap();
+
+        engine
+            .dispatch(Command::RefreshDeck {
+                deck: Box::new(edited),
+            })
+            .unwrap();
+        assert_eq!(live_text(&engine).as_deref(), Some("new"));
     }
 }

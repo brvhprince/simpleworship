@@ -29,19 +29,27 @@ pub fn gather(
     let mut media_refs: Vec<MediaRef> = Vec::new();
 
     for item in &schedule.items {
-        // The item's own theme (the library version if there is one), and
-        // a song's own theme.
+        // The item's own theme (the library version if there is one), a
+        // song's or deck's own theme, and the themes single slides use.
         let item_theme = item.look.theme.as_ref().map(|copy| {
             library
                 .get(copy.id)
                 .cloned()
                 .unwrap_or_else(|| copy.clone())
         });
-        let song_theme = match &item.content {
-            ItemContent::Song { song } => song.theme_id.and_then(|id| library.get(id)).cloned(),
-            _ => None,
+        let own_themes: Vec<_> = match &item.content {
+            ItemContent::Song { song } => song.theme_id.into_iter().collect(),
+            ItemContent::Deck { deck } => deck
+                .theme_id
+                .into_iter()
+                .chain(deck.slides.iter().filter_map(|slide| slide.theme_id))
+                .collect(),
+            _ => Vec::new(),
         };
-        for record in item_theme.into_iter().chain(song_theme) {
+        let own_themes = own_themes
+            .into_iter()
+            .filter_map(|id| library.get(id).cloned());
+        for record in item_theme.into_iter().chain(own_themes) {
             media_refs.extend(record.theme.background.media().cloned());
             themes.insert(record.id, record);
         }
@@ -54,6 +62,13 @@ pub fn gather(
             ItemContent::Slides { pages: files, .. }
             | ItemContent::Playlist { tracks: files, .. } => {
                 media_refs.extend(files.iter().map(MediaItem::as_ref));
+            }
+            ItemContent::Deck { deck } => {
+                let backgrounds = deck
+                    .slides
+                    .iter()
+                    .filter_map(|slide| slide.background.as_ref());
+                media_refs.extend(backgrounds.filter_map(|b| b.media().cloned()));
             }
             _ => {}
         }

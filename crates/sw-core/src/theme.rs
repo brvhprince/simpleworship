@@ -26,8 +26,12 @@ pub struct Theme {
     pub text: TextStyle,
     /// The area the text is laid out in.
     pub text_box: TextBox,
-    /// How the footer (copyright / CCLI line) looks.
+    /// How the footer (copyright / CCLI line) looks, and where it sits.
     pub footer: FooterStyle,
+    /// How the scripture reference ("John 3:16 (KJV)") looks, and where it sits.
+    pub caption: FooterStyle,
+    /// Settings that only apply to scripture.
+    pub scripture: ScriptureStyle,
 }
 
 impl Default for Theme {
@@ -43,6 +47,8 @@ impl Default for Theme {
             text: TextStyle::default(),
             text_box: TextBox::default(),
             footer: FooterStyle::default(),
+            caption: FooterStyle::caption(),
+            scripture: ScriptureStyle::default(),
         }
     }
 }
@@ -255,25 +261,131 @@ impl Default for TextBox {
     }
 }
 
-/// Style of the footer line (copyright and CCLI information).
+/// Style and place of a line of small print: the footer (copyright and
+/// CCLI information) or the scripture reference.
+///
+/// It sits in its own box that the theme designer lets the operator drag,
+/// or straight after the slide text. Empty font and colour mean "the same
+/// as the slide text".
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", default)]
 #[ts(export, export_to = "bindings.ts")]
 pub struct FooterStyle {
-    /// Show the footer at all.
+    /// Show it at all.
     pub visible: bool,
     /// Font size in reference pixels.
     pub font_size: f32,
-    /// CSS color.
+    /// CSS color, or empty for the slide text's colour.
     pub color: String,
+    /// CSS font family list, or empty for the slide text's font.
+    pub font_family: String,
+    /// Bold.
+    pub bold: bool,
+    /// Alignment, or `None` to line up with the slide text.
+    pub align: Option<HorizontalAlign>,
+    /// In its own box, or straight after the slide text.
+    pub placement: Placement,
+    /// Its box, when [`FooterStyle::placement`] is [`Placement::Box`].
+    pub text_box: TextBox,
 }
 
 impl Default for FooterStyle {
+    /// The footer: small and faint, along the bottom edge.
     fn default() -> Self {
         Self {
             visible: true,
             font_size: 28.0,
             color: "rgba(255, 255, 255, 0.75)".into(),
+            font_family: String::new(),
+            bold: false,
+            align: None,
+            placement: Placement::Box,
+            text_box: TextBox {
+                top: 990.0,
+                right: 120.0,
+                bottom: 26.0,
+                left: 120.0,
+                vertical_align: VerticalAlign::Bottom,
+                auto_fit: true,
+            },
+        }
+    }
+}
+
+impl FooterStyle {
+    /// The scripture reference: larger than the footer, in the text's font
+    /// and colour (the audience reads it), just above the footer.
+    pub fn caption() -> Self {
+        Self {
+            font_size: 39.0,
+            color: String::new(),
+            bold: true,
+            text_box: TextBox {
+                top: 880.0,
+                bottom: 70.0,
+                ..Self::default().text_box
+            },
+            ..Self::default()
+        }
+    }
+}
+
+/// Where a line of small print goes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "bindings.ts")]
+pub enum Placement {
+    /// In its own box (see [`FooterStyle::text_box`]).
+    Box,
+    /// Straight after the slide text, inside the text box.
+    AfterText,
+}
+
+/// Settings that only apply to scripture slides.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
+#[ts(export, export_to = "bindings.ts")]
+pub struct ScriptureStyle {
+    /// How verse numbers look.
+    pub verse_numbers: VerseNumberStyle,
+    /// Show the reference on every slide of a passage, or only on the first.
+    pub reference_on_every_slide: bool,
+}
+
+impl Default for ScriptureStyle {
+    fn default() -> Self {
+        Self {
+            verse_numbers: VerseNumberStyle::default(),
+            reference_on_every_slide: true,
+        }
+    }
+}
+
+/// How the verse numbers in scripture look.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
+#[ts(export, export_to = "bindings.ts")]
+pub struct VerseNumberStyle {
+    /// Show them. The Scripture tab can override this for one passage.
+    pub visible: bool,
+    /// CSS color, or empty for the verse text's colour (slightly faded).
+    pub color: String,
+    /// Size as a percentage of the verse text.
+    pub size_percent: u16,
+    /// Raised above the line (superscript), or in line with the text.
+    pub superscript: bool,
+    /// Bold.
+    pub bold: bool,
+}
+
+impl Default for VerseNumberStyle {
+    fn default() -> Self {
+        Self {
+            visible: true,
+            color: String::new(),
+            size_percent: 55,
+            superscript: true,
+            bold: false,
         }
     }
 }

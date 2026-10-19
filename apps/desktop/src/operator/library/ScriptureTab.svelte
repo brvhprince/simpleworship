@@ -40,14 +40,18 @@
     primaryId: string | null;
     secondaryId: string | null;
     maxVerses: number;
-    verseNumbers: boolean;
   }
 
   const saved = loadSettings();
   let primaryId: string | null = $state(saved.primaryId);
   let secondaryId: string | null = $state(saved.secondaryId);
   let maxVerses = $state(saved.maxVerses);
-  let verseNumbers = $state(saved.verseNumbers);
+  /**
+   * The quick verse-number switch: `null` follows the scripture theme
+   * (set in the theme designer); a click overrides it until the theme's
+   * setting is changed.
+   */
+  let verseNumbers = $state<boolean | null>(null);
 
   let query = $state("");
   let feedback = $state<ReferenceFeedback | null>(null);
@@ -61,6 +65,19 @@
   let managing = $state(false);
 
   const options: ScriptureOptions = $derived({ maxVerses, maxChars: 300, verseNumbers });
+
+  /** Whether the scripture theme shows verse numbers. */
+  const themeShowsNumbers = $derived.by(() => {
+    const { themes, defaults } = engine.themes;
+    const record = themes.find((theme) => theme.id === defaults.scripture) ?? themes[0];
+    return record?.theme.scripture.verseNumbers.visible ?? true;
+  });
+
+  // A change to the theme's setting wins over an earlier quick switch.
+  $effect(() => {
+    void themeShowsNumbers;
+    verseNumbers = null;
+  });
   const bibleIds = $derived(
     [primaryId, secondaryId].filter((id): id is string => id !== null && id !== ""),
   );
@@ -76,7 +93,7 @@
     if (secondaryId && !ids.includes(secondaryId)) secondaryId = null;
   });
 
-  $effect(() => saveSettings({ primaryId, secondaryId, maxVerses, verseNumbers }));
+  $effect(() => saveSettings({ primaryId, secondaryId, maxVerses }));
 
   // Load the book list of the main translation.
   $effect(() => {
@@ -247,7 +264,6 @@
       primaryId: null,
       secondaryId: null,
       maxVerses: 2,
-      verseNumbers: true,
     };
     try {
       const stored = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? "{}");
@@ -316,8 +332,15 @@
         {/each}
       </select>
     </label>
-    <label class="option">
-      <input type="checkbox" bind:checked={verseNumbers}>
+    <label class="option" title="The scripture theme decides this; switch it here for this passage">
+      <input
+        type="checkbox"
+        checked={verseNumbers ?? themeShowsNumbers}
+        onchange={(e) => {
+          const on = e.currentTarget.checked;
+          verseNumbers = on === themeShowsNumbers ? null : on;
+        }}
+      >
       Verse numbers
     </label>
 

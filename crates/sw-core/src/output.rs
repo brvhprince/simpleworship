@@ -11,6 +11,7 @@ use ts_rs::TS;
 use crate::alerts::Alert;
 use crate::countdown::CountdownFrame;
 use crate::id::Id;
+use crate::markup::TextRun;
 use crate::media::MediaRef;
 use crate::scripture::ScriptureSlide;
 use crate::theme::Theme;
@@ -28,6 +29,10 @@ pub struct RenderFrame {
     pub scripture: Option<ScriptureSlide>,
     /// A line shown with the slide, e.g. the reference "John 3:16–17 (KJV)".
     pub caption: Option<String>,
+    /// The text in styled pieces, when it has bold, italic or underline.
+    /// Draw this instead of `text` when it is there.
+    #[serde(default)]
+    pub rich: Option<Vec<TextRun>>,
     /// A live countdown, when the slide is one.
     #[serde(default)]
     pub countdown: Option<CountdownFrame>,

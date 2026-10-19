@@ -8,11 +8,15 @@
 
   - Click a slide to select it.
   - Double-click a slide (preview only) to send it live.
+  - For a presentation or slideshow from the schedule, drag slides to
+    reorder them, or remove one with its × (preview only). This changes the
+    schedule item, not the library's presentation.
 -->
 <script lang="ts">
   import type { OutputState, PaneState } from "@simpleworship/protocol";
   import { OutputView, ScaledCanvas, SlideView } from "@simpleworship/renderer";
   import type { Snippet } from "svelte";
+  import { engine } from "../lib/engine.svelte.ts";
   import { frameAt } from "../lib/frames.ts";
 
   interface Props {
@@ -46,6 +50,40 @@
 
   const selectedFrame = $derived(pane ? frameAt(pane.presentation, pane.selected) : null);
 
+  /** Payload type for a slide being reordered within a schedule item. */
+  const SLIDE_DRAG_TYPE = "application/x-simpleworship-item-slide";
+
+  /**
+   * The schedule item whose slides can be reordered and removed here: a
+   * presentation or slideshow from the schedule.
+   */
+  const editableItem = $derived(
+    pane?.scheduleItem && pane.presentation.source.type === "deck" ? pane.scheduleItem : null,
+  );
+  /** Where a slide being dragged would land, as an insertion index. */
+  let dropAt: number | null = $state(null);
+
+  function dragOverSlide(event: DragEvent, index: number) {
+    if (!editableItem || !event.dataTransfer?.types.includes(SLIDE_DRAG_TYPE)) return;
+    event.preventDefault();
+    const box = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    dropAt = event.clientX > box.left + box.width / 2 ? index + 1 : index;
+  }
+
+  function dropSlide(event: DragEvent) {
+    const from = Number(event.dataTransfer?.getData(SLIDE_DRAG_TYPE));
+    const insertion = dropAt;
+    dropAt = null;
+    if (!editableItem || insertion === null || !Number.isInteger(from)) return;
+    event.preventDefault();
+    const to = insertion > from ? insertion - 1 : insertion;
+    if (to !== from) engine.dispatch({ type: "moveItemSlide", id: editableItem, from, to });
+  }
+
+  function removeSlide(index: number) {
+    if (editableItem) engine.dispatch({ type: "removeItemSlide", id: editableItem, index });
+  }
+
   let slideList: HTMLOListElement;
 
   // Keep the selected slide visible as the operator steps through a long song.
@@ -76,16 +114,34 @@
 
   {@render below?.()}
 
-  <ol class="slides" bind:this={slideList}>
+  <ol class="slides" bind:this={slideList} ondrop={dropSlide} ondragleave={() => (dropAt = null)}>
     {#if pane}
       {#each pane.presentation.slides as slide, index (index)}
         {@const frame = frameAt(pane.presentation, index)}
-        <li>
+        <li
+          class:drop-before={dropAt === index}
+          class:drop-after={dropAt === pane.presentation.slides.length &&
+            index === pane.presentation.slides.length - 1}
+          ondragover={(event) => dragOverSlide(event, index)}
+        >
+          {#if editableItem && kind === "preview" && pane.presentation.slides.length > 1}
+            <button
+              type="button"
+              class="remove"
+              title="Remove this slide from the schedule item"
+              aria-label="Remove slide {index + 1}"
+              onclick={() => removeSlide(index)}
+            >
+              ×
+            </button>
+          {/if}
           <button
             type="button"
             class="slide"
             class:selected={index === pane.selected}
             data-index={index}
+            draggable={editableItem !== null}
+            ondragstart={(event) => event.dataTransfer?.setData(SLIDE_DRAG_TYPE, String(index))}
             onclick={() => onselect(index)}
             ondblclick={() => onactivate?.(index)}
           >
@@ -112,6 +168,41 @@
 </section>
 
 <style>
+  li {
+    position: relative;
+  }
+
+  /* Where a slide being reordered will land. */
+  .drop-before {
+    box-shadow: -3px 0 0 var(--sw-accent);
+  }
+
+  .drop-after {
+    box-shadow: 3px 0 0 var(--sw-accent);
+  }
+
+  .remove {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    z-index: 1;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    line-height: 20px;
+    cursor: pointer;
+    opacity: 0;
+  }
+
+  li:hover .remove,
+  .remove:focus-visible {
+    opacity: 1;
+  }
+
   .pane {
     --pane-color: var(--sw-preview);
     background: var(--sw-surface);

@@ -70,15 +70,18 @@
 
   /** Everything that affects how the text layer looks. */
   function textKey(frame: RenderFrame): string {
-    const { text, scripture, caption, footer, theme } = frame;
+    const { text, rich, scripture, caption, footer, theme } = frame;
     return JSON.stringify([
       text,
+      rich,
       scripture,
       caption,
       footer,
       theme.text,
       theme.textBox,
       theme.footer,
+      theme.caption,
+      theme.scripture,
     ]);
   }
 </script>

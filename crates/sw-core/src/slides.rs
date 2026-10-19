@@ -11,9 +11,12 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 use crate::countdown::CountdownSlide;
+use crate::deck::SlideStyle;
 use crate::lyrics::{Section, SectionLabel};
+use crate::markup::TextRun;
 use crate::scripture::ScriptureSlide;
 use crate::theme::Background;
+use crate::themes::Look;
 
 /// One slide: the text shown on screen at a time.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
@@ -39,6 +42,16 @@ pub struct Slide {
     /// For a countdown slide: what it counts down to.
     #[serde(default)]
     pub countdown: Option<CountdownSlide>,
+    /// The text in styled pieces (bold, italic, underline), when a
+    /// presentation slide uses any. `text` then holds the plain version.
+    #[serde(default)]
+    pub rich: Option<Vec<TextRun>>,
+    /// A theme for this slide only (a presentation slide can have its own).
+    #[serde(default)]
+    pub look: Option<Box<Look>>,
+    /// Adjustments to the theme's text for this slide only.
+    #[serde(default)]
+    pub style: Option<SlideStyle>,
 }
 
 impl Slide {
@@ -52,6 +65,9 @@ impl Slide {
             scripture: None,
             background: None,
             countdown: None,
+            rich: None,
+            look: None,
+            style: None,
         }
     }
 }
@@ -90,13 +106,9 @@ fn slides_for_section(section: &Section, options: SlideOptions) -> Vec<Slide> {
         .into_iter()
         .enumerate()
         .map(|(index, text)| Slide {
-            text,
             section: section.label.clone(),
             starts_section: index == 0,
-            caption: None,
-            scripture: None,
-            background: None,
-            countdown: None,
+            ..Slide::text(text)
         })
         .collect()
 }

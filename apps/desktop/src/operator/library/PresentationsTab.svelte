@@ -1,12 +1,16 @@
 <!--
   @component
-  Imported presentations: sermon slides and announcements from PDF (or
-  PowerPoint and Keynote, when LibreOffice is installed). Each page becomes
-  a slide; step through them like any other presentation.
+  Presentations: typed announcements and sermon points made in the editor,
+  and slides imported from PDF (or PowerPoint and Keynote, when
+  LibreOffice is installed). Imported pages can be edited too: reorder or
+  drop them, or put typed slides between them.
+
+  Click to select, double-click to preview, drag onto the schedule (or onto
+  a schedule item, to add the slides to it).
 -->
 <script lang="ts">
-  import type { SlideDeck } from "@simpleworship/protocol";
-  import { getMediaUrls } from "@simpleworship/renderer";
+  import type { Presentation, SlideDeck } from "@simpleworship/protocol";
+  import { getMediaUrls, ScaledCanvas, SlideView } from "@simpleworship/renderer";
   import { Button } from "@simpleworship/ui";
   import { listen } from "@tauri-apps/api/event";
   import { open } from "@tauri-apps/plugin-dialog";
@@ -16,27 +20,48 @@
     addPresentationToSchedule,
     canConvertPresentations,
     createPresentation,
+    deckPresentation,
     deletePresentation,
     finishPresentation,
+    getPresentation,
     listPresentations,
     preparePresentation,
     showPresentationInPreview,
+    uuidV7,
   } from "../../lib/api.ts";
+  import { PRESENTATION_DRAG_TYPE } from "../../lib/drag.ts";
   import { engine } from "../../lib/engine.svelte.ts";
+  import { frameAt } from "../../lib/frames.ts";
   import { renderPdfPages } from "../../lib/pdf.ts";
   import { prompts } from "../../lib/prompts.svelte.ts";
+  import DeckEditor from "./DeckEditor.svelte";
 
   /** Must match `PRESENTATIONS_EVENT` in `src-tauri/src/commands/presentations.rs`. */
   const PRESENTATIONS_EVENT = "presentations://changed";
 
   const urls = getMediaUrls();
   let decks: SlideDeck[] = $state.raw([]);
+  /** Each deck's slides as shown, for the cover pictures (by deck id). */
+  let covers: Record<string, Presentation> = $state.raw({});
   let selectedId: string | null = $state(null);
+  let query = $state("");
   let canConvert = $state(false);
   /** What an import in progress is doing, e.g. "Page 3 of 40". */
   let progress: string | null = $state(null);
+  /** The presentation open in the editor, if any. */
+  let editing = $state<SlideDeck | null>(null);
 
   const selected = $derived(decks.find((deck) => deck.id === selectedId) ?? null);
+  /** Decks whose name or text matches the search. */
+  const shown = $derived.by(() => {
+    const words = query.trim().toLowerCase();
+    if (!words) return decks;
+    return decks.filter(
+      (deck) =>
+        deck.name.toLowerCase().includes(words) ||
+        deck.slides.some((slide) => slide.text.toLowerCase().includes(words)),
+    );
+  });
 
   onMount(() => {
     void refresh();
@@ -45,8 +70,47 @@
     return () => void stop.then((unlisten) => unlisten());
   });
 
+  // Redraw covers when the themes change.
+  $effect(() => {
+    void engine.themes;
+    void drawCovers(decks);
+  });
+
   async function refresh() {
     decks = await listPresentations();
+  }
+
+  async function drawCovers(list: SlideDeck[]) {
+    const entries = await Promise.all(
+      list.map(async (deck) => [deck.id, await deckPresentation(deck)] as const),
+    );
+    covers = Object.fromEntries(entries);
+  }
+
+  function newPresentation() {
+    const now = Date.now();
+    editing = {
+      id: uuidV7(),
+      name: "",
+      themeId: null,
+      slides: [
+        {
+          id: uuidV7(),
+          text: "",
+          background: null,
+          themeId: null,
+          style: { fontSize: null, color: null, align: null },
+        },
+      ],
+      autoAdvance: null,
+      createdAt: now,
+      updatedAt: 0,
+    };
+  }
+
+  async function edit(deck: SlideDeck) {
+    // The latest version, in case it changed since the list was loaded.
+    editing = await getPresentation(deck.id).catch(() => deck);
   }
 
   async function chooseAndImport() {
@@ -66,11 +130,11 @@
         progress = `Page ${index + 1} of ${total}`;
         await addPresentationPage(id, index, jpeg);
       });
-      await finishPresentation(prepared.file);
+      await finishPresentation(prepared.file, deck);
       selectedId = deck;
     } catch (error) {
       engine.showError(error);
-      if (file) await finishPresentation(file, deck).catch(() => {});
+      if (file) await finishPresentation(file, deck, true).catch(() => {});
     } finally {
       progress = null;
     }
@@ -79,7 +143,7 @@
   async function remove(deck: SlideDeck) {
     const answer = await prompts.ask({
       title: "Delete presentation?",
-      message: `Delete “${deck.name}” and its ${deck.pages.length} slides? Schedules that use it keep their copy.`,
+      message: `Delete “${deck.name}” and its ${deck.slides.length} slides? Schedules that use it keep their copy.`,
       buttons: [
         { id: "cancel", label: "Cancel" },
         { id: "delete", label: "Delete", variant: "live" },
@@ -96,22 +160,28 @@
       engine.showError(error);
     }
   }
+
+  function startDrag(event: DragEvent, deck: SlideDeck) {
+    event.dataTransfer?.setData(PRESENTATION_DRAG_TYPE, deck.id);
+    if (event.dataTransfer) event.dataTransfer.effectAllowed = "copy";
+  }
 </script>
 
 <div class="presentations-tab">
   <div class="toolbar">
+    <Button onclick={newPresentation}>New Presentation</Button>
     <Button disabled={progress !== null} onclick={chooseAndImport}>Import…</Button>
+    <input type="search" bind:value={query} placeholder="Search presentations" aria-label="Search">
     {#if progress}
       <span class="progress">{progress}</span>
-    {:else}
-      <span class="hint">
-        {canConvert
-          ? "PDF, PowerPoint and Keynote files can be imported."
-          : "Import PDF files. To import PowerPoint or Keynote, save as PDF first (or install LibreOffice)."}
-      </span>
+    {:else if !canConvert}
+      <span class="hint"
+        >To import PowerPoint or Keynote, save as PDF (or install LibreOffice).</span
+      >
     {/if}
     <span class="spacer"></span>
     <Button disabled={!selected} onclick={() => selected && remove(selected)}>Delete</Button>
+    <Button disabled={!selected} onclick={() => selected && edit(selected)}>Edit</Button>
     <Button
       disabled={!selected}
       onclick={() => selected && attempt(() => addPresentationToSchedule(selected.id))}
@@ -128,34 +198,53 @@
   </div>
 
   <ul class="grid" aria-label="Presentations">
-    {#each decks as deck (deck.id)}
-      {@const cover = deck.pages[0]}
+    {#each shown as deck (deck.id)}
+      {@const slides = covers[deck.id]}
+      {@const cover = slides ? frameAt(slides, 0) : null}
       <li>
         <button
           type="button"
           class="card"
           class:selected={deck.id === selectedId}
+          draggable="true"
+          ondragstart={(event) => startDrag(event, deck)}
           onclick={() => (selectedId = deck.id)}
           ondblclick={() => attempt(() => showPresentationInPreview(deck.id))}
         >
           <span class="picture">
             {#if cover}
-              <img src={urls.file({ id: cover.id, file: cover.file })} alt="">
+              <ScaledCanvas><SlideView frame={cover} /></ScaledCanvas>
             {/if}
           </span>
           <span class="caption">
             <span class="title">{deck.name}</span>
-            <span class="meta">{deck.pages.length} slides</span>
+            <span class="meta">
+              {deck.slides.length}
+              slides{deck.autoAdvance ? ` · every ${deck.autoAdvance.seconds}s` : ""}
+            </span>
           </span>
         </button>
       </li>
     {:else}
       <li class="empty">
-        No presentations yet. Import a PDF of your sermon slides or announcements.
+        {query
+          ? "No presentation matches."
+          : "No presentations yet. Make one for this week's announcements, or import a PDF of sermon slides."}
       </li>
     {/each}
   </ul>
 </div>
+
+{#if editing}
+  <DeckEditor
+    deck={editing}
+    onsave={(saved) => {
+      editing = null;
+      selectedId = saved.id;
+    }}
+    oncancel={() => (editing = null)}
+  />
+{/if}
 
 <style>
   .presentations-tab {
@@ -214,10 +303,8 @@
     background: #000;
   }
 
-  .picture img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
+  .toolbar input[type="search"] {
+    width: 200px;
   }
 
   .caption {

@@ -6,6 +6,9 @@
   - ↑/↓ move through the items, Enter sends the previewed item live,
     Delete removes it.
   - Drag songs in from the library, and drag items to reorder them.
+  - Drag several pictures in at once for one slideshow item (hold Alt /
+    Option for one item each). Drop pictures or a presentation onto the
+    middle of a picture, text or presentation item to add them as slides.
 
   The previewed item is marked blue and the live item red, like the panes.
   Notes for the previewed item can be edited at the bottom.
@@ -16,19 +19,27 @@
   import {
     addMediaToSchedule,
     addMissingScheduleSongs,
+    addPlaylistToSchedule,
+    addPresentationToSchedule,
+    addSlideshowToSchedule,
     addSongToSchedule,
+    appendMediaToItem,
+    appendPresentationToItem,
     missingScheduleSongs,
   } from "../lib/api.ts";
   import {
+    dropTarget,
     finalIndex,
     ITEM_DRAG_TYPE,
-    insertionIndex,
     MEDIA_DRAG_TYPE,
+    mediaIds,
+    PRESENTATION_DRAG_TYPE,
     SONG_DRAG_TYPE,
   } from "../lib/drag.ts";
   import { engine } from "../lib/engine.svelte.ts";
   import { library } from "../lib/library.svelte.ts";
-  import { itemKind, itemTitle } from "../lib/schedule.ts";
+  import { media } from "../lib/media.svelte.ts";
+  import { canHoldSlides, itemKind, itemTitle } from "../lib/schedule.ts";
   import { scheduleFile } from "../lib/schedule-file.svelte.ts";
   import ItemLookEditor from "./ItemLookEditor.svelte";
 
@@ -39,6 +50,8 @@
 
   /** Where a drag in progress would drop, as an insertion index. */
   let dropAt: number | null = $state(null);
+  /** The row a drag in progress would add slides to, if any. */
+  let dropInto: number | null = $state(null);
   /** How many songs in the schedule are not in this computer's library. */
   let missingSongs = $state(0);
 
@@ -95,9 +108,17 @@
 
   // ── Drag and drop ──────────────────────────────────────────────────────
 
+  const OUR_TYPES = [SONG_DRAG_TYPE, ITEM_DRAG_TYPE, MEDIA_DRAG_TYPE, PRESENTATION_DRAG_TYPE];
+
   function isOurDrag(event: DragEvent): boolean {
     const types = event.dataTransfer?.types ?? [];
-    return [SONG_DRAG_TYPE, ITEM_DRAG_TYPE, MEDIA_DRAG_TYPE].some((type) => types.includes(type));
+    return OUR_TYPES.some((type) => types.includes(type));
+  }
+
+  /** Whether the drag carries slides (pictures or a presentation). */
+  function carriesSlides(event: DragEvent): boolean {
+    const types = event.dataTransfer?.types ?? [];
+    return types.includes(MEDIA_DRAG_TYPE) || types.includes(PRESENTATION_DRAG_TYPE);
   }
 
   function startDrag(event: DragEvent, item: ScheduleItem) {
@@ -110,7 +131,11 @@
     event.preventDefault();
     event.stopPropagation();
     const row = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    dropAt = insertionIndex(rowIndex, event.clientY, row);
+    const item = items[rowIndex];
+    const canDropInto = carriesSlides(event) && item !== undefined && canHoldSlides(item);
+    const target = dropTarget(rowIndex, event.clientY, row, canDropInto);
+    dropAt = target.kind === "between" ? target.index : null;
+    dropInto = target.kind === "into" ? target.index : null;
   }
 
   /** Dragging over the empty space below the items drops at the end. */
@@ -118,35 +143,80 @@
     if (!isOurDrag(event)) return;
     event.preventDefault();
     dropAt = items.length;
+    dropInto = null;
   }
 
   function dragLeaveList(event: DragEvent) {
     const list = event.currentTarget as HTMLElement;
-    if (!list.contains(event.relatedTarget as Node | null)) dropAt = null;
+    if (!list.contains(event.relatedTarget as Node | null)) {
+      dropAt = null;
+      dropInto = null;
+    }
   }
 
   async function drop(event: DragEvent) {
     const insertion = dropAt ?? items.length;
+    const into = dropInto === null ? null : (items[dropInto] ?? null);
     dropAt = null;
+    dropInto = null;
     const data = event.dataTransfer;
     if (!data || !isOurDrag(event)) return;
     event.preventDefault();
 
     const itemId = data.getData(ITEM_DRAG_TYPE);
-    const songId = data.getData(SONG_DRAG_TYPE);
-    const mediaId = data.getData(MEDIA_DRAG_TYPE);
     if (itemId) {
       const from = items.findIndex((item) => item.id === itemId);
       if (from !== -1) {
         engine.dispatch({ type: "moveScheduleItem", id: itemId, to: finalIndex(from, insertion) });
       }
-    } else if (songId || mediaId) {
-      try {
-        if (songId) await addSongToSchedule(songId, insertion);
-        else await addMediaToSchedule(mediaId, insertion);
-      } catch (error) {
-        engine.showError(error);
+      return;
+    }
+
+    try {
+      const songId = data.getData(SONG_DRAG_TYPE);
+      const deckId = data.getData(PRESENTATION_DRAG_TYPE);
+      const ids = mediaIds(data.getData(MEDIA_DRAG_TYPE));
+      if (songId) {
+        await addSongToSchedule(songId, insertion);
+      } else if (deckId) {
+        if (into) await appendPresentationToItem(into.id, deckId);
+        else await addPresentationToSchedule(deckId, insertion);
+      } else if (ids.length > 0) {
+        await dropMedia(ids, insertion, into, event.altKey);
       }
+    } catch (error) {
+      engine.showError(error);
+    }
+  }
+
+  /**
+   * Media dropped on the schedule: added to the item it was dropped on, or
+   * as one new item (a slideshow of pictures, or music for sound files),
+   * or, with Alt held, one item per file.
+   */
+  async function dropMedia(
+    ids: string[],
+    insertion: number,
+    into: ScheduleItem | null,
+    separately: boolean,
+  ) {
+    if (into) {
+      await appendMediaToItem(into.id, ids);
+      return;
+    }
+    if (ids.length === 1 || separately) {
+      // One after the other, so they keep their order.
+      for (const [offset, id] of ids.entries()) {
+        await addMediaToSchedule(id, insertion + offset);
+      }
+      return;
+    }
+    const kinds = ids.map((id) => media.list.find((item) => item.id === id)?.kind);
+    if (kinds.every((kind) => kind === "audio")) {
+      const count = ids.length;
+      await addPlaylistToSchedule(`Music (${count} tracks)`, ids, insertion);
+    } else {
+      await addSlideshowToSchedule(ids, insertion);
     }
   }
 </script>
@@ -190,6 +260,7 @@
         class="item"
         class:live={item.id === liveId}
         class:drop-before={dropAt === index}
+        class:drop-into={dropInto === index}
         class:drop-after={dropAt === items.length && index === items.length - 1}
         role="option"
         tabindex="-1"
@@ -311,6 +382,12 @@
 
   .drop-after {
     box-shadow: inset 0 -2px 0 var(--sw-accent);
+  }
+
+  /* The item that dropped pictures or slides will be added to. */
+  .drop-into {
+    outline: 2px solid var(--sw-accent);
+    outline-offset: -2px;
   }
 
   .number {

@@ -69,23 +69,6 @@ pub struct MediaItem {
     pub collection: Option<Id>,
 }
 
-/// An imported presentation (a PDF, or a converted PowerPoint): a name and
-/// one picture per page.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
-#[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "bindings.ts")]
-pub struct SlideDeck {
-    /// Unique identifier (the pages' `collection`).
-    pub id: Id,
-    /// The presentation's name, usually the file name.
-    pub name: String,
-    /// The pages, in order.
-    pub pages: Vec<MediaItem>,
-    /// When it was imported.
-    #[ts(type = "number")]
-    pub created_at: Timestamp,
-}
-
 impl MediaItem {
     /// The pointer other records use to refer to this item.
     pub fn as_ref(&self) -> MediaRef {

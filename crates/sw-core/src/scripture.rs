@@ -100,8 +100,10 @@ pub struct ScriptureOptions {
     pub max_verses: u32,
     /// Roughly the most characters on one slide (per column).
     pub max_chars: u32,
-    /// Show verse numbers before each verse.
-    pub verse_numbers: bool,
+    /// Show verse numbers before each verse, or `None` to do as the theme
+    /// says (see [`VerseNumberStyle`](crate::theme::VerseNumberStyle)).
+    #[serde(default)]
+    pub verse_numbers: Option<bool>,
 }
 
 impl Default for ScriptureOptions {
@@ -109,7 +111,7 @@ impl Default for ScriptureOptions {
         Self {
             max_verses: 2,
             max_chars: 300,
-            verse_numbers: true,
+            verse_numbers: None,
         }
     }
 }
@@ -121,8 +123,8 @@ impl Default for ScriptureOptions {
 pub struct ScriptureSlide {
     /// The columns, left to right.
     pub columns: Vec<ScriptureColumn>,
-    /// Whether verse numbers are shown.
-    pub verse_numbers: bool,
+    /// Whether verse numbers are shown, or `None` to do as the theme says.
+    pub verse_numbers: Option<bool>,
 }
 
 /// One translation's part of a scripture slide.
@@ -320,19 +322,15 @@ fn scripture_slide(
 ) -> Slide {
     let text = columns
         .first()
-        .map(|column| plain_text(&column.verses, options.verse_numbers))
+        .map(|column| plain_text(&column.verses, options.verse_numbers.unwrap_or(true)))
         .unwrap_or_default();
     Slide {
-        text,
-        section: None,
-        starts_section: false,
         caption: Some(caption),
         scripture: Some(ScriptureSlide {
             columns,
             verse_numbers: options.verse_numbers,
         }),
-        background: None,
-        countdown: None,
+        ..Slide::text(text)
     }
 }
 

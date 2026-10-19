@@ -1,7 +1,8 @@
 <!--
   @component
-  Edits a theme, with a live preview on the left. Drag the text box on the
-  preview to move or resize it, or type exact positions on the right.
+  Edits a theme, with a live preview on the left. Drag the text box, the
+  scripture reference or the footer on the preview to move or resize it,
+  or type exact positions on the right.
 -->
 <script lang="ts">
   import type {
@@ -9,17 +10,21 @@
     TextBox,
     TextStyle,
     ThemeRecord,
+    VerseNumberStyle,
     VerticalAlign,
   } from "@simpleworship/protocol";
   import { ScaledCanvas, SlideView } from "@simpleworship/renderer";
   import { Button, Dialog } from "@simpleworship/ui";
   import { onMount, untrack } from "svelte";
   import { listFonts, saveTheme } from "../../lib/api.ts";
+  import { firstFamily, fontFamily } from "../../lib/fonts.ts";
+  import { FOOTER_SPACING, REFERENCE_SPACING } from "../../lib/label-placement.ts";
   import { overrideMenuItem } from "../../lib/menu.ts";
   import { sampleLyrics, sampleScripture } from "../../lib/samples.ts";
   import BackgroundEditor from "./BackgroundEditor.svelte";
   import ColorField from "./ColorField.svelte";
-  import TextBoxEditor from "./TextBoxEditor.svelte";
+  import LabelEditor from "./LabelEditor.svelte";
+  import TextBoxEditor, { type EditableBox } from "./TextBoxEditor.svelte";
 
   interface Props {
     record: ThemeRecord;
@@ -40,12 +45,37 @@
   );
 
   /** The first family in the theme's font list, e.g. "Montserrat". */
-  const currentFont = $derived(
-    draft.theme.text.fontFamily
-      .split(",")[0]
-      ?.trim()
-      .replace(/^["']|["']$/g, "") ?? "",
-  );
+  const currentFont = $derived(firstFamily(draft.theme.text.fontFamily));
+
+  /** The box being dragged on the preview. */
+  let activeBox = $state("text");
+
+  /** The boxes that can be dragged on the preview: those that are shown. */
+  const boxes: EditableBox[] = $derived.by(() => {
+    const list: EditableBox[] = [{ id: "text", label: "Text", box: draft.theme.textBox }];
+    const { caption, footer } = draft.theme;
+    if (sample === "scripture" && caption.visible && caption.placement === "box") {
+      list.push({ id: "caption", label: "Reference", box: caption.textBox });
+    }
+    if (footer.visible && footer.placement === "box") {
+      list.push({ id: "footer", label: "Footer", box: footer.textBox });
+    }
+    return list;
+  });
+
+  function moveBox(id: string, box: TextBox) {
+    if (id === "caption") draft.theme.caption = { ...draft.theme.caption, textBox: box };
+    else if (id === "footer") draft.theme.footer = { ...draft.theme.footer, textBox: box };
+    else draft.theme.textBox = box;
+  }
+
+  function setNumbers<K extends keyof VerseNumberStyle>(key: K, value: VerseNumberStyle[K]) {
+    const scripture = draft.theme.scripture;
+    draft.theme.scripture = {
+      ...scripture,
+      verseNumbers: { ...scripture.verseNumbers, [key]: value },
+    };
+  }
 
   onMount(() => {
     listFonts().then((list) => (fonts = list));
@@ -60,12 +90,6 @@
 
   function setBox<K extends keyof TextBox>(key: K, value: TextBox[K]) {
     draft.theme.textBox = { ...draft.theme.textBox, [key]: value };
-  }
-
-  /** A font family list with sensible fallbacks for when a font is missing. */
-  function fontFamily(name: string): string {
-    const serif = /serif|merriweather|georgia|times|garamond/i.test(name) && !/sans/i.test(name);
-    return `"${name}", ${serif ? "Georgia, serif" : '"Open Sans", Helvetica, Arial, sans-serif'}`;
   }
 
   async function save() {
@@ -91,12 +115,17 @@
     <div class="preview-column">
       <div class="preview">
         <ScaledCanvas><SlideView {frame} /></ScaledCanvas>
-        <TextBoxEditor box={draft.theme.textBox} onchange={(box) => (draft.theme.textBox = box)} />
+        <TextBoxEditor
+          {boxes}
+          active={boxes.some((item) => item.id === activeBox) ? activeBox : "text"}
+          onselect={(id) => (activeBox = id)}
+          onchange={moveBox}
+        />
       </div>
       <div class="sample" role="radiogroup" aria-label="Sample">
         <label><input type="radio" bind:group={sample} value="lyrics"> Song</label>
         <label><input type="radio" bind:group={sample} value="scripture"> Scripture</label>
-        <span class="hint">Drag the dashed box to move the text; drag a corner to resize it.</span>
+        <span class="hint">Drag a dashed box to move it; drag a corner to resize it.</span>
       </div>
     </div>
 
@@ -315,37 +344,105 @@
       </section>
 
       <section>
-        <h4>Footer (copyright, CCLI)</h4>
+        <h4>Scripture</h4>
         <div class="row">
           <label class="inline">
             <input
               type="checkbox"
-              checked={draft.theme.footer.visible}
-              onchange={(e) =>
-                (draft.theme.footer = { ...draft.theme.footer, visible: e.currentTarget.checked })}
+              checked={draft.theme.scripture.verseNumbers.visible}
+              onchange={(e) => {
+                sample = "scripture";
+                setNumbers("visible", e.currentTarget.checked);
+              }}
             >
-            Show
+            Verse numbers
           </label>
           <label class="inline">
             Size
-            <input
-              type="number"
-              min="10"
-              max="80"
-              value={draft.theme.footer.fontSize}
-              onchange={(e) =>
-                (draft.theme.footer = {
-                  ...draft.theme.footer,
-                  fontSize: e.currentTarget.valueAsNumber || 28,
-                })}
+            <select
+              value={draft.theme.scripture.verseNumbers.sizePercent}
+              onchange={(e) => setNumbers("sizePercent", Number(e.currentTarget.value))}
             >
+              {#each [40, 55, 70, 85, 100] as percent (percent)}
+                <option value={percent}>{percent}%</option>
+              {/each}
+            </select>
           </label>
-          <ColorField
-            label="Footer colour"
-            value={draft.theme.footer.color}
-            onchange={(color) => (draft.theme.footer = { ...draft.theme.footer, color })}
-          />
+          <label class="inline">
+            <input
+              type="checkbox"
+              checked={draft.theme.scripture.verseNumbers.superscript}
+              onchange={(e) => setNumbers("superscript", e.currentTarget.checked)}
+            >
+            Raised
+          </label>
+          <label class="inline">
+            <input
+              type="checkbox"
+              checked={draft.theme.scripture.verseNumbers.bold}
+              onchange={(e) => setNumbers("bold", e.currentTarget.checked)}
+            >
+            Bold
+          </label>
         </div>
+        <div class="row">
+          <label class="inline">
+            <input
+              type="checkbox"
+              checked={draft.theme.scripture.verseNumbers.color === ""}
+              onchange={(e) => setNumbers("color", e.currentTarget.checked ? "" : "#f5c542")}
+            >
+            Numbers in the text colour
+          </label>
+          {#if draft.theme.scripture.verseNumbers.color !== ""}
+            <ColorField
+              label="Verse number colour"
+              value={draft.theme.scripture.verseNumbers.color}
+              onchange={(color) => setNumbers("color", color)}
+            />
+          {/if}
+        </div>
+        <label class="inline">
+          <input
+            type="checkbox"
+            checked={draft.theme.scripture.referenceOnEverySlide}
+            onchange={(e) =>
+              (draft.theme.scripture = {
+                ...draft.theme.scripture,
+                referenceOnEverySlide: e.currentTarget.checked,
+              })}
+          >
+          Show the reference on every slide (not just the first)
+        </label>
+      </section>
+
+      <section>
+        <h4>Scripture reference</h4>
+        <LabelEditor
+          name="Reference"
+          value={draft.theme.caption}
+          spacing={REFERENCE_SPACING}
+          {fonts}
+          onchange={(caption) => {
+            sample = "scripture";
+            activeBox = "caption";
+            draft.theme.caption = caption;
+          }}
+        />
+      </section>
+
+      <section>
+        <h4>Footer (copyright, CCLI)</h4>
+        <LabelEditor
+          name="Footer"
+          value={draft.theme.footer}
+          spacing={FOOTER_SPACING}
+          {fonts}
+          onchange={(footer) => {
+            activeBox = "footer";
+            draft.theme.footer = footer;
+          }}
+        />
       </section>
     </div>
   </div>

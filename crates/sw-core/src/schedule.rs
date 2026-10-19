@@ -19,11 +19,12 @@ use ts_rs::TS;
 use sw_bible::Passage;
 
 use crate::countdown::CountdownSlide;
+use crate::deck::{DeckSlide, SlideDeck};
 use crate::id::Id;
 use crate::media::MediaItem;
 use crate::presentation::Presentation;
 use crate::scripture::{self, ScriptureOptions, TranslationText};
-use crate::slides::SlideOptions;
+use crate::slides::{self, SlideOptions};
 use crate::song::Song;
 use crate::themes::{ContentKind, ItemLook, ThemeLibrary};
 
@@ -54,7 +55,7 @@ pub struct ScheduleItem {
 }
 
 /// What a schedule item shows.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
 #[serde(
     tag = "type",
     rename_all = "camelCase",
@@ -98,7 +99,16 @@ pub enum ItemContent {
         /// What it counts down to and what happens at zero.
         countdown: CountdownSlide,
     },
+    /// A presentation, imported PDF or slideshow of pictures: a copy of
+    /// the deck, so slides can be added or reordered for this service only.
+    Deck {
+        /// The deck. Its id links it back to the library (a slideshow made
+        /// in the schedule is not in the library).
+        deck: SlideDeck,
+    },
     /// An imported presentation (PDF or PowerPoint): one picture per page.
+    /// Only in schedules saved before decks could be edited; adding slides
+    /// to it turns it into a [`ItemContent::Deck`].
     Slides {
         /// The presentation's name.
         name: String,
@@ -138,6 +148,7 @@ impl ScheduleItem {
             ItemContent::Media { media } => media.name.clone(),
             ItemContent::Countdown { title, .. } => title.clone(),
             ItemContent::Slides { name, .. } | ItemContent::Playlist { name, .. } => name.clone(),
+            ItemContent::Deck { deck } => deck.name.clone(),
         }
     }
 
@@ -179,6 +190,43 @@ impl ScheduleItem {
             ItemContent::Playlist { name, tracks } => {
                 Presentation::from_playlist(name.clone(), tracks, look(ContentKind::Text, None))
             }
+            ItemContent::Deck { deck } => Presentation::from_deck(
+                deck,
+                look(ContentKind::Presentation, deck.theme_id),
+                themes,
+            ),
+        }
+    }
+
+    /// Turns the item into a deck if it can hold more slides: pictures,
+    /// videos, typed text and imported pages can; songs, scripture,
+    /// countdowns and music cannot. Returns the deck to change, or `None`.
+    pub fn as_deck(&mut self) -> Option<&mut SlideDeck> {
+        let deck = match &self.content {
+            ItemContent::Deck { .. } => None,
+            ItemContent::Media { media } => Some(SlideDeck::slideshow(
+                media.name.clone(),
+                std::slice::from_ref(media),
+            )),
+            ItemContent::Slides { name, pages } => Some(SlideDeck::slideshow(name.clone(), pages)),
+            ItemContent::Text { title, text } => Some(SlideDeck {
+                slides: slides::slides_from_text(text, SlideOptions::default())
+                    .into_iter()
+                    .map(|slide| DeckSlide::text(slide.text))
+                    .collect(),
+                ..SlideDeck::new(title.clone())
+            }),
+            ItemContent::Song { .. }
+            | ItemContent::Scripture { .. }
+            | ItemContent::Countdown { .. }
+            | ItemContent::Playlist { .. } => return None,
+        };
+        if let Some(deck) = deck {
+            self.content = ItemContent::Deck { deck };
+        }
+        match &mut self.content {
+            ItemContent::Deck { deck } => Some(deck),
+            _ => None,
         }
     }
 }
@@ -229,6 +277,27 @@ impl Schedule {
         let before = self.items.len();
         self.items.retain(|item| item.id != id);
         self.items.len() != before
+    }
+
+    /// The item with `id`, for changing.
+    pub fn get_mut(&mut self, id: Id) -> Option<&mut ScheduleItem> {
+        self.items.iter_mut().find(|item| item.id == id)
+    }
+
+    /// Replaces every copy of `deck` (matched by id) with the given version.
+    /// Returns the ids of the items that changed.
+    pub fn refresh_deck(&mut self, deck: &SlideDeck) -> Vec<Id> {
+        let mut changed = Vec::new();
+        for item in &mut self.items {
+            if let ItemContent::Deck { deck: copy } = &mut item.content
+                && copy.id == deck.id
+                && copy != deck
+            {
+                *copy = deck.clone();
+                changed.push(item.id);
+            }
+        }
+        changed
     }
 
     /// Replaces every copy of `song` (matched by id) with the given version.

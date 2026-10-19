@@ -24,6 +24,7 @@
 //! | 2       | scripture items                |
 //! | 3       | media items and media files    |
 //! | 4       | countdowns, presentations, playlists |
+//! | 5       | editable presentations and slideshows |
 //!
 //! A file is written with the *lowest* version that can hold it, so a
 //! schedule without scripture still opens in versions that only know v1.
@@ -37,7 +38,7 @@ use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipArchive, ZipWriter};
 
 /// The newest format version this build reads (and writes, when needed).
-pub const FORMAT_VERSION: u32 = 4;
+pub const FORMAT_VERSION: u32 = 5;
 
 /// Name of the schedule entry inside the archive.
 const SCHEDULE_ENTRY: &str = "schedule.json";
@@ -267,7 +268,9 @@ fn version_needed(schedule: &Schedule, has_media_files: bool) -> u32 {
     let has =
         |wanted: fn(&ItemContent) -> bool| schedule.items.iter().any(|item| wanted(&item.content));
 
-    if has(|content| {
+    if has(|content| matches!(content, ItemContent::Deck { .. })) {
+        5
+    } else if has(|content| {
         matches!(
             content,
             ItemContent::Countdown { .. }

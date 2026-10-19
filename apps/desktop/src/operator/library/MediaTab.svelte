@@ -5,6 +5,8 @@
 
   - Import… copies files into the library (videos can take a moment).
   - Click to select, double-click to preview, drag onto the schedule.
+  - ⌘/Ctrl-click or Shift-click to pick several; dragging them onto the
+    schedule (or "Add as Slideshow") makes one slideshow item.
   - "Set as Logo" makes the selected image the Logo button's picture.
   - Sound plays in the music bar at the bottom of the window ("Play"), or
     goes in the schedule as background music.
@@ -14,8 +16,11 @@
   import { getMediaUrls } from "@simpleworship/renderer";
   import { Button } from "@simpleworship/ui";
   import { open } from "@tauri-apps/plugin-dialog";
+  import { SvelteSet } from "svelte/reactivity";
   import {
     addMediaToSchedule,
+    addPlaylistToSchedule,
+    addSlideshowToSchedule,
     deleteMedia,
     renameMedia,
     setLogo,
@@ -42,10 +47,15 @@
 
   const urls = getMediaUrls();
   let filter: Filter = $state("all");
+  /** The item last clicked: the one the single-item buttons act on. */
   let selectedId: string | null = $state(null);
+  /** Every picked item (more than one with ⌘/Ctrl- or Shift-click). */
+  const picked = new SvelteSet<string>();
 
   const shown = $derived(media.list.filter((item) => filter === "all" || item.kind === filter));
   const selected = $derived(media.list.find((item) => item.id === selectedId) ?? null);
+  /** The picked items, in the order they are shown. */
+  const pickedItems = $derived(shown.filter((item) => picked.has(item.id)));
   const logoId = $derived(engine.output?.logo?.id ?? null);
 
   async function chooseAndImport() {
@@ -98,8 +108,56 @@
     return { image: "Image", video: "Video", audio: "Sound" }[item.kind];
   }
 
+  /** Click: pick one. ⌘/Ctrl-click: add or remove one. Shift-click: a range. */
+  function pick(event: MouseEvent, item: MediaItem) {
+    if (event.metaKey || event.ctrlKey) {
+      if (picked.has(item.id)) picked.delete(item.id);
+      else picked.add(item.id);
+    } else if (event.shiftKey && selectedId) {
+      const from = shown.findIndex((other) => other.id === selectedId);
+      const to = shown.findIndex((other) => other.id === item.id);
+      const [start, end] = from < to ? [from, to] : [to, from];
+      for (const other of shown.slice(start, end + 1)) picked.add(other.id);
+    } else {
+      picked.clear();
+      picked.add(item.id);
+    }
+    selectedId = item.id;
+  }
+
+  /** The picked items as one schedule item: music for sound, else a slideshow. */
+  async function addPicked() {
+    const ids = pickedItems.map((item) => item.id);
+    try {
+      if (pickedItems.every((item) => item.kind === "audio")) {
+        await addPlaylistToSchedule(`Music (${ids.length} tracks)`, ids);
+      } else {
+        await addSlideshowToSchedule(ids);
+      }
+    } catch (error) {
+      engine.showError(error);
+    }
+  }
+
+  async function removePicked() {
+    const answer = await prompts.ask({
+      title: "Delete media?",
+      message: `Delete ${pickedItems.length} items? Themes and schedule items that use them will show nothing in their place.`,
+      buttons: [
+        { id: "cancel", label: "Cancel" },
+        { id: "delete", label: "Delete", variant: "live" },
+      ],
+      cancel: "cancel",
+    });
+    if (answer !== "delete") return;
+    for (const item of pickedItems) await deleteMedia(item.id);
+    picked.clear();
+  }
+
   function startDrag(event: DragEvent, item: MediaItem) {
-    event.dataTransfer?.setData(MEDIA_DRAG_TYPE, item.id);
+    // Dragging one of the picked items drags them all.
+    const dragged = picked.has(item.id) ? pickedItems : [item];
+    event.dataTransfer?.setData(MEDIA_DRAG_TYPE, dragged.map((one) => one.id).join("\n"));
     if (event.dataTransfer) event.dataTransfer.effectAllowed = "copy";
   }
 </script>
@@ -130,35 +188,46 @@
 
     <span class="spacer"></span>
 
-    {#if selected}
-      <input
-        class="name"
-        value={selected.name}
-        aria-label="Name"
-        onchange={(e) => onSelected((item) => renameMedia(item.id, e.currentTarget.value))}
-      >
-    {/if}
-    {#if selected?.kind === "image"}
-      {#if selected.id === logoId}
-        <Button onclick={() => onSelected(() => setLogo(null))}>Remove Logo</Button>
-      {:else}
-        <Button onclick={() => onSelected((item) => setLogo(item.id))}>Set as Logo</Button>
-      {/if}
-    {/if}
-    <Button disabled={!selected} onclick={() => onSelected(remove)}>Delete</Button>
-    <Button disabled={!selected} onclick={() => onSelected((item) => addMediaToSchedule(item.id))}>
-      Add to Schedule
-    </Button>
-    {#if selected?.kind === "audio"}
-      <Button variant="primary" onclick={() => selected && play(selected)}>Play</Button>
-    {:else}
-      <Button
-        variant="primary"
-        disabled={!selected}
-        onclick={() => onSelected((item) => showMediaInPreview(item.id))}
-      >
-        Show in Preview
+    {#if pickedItems.length > 1}
+      <span class="progress">{pickedItems.length} selected</span>
+      <Button onclick={removePicked}>Delete</Button>
+      <Button variant="primary" onclick={addPicked}>
+        {pickedItems.every((item) => item.kind === "audio") ? "Add as Music" : "Add as Slideshow"}
       </Button>
+    {:else}
+      {#if selected}
+        <input
+          class="name"
+          value={selected.name}
+          aria-label="Name"
+          onchange={(e) => onSelected((item) => renameMedia(item.id, e.currentTarget.value))}
+        >
+      {/if}
+      {#if selected?.kind === "image"}
+        {#if selected.id === logoId}
+          <Button onclick={() => onSelected(() => setLogo(null))}>Remove Logo</Button>
+        {:else}
+          <Button onclick={() => onSelected((item) => setLogo(item.id))}>Set as Logo</Button>
+        {/if}
+      {/if}
+      <Button disabled={!selected} onclick={() => onSelected(remove)}>Delete</Button>
+      <Button
+        disabled={!selected}
+        onclick={() => onSelected((item) => addMediaToSchedule(item.id))}
+      >
+        Add to Schedule
+      </Button>
+      {#if selected?.kind === "audio"}
+        <Button variant="primary" onclick={() => selected && play(selected)}>Play</Button>
+      {:else}
+        <Button
+          variant="primary"
+          disabled={!selected}
+          onclick={() => onSelected((item) => showMediaInPreview(item.id))}
+        >
+          Show in Preview
+        </Button>
+      {/if}
     {/if}
   </div>
 
@@ -168,10 +237,10 @@
         <button
           type="button"
           class="card"
-          class:selected={item.id === selectedId}
+          class:selected={picked.has(item.id)}
           draggable="true"
           ondragstart={(event) => startDrag(event, item)}
-          onclick={() => (selectedId = item.id)}
+          onclick={(event) => pick(event, item)}
           ondblclick={() => activate(item)}
         >
           <span class="picture">

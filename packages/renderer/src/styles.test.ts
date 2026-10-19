@@ -1,6 +1,6 @@
 import type { TextStyle } from "@simpleworship/protocol";
 import { describe, expect, it } from "vitest";
-import { backgroundCss, textBoxStyle, textStyle } from "./styles.ts";
+import { backgroundCss, labelStyle, textBoxStyle, textStyle, verseNumberStyle } from "./styles.ts";
 
 const baseText: TextStyle = {
   fontFamily: "Arial",
@@ -52,5 +52,52 @@ describe("backgroundCss", () => {
     expect(
       backgroundCss({ type: "image", media: { id: "m", file: "a.png" }, fit: "cover" }),
     ).toBeNull();
+  });
+});
+
+describe("labelStyle", () => {
+  const label = {
+    visible: true,
+    fontSize: 30,
+    color: "",
+    fontFamily: "",
+    bold: true,
+    align: null,
+    placement: "box" as const,
+    textBox: {
+      top: 0,
+      right: 0,
+      bottom: 0,
+      left: 0,
+      verticalAlign: "bottom" as const,
+      autoFit: true,
+    },
+  };
+
+  it("follows the slide text when it has no font, colour or alignment of its own", () => {
+    const style = labelStyle(label, baseText, true);
+    expect(style).toContain("font-family: Arial");
+    expect(style).toContain("color: #fff");
+    expect(style).toContain("text-align: center");
+    expect(style).toContain("font-size: 30px");
+  });
+
+  it("leaves the size to autofit in its own box", () => {
+    const style = labelStyle({ ...label, color: "gold", align: "right" }, baseText, false);
+    expect(style).not.toContain("font-size");
+    expect(style).toContain("color: gold");
+    expect(style).toContain("text-align: right");
+  });
+});
+
+describe("verseNumberStyle", () => {
+  it("fades numbers without a colour and raises them when asked", () => {
+    const numbers = { visible: true, color: "", sizePercent: 55, superscript: true, bold: false };
+    expect(verseNumberStyle(numbers)).toContain("opacity: 0.8");
+    expect(verseNumberStyle(numbers)).toContain("vertical-align: super");
+    const inline = verseNumberStyle({ ...numbers, color: "gold", superscript: false });
+    expect(inline).toContain("color: gold");
+    expect(inline).not.toContain("opacity");
+    expect(inline).toContain("vertical-align: baseline");
   });
 });
