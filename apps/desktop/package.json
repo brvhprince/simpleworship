@@ -1,0 +1,31 @@
+{
+  "name": "@simpleworship/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SimpleWorship desktop app: operator window, projector output and stage display.",
+  "license": "GPL-3.0-or-later",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@simpleworship/protocol": "workspace:*",
+    "@simpleworship/renderer": "workspace:*",
+    "@simpleworship/ui": "workspace:*",
+    "@tauri-apps/api": "^2.12.4"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^7.3.1",
+    "@tauri-apps/cli": "^2.12.3",
+    "svelte": "^5.57.2",
+    "svelte-check": "^4.7.7",
+    "typescript": "^6.0.3",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.5"
+  }
+}

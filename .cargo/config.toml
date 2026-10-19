@@ -1,0 +1,4 @@
+# ts-rs writes generated TypeScript bindings here when `cargo test` runs.
+# Regenerate with `pnpm gen:bindings`.
+[env]
+TS_RS_EXPORT_DIR = { value = "packages/protocol/src/generated", relative = true }

@@ -1,0 +1,51 @@
+# Lint, test and build SimpleWorship on every push and pull request.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  lint:
+    name: Lint and formatting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Biome (JS/TS/Svelte formatting and lint)
+        run: pnpm exec biome ci .
+      - name: rustfmt
+        run: cargo fmt --all --check
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: TypeScript bindings are up to date
+        run: |
+          pnpm gen:bindings
+          git diff --exit-code packages/protocol/src/generated
+
+  test:
+    name: Test and build (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+      - name: Rust tests
+        run: cargo test --workspace
+      - name: Type checks
+        run: pnpm -r check
+      - name: Frontend tests
+        run: pnpm -r test
+      - name: Build the app (no installer)
+        run: pnpm --filter @simpleworship/desktop tauri build --no-bundle

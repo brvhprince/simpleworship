@@ -1,0 +1,91 @@
+<!--
+  @component
+  A modal dialog built on the native `<dialog>` element, so focus trapping
+  and the Escape key work out of the box.
+
+  The dialog is open while it is rendered. To close it, stop rendering it:
+  ```svelte
+  {#if editing}
+    <Dialog title="Edit song" onclose={() => (editing = false)}>…</Dialog>
+  {/if}
+  ```
+  `onclose` runs when the operator presses Escape.
+-->
+<script lang="ts">
+  import type { Snippet } from "svelte";
+
+  interface Props {
+    title: string;
+    onclose: () => void;
+    children: Snippet;
+    /** Buttons shown at the bottom right. */
+    actions?: Snippet;
+  }
+
+  let { title, onclose, children, actions }: Props = $props();
+
+  let dialog: HTMLDialogElement;
+
+  $effect(() => {
+    dialog.showModal();
+    return () => dialog.close();
+  });
+
+  /** Escape fires "cancel". Stop the browser closing the dialog by itself:
+   *  the parent decides, by no longer rendering it. */
+  function handleCancel(event: Event) {
+    event.preventDefault();
+    onclose();
+  }
+</script>
+
+<dialog bind:this={dialog} oncancel={handleCancel} aria-label={title}>
+  <header>{title}</header>
+  <div class="body">
+    {@render children()}
+  </div>
+  {#if actions}
+    <footer>{@render actions()}</footer>
+  {/if}
+</dialog>
+
+<style>
+  dialog {
+    width: min(1100px, 92vw);
+    max-height: 90vh;
+    padding: 0;
+    border: 1px solid var(--sw-border);
+    border-radius: var(--sw-radius);
+    background: var(--sw-surface);
+    color: var(--sw-text);
+  }
+
+  dialog[open] {
+    display: flex;
+    flex-direction: column;
+  }
+
+  dialog::backdrop {
+    background: rgba(0, 0, 0, 0.6);
+  }
+
+  header {
+    padding: var(--sw-space-3) var(--sw-space-4);
+    font-weight: 600;
+    border-bottom: 1px solid var(--sw-border);
+  }
+
+  .body {
+    padding: var(--sw-space-4);
+    overflow: auto;
+    flex: 1;
+  }
+
+  footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--sw-space-2);
+    padding: var(--sw-space-3) var(--sw-space-4);
+    border-top: 1px solid var(--sw-border);
+  }
+</style>

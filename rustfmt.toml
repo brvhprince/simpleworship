@@ -1,0 +1,4 @@
+# Formatting for all Rust code in the workspace. Run with `cargo fmt --all`.
+edition = "2024"
+max_width = 100
+use_field_init_shorthand = true

@@ -1,0 +1,40 @@
+//! The error type returned by every IPC command.
+
+use serde::{Serialize, Serializer};
+use thiserror::Error;
+
+/// Anything that can go wrong while handling a command from the UI.
+///
+/// Errors reach JavaScript as a plain message string, so a rejected
+/// `invoke()` promise can be shown to the operator as-is.
+#[derive(Debug, Error)]
+pub enum AppError {
+    /// The library database failed.
+    #[error(transparent)]
+    Database(#[from] sw_db::DbError),
+
+    /// The engine rejected a command.
+    #[error(transparent)]
+    Engine(#[from] sw_core::EngineError),
+
+    /// Tauri failed, e.g. while creating a window.
+    #[error(transparent)]
+    Tauri(#[from] tauri::Error),
+
+    /// A song id that is not in the library.
+    #[error("that song is no longer in the library")]
+    SongNotFound,
+
+    /// A monitor index that does not exist (any more).
+    #[error("monitor {0} is not connected")]
+    MonitorNotFound(usize),
+}
+
+impl Serialize for AppError {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(&self.to_string())
+    }
+}
+
+/// The result type of IPC commands.
+pub type AppResult<T> = Result<T, AppError>;

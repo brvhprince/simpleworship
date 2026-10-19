@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- SimpleWorship app icon: a projected slide with lyric lines and a warm light. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3b5bdb"/>
+      <stop offset="1" stop-color="#1c2a6b"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.32" r="0.5">
+      <stop offset="0" stop-color="#ffe8a3" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#ffe8a3" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect x="32" y="32" width="960" height="960" rx="220" fill="url(#bg)"/>
+  <circle cx="512" cy="330" r="300" fill="url(#glow)"/>
+  <rect x="192" y="300" width="640" height="400" rx="48" fill="#ffffff" fill-opacity="0.12" stroke="#ffffff" stroke-width="28"/>
+  <rect x="292" y="410" width="440" height="40" rx="20" fill="#ffffff"/>
+  <rect x="342" y="490" width="340" height="40" rx="20" fill="#ffffff"/>
+  <rect x="392" y="570" width="240" height="40" rx="20" fill="#ffffff" fill-opacity="0.7"/>
+</svg>

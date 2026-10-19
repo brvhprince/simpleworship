@@ -1,0 +1,31 @@
+{
+  "name": "@simpleworship/renderer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Draws SimpleWorship slides. Used by output windows, stage displays and previews.",
+  "license": "GPL-3.0-or-later",
+  "type": "module",
+  "svelte": "./src/index.ts",
+  "exports": {
+    ".": {
+      "svelte": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "check": "svelte-check --tsconfig ./tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@simpleworship/protocol": "workspace:*"
+  },
+  "peerDependencies": {
+    "svelte": "^5.57.2"
+  },
+  "devDependencies": {
+    "svelte": "^5.57.2",
+    "svelte-check": "^4.7.7",
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.5"
+  }
+}
