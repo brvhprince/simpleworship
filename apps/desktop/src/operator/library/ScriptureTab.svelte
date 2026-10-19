@@ -2,8 +2,9 @@
   @component
   The Scripture tab: find a passage and show it.
 
-  - Type a reference ("jn 3:16-18") and press Enter to preview it, or type
-    words ("love is patient") to search the Bible.
+  - Type a reference ("jn 3:16-18") and press Enter to preview it; press
+    Enter again to send it live. Or type words ("love is patient") to
+    search the Bible.
   - Or pick a book, a chapter and verses. Click a verse to select it;
     shift-click another to select everything in between.
   - Choose a translation, and optionally a second one to show side by side.
@@ -179,12 +180,47 @@
 
   // ── Showing ────────────────────────────────────────────────────────────
 
-  async function preview() {
-    if (!passage) return;
+  /**
+   * What was last sent to preview from here, as a key. A second Enter with
+   * nothing changed sends it live, so a passage reaches the screen in two
+   * keystrokes while the speaker is preaching.
+   */
+  let previewedKey: string | null = null;
+
+  /** Identifies exactly what a preview would show. */
+  function previewKey(shown: Passage): string {
+    return JSON.stringify([shown, bibleIds, options]);
+  }
+
+  async function preview(shown: Passage | null = passage) {
+    if (!shown) return;
     try {
-      await showScriptureInPreview(passage, bibleIds, options);
+      await showScriptureInPreview(shown, bibleIds, options);
+      previewedKey = previewKey(shown);
     } catch (error) {
       engine.showError(error);
+    }
+  }
+
+  /** Enter: preview the passage, or send it live if it is already previewed. */
+  async function previewOrGoLive() {
+    // Parse what is in the box right now: the as-you-type parse runs a
+    // moment later, and a fast operator can press Enter before it does.
+    const fresh = query.trim() ? (await parseReference(query)).passage : passage;
+    if (!fresh) return;
+
+    // Only go live if the preview still shows this passage: something else
+    // (a song, a schedule item) may have been previewed in between.
+    const source = engine.preview?.presentation.source;
+    const stillPreviewed =
+      previewKey(fresh) === previewedKey &&
+      source?.type === "scripture" &&
+      JSON.stringify(source.passage) === JSON.stringify(fresh);
+    if (stillPreviewed) {
+      engine.dispatch({ type: "goLive" });
+    } else {
+      passage = fresh;
+      await preview(fresh);
     }
   }
 
@@ -200,7 +236,7 @@
   function handleQueryKeys(event: KeyboardEvent) {
     if (event.key === "Enter" && !searching) {
       event.preventDefault();
-      void preview();
+      void previewOrGoLive();
     }
   }
 
@@ -290,7 +326,11 @@
     <Button disabled={!passage || bibleIds.length === 0} onclick={addToSchedule}>
       Add to Schedule
     </Button>
-    <Button variant="primary" disabled={!passage || bibleIds.length === 0} onclick={preview}>
+    <Button
+      variant="primary"
+      disabled={!passage || bibleIds.length === 0}
+      onclick={() => preview()}
+    >
       Show in Preview
     </Button>
   </div>

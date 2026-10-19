@@ -88,7 +88,10 @@ export const autofit: Action<HTMLElement, AutofitOptions> = (box, initial) => {
   return {
     update(next) {
       options = next;
-      fitText();
+      // Svelte calls `update` before it has put the new text (or swapped
+      // lyrics for scripture) on the page. Measuring now would measure the
+      // old content, so wait for the next frame, when the new text is laid out.
+      requestAnimationFrame(fitText);
     },
   };
 };

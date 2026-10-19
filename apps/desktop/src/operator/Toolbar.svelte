@@ -31,10 +31,14 @@
 
   onMount(async () => {
     await refreshMonitors();
-    // A sensible default: the projector goes on the first screen that is not
-    // the operator's own.
+    // Ready to go at startup: with a projector or TV connected, the output
+    // opens on the first screen that is not the operator's own. With only
+    // the main screen, nothing opens (it would cover the operator window).
     const secondary = monitors.find((monitor) => !monitor.isPrimary);
-    if (secondary) projectorScreen = String(secondary.index);
+    if (secondary) {
+      projectorScreen = String(secondary.index);
+      await show("projector", projectorScreen);
+    }
   });
 
   /** Re-reads the monitor list. Called whenever a picker is opened, so a

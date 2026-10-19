@@ -12,7 +12,9 @@ with EasyWorship should feel at home.
 - **Operator window** in the familiar layout: schedule, preview, live, and the
   library along the bottom.
 - **Output and stage display** on any monitor, or in a window when you only
-  have one screen. Outputs never steal keyboard focus from the operator.
+  have one screen. With a projector connected, the output opens on it
+  automatically at startup. Outputs never steal keyboard focus from the
+  operator.
   Testing on a single screen? A full-screen output on the operator's own
   screen stays *behind* the operator window, and Esc closes it.
 - **Live controls:** Black, Logo, Clear Text, Clear Background, and cut or fade
@@ -58,6 +60,7 @@ with EasyWorship should feel at home.
 | Enter                                | Send preview live                         |
 | F6 / F7 / F8 / F9                    | Black / Logo / Clear Text / Clear Background |
 | Esc (in an output window)            | Close that output                         |
+| Enter, Enter (in the Scripture tab)  | Preview the passage, then send it live    |
 | ↑ / ↓ and Delete (in the schedule)   | Preview the previous / next item, remove the item |
 | ⌘/Ctrl + N, O, S, Shift+S            | New, Open, Save, Save As schedule         |
 | V, C, B, P, T, I, E (+ a number)     | Jump to Verse 2, Chorus, Bridge, …        |
