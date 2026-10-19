@@ -13,6 +13,7 @@
   import { saveSong, songPresentation } from "../../lib/api.ts";
   import { engine } from "../../lib/engine.svelte.ts";
   import { frameAt } from "../../lib/frames.ts";
+  import { t } from "../../lib/i18n/i18n.svelte.ts";
   import { overrideMenuItem } from "../../lib/menu.ts";
   import { withModifier } from "../../lib/platform.ts";
 
@@ -60,7 +61,7 @@
 
   async function save() {
     if (!draft.title.trim()) {
-      error = "Please give the song a title.";
+      error = t("song.needsTitle");
       return;
     }
     saving = true;
@@ -80,42 +81,43 @@
   $effect(() => overrideMenuItem("schedule-save", save));
 </script>
 
-<Dialog title={isNew ? "New Song" : `Edit “${draft.title}”`} onclose={oncancel}>
+<Dialog
+  title={isNew ? t("song.newTitle") : t("song.editTitle", { title: draft.title })}
+  onclose={oncancel}
+>
   <div class="editor">
     <div class="form">
       <label class="wide">
-        Title
+        {t("song.title")}
         <input bind:this={titleInput} bind:value={draft.title}>
       </label>
       <label>
-        Author
+        {t("song.author")}
         <input bind:value={draft.author}>
       </label>
       <label>
-        CCLI song number
+        {t("song.ccli")}
         <input bind:value={draft.ccliNumber} inputmode="numeric">
       </label>
       <label class="wide">
-        Copyright
-        <input bind:value={draft.copyright} placeholder="© 2024 Example Music">
+        {t("song.copyright")}
+        <input bind:value={draft.copyright} placeholder={t("song.copyrightPlaceholder")}>
       </label>
       <label class="wide">
-        Lyrics
+        {t("song.lyrics")}
         <textarea bind:value={draft.lyrics} spellcheck="true"></textarea>
       </label>
       <p class="help wide">
-        Start each section with a tag on its own line, such as <code>[Verse 1]</code>,
-        <code>[Chorus]</code>
-        or <code>[Bridge]</code>. A blank line starts a new slide.
+        {t("song.help")}
       </p>
       <label>
-        Order (optional)
+        {t("song.order")}
         <input bind:value={draft.arrangement} placeholder="V1 C V2 C B C">
       </label>
       <label>
-        Theme
+        {t("common.theme")}
         <select bind:value={draft.themeId}>
-          <option value={null}>Default song theme</option>
+          <option value={null}>{t("song.defaultTheme")}</option>
           {#each engine.themes.themes as theme (theme.id)}
             <option value={theme.id}>{theme.theme.name}</option>
           {/each}
@@ -123,8 +125,8 @@
       </label>
     </div>
 
-    <aside class="slides" aria-label="Slide preview">
-      <h3>{slides?.slides.length ?? 0} slides</h3>
+    <aside class="slides" aria-label={t("song.slidePreview")}>
+      <h3>{t("common.slides", { count: slides?.slides.length ?? 0 })}</h3>
       {#if slides}
         {#each slides.slides as slide, index (index)}
           {@const frame = frameAt(slides, index)}
@@ -143,9 +145,9 @@
     {#if error}
       <span class="error" role="alert">{error}</span>
     {/if}
-    <Button onclick={oncancel}>Cancel</Button>
+    <Button onclick={oncancel}>{t("common.cancel")}</Button>
     <Button variant="primary" disabled={saving} shortcut={withModifier("S")} onclick={save}
-      >Save</Button
+      >{t("common.save")}</Button
     >
   {/snippet}
 </Dialog>
@@ -193,11 +195,6 @@
   .help {
     margin: 0;
     color: var(--sw-text-faint);
-  }
-
-  code {
-    font-family: var(--sw-font-mono);
-    color: var(--sw-text-muted);
   }
 
   .slides {

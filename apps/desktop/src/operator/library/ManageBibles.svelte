@@ -10,6 +10,7 @@
   import { deleteBible, importBible, renameBible } from "../../lib/api.ts";
   import { bibles } from "../../lib/bibles.svelte.ts";
   import { engine } from "../../lib/engine.svelte.ts";
+  import { t } from "../../lib/i18n/i18n.svelte.ts";
   import { prompts } from "../../lib/prompts.svelte.ts";
 
   interface Props {
@@ -21,7 +22,7 @@
   /** File types the importers understand (see `crates/sw-bible/src/import`). */
   const BIBLE_FILTERS = [
     {
-      name: "Bible files",
+      name: t("bibles.files"),
       extensions: ["xml", "osis", "xmm", "zip", "usfm", "sfm", "usx"],
     },
   ];
@@ -53,11 +54,11 @@
 
   async function remove(bible: BibleInfo) {
     const answer = await prompts.ask({
-      title: "Delete Bible?",
-      message: `Delete “${bible.name}” (${bible.abbreviation})? Schedules that use it keep their copy of the text.`,
+      title: t("bibles.deleteTitle"),
+      message: t("bibles.deleteMessage", { name: bible.name, abbreviation: bible.abbreviation }),
       buttons: [
-        { id: "cancel", label: "Cancel" },
-        { id: "delete", label: "Delete", variant: "live" },
+        { id: "cancel", label: t("common.cancel") },
+        { id: "delete", label: t("common.delete"), variant: "live" },
       ],
       cancel: "cancel",
     });
@@ -70,13 +71,13 @@
   }
 </script>
 
-<Dialog title="Bibles" {onclose}>
+<Dialog title={t("bibles.title")} {onclose}>
   <table>
     <thead>
       <tr>
-        <th>Short name</th>
-        <th>Name</th>
-        <th class="count">Verses</th>
+        <th>{t("bibles.shortName")}</th>
+        <th>{t("common.name")}</th>
+        <th class="count">{t("bibles.verses")}</th>
         <th></th>
       </tr>
     </thead>
@@ -87,14 +88,14 @@
             <input
               class="abbreviation"
               value={bible.abbreviation}
-              aria-label="Short name"
+              aria-label={t("bibles.shortName")}
               onchange={(e) => rename(bible, bible.name, e.currentTarget.value)}
             >
           </td>
           <td>
             <input
               value={bible.name}
-              aria-label="Name"
+              aria-label={t("common.name")}
               onchange={(e) => rename(bible, e.currentTarget.value, bible.abbreviation)}
             >
             {#if bible.copyright}
@@ -102,28 +103,26 @@
             {/if}
           </td>
           <td class="count">{bible.verseCount.toLocaleString()}</td>
-          <td><Button onclick={() => remove(bible)}>Delete</Button></td>
+          <td><Button onclick={() => remove(bible)}>{t("common.delete")}</Button></td>
         </tr>
       {:else}
         <tr>
-          <td colspan="4" class="hint">No Bibles installed yet.</td>
+          <td colspan="4" class="hint">{t("bibles.none")}</td>
         </tr>
       {/each}
     </tbody>
   </table>
 
   <p class="licence">
-    SimpleWorship includes the King James Version and the World English Bible, which are in the
-    public domain. You can import OSIS, Zefania, OpenSong, USX and USFM files (or a zip of them).
-    Most modern translations are copyrighted: only import Bibles you are licensed to show.
+    {t("bibles.licence")}
   </p>
 
   {#snippet actions()}
     {#if importing}
-      <span class="importing">Importing {importing}…</span>
+      <span class="importing">{t("bibles.importing", { file: importing })}</span>
     {/if}
-    <Button disabled={importing !== null} onclick={chooseAndImport}>Import Bible…</Button>
-    <Button variant="primary" onclick={onclose}>Done</Button>
+    <Button disabled={importing !== null} onclick={chooseAndImport}>{t("bibles.import")}</Button>
+    <Button variant="primary" onclick={onclose}>{t("common.done")}</Button>
   {/snippet}
 </Dialog>
 

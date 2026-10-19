@@ -9,6 +9,7 @@
   import { Button, Dialog } from "@simpleworship/ui";
   import { parseReference, scriptureText } from "../../lib/api.ts";
   import { bibles } from "../../lib/bibles.svelte.ts";
+  import { t } from "../../lib/i18n/i18n.svelte.ts";
 
   interface Props {
     /** Called with the verse text and the reference (e.g. "Acts 19:20"). */
@@ -53,7 +54,7 @@
       try {
         const found = await scriptureText(feedback.passage, id);
         preview = found.verses.map((verse) => verse.text.trim()).join(" ");
-        if (!preview) problem = "That passage is not in this Bible.";
+        if (!preview) problem = t("insert.notInBible");
       } catch (error) {
         problem = String(error);
         preview = "";
@@ -68,17 +69,17 @@
   }
 </script>
 
-<Dialog title="Insert Scripture" size="small" {onclose}>
+<Dialog title={t("insert.title")} size="small" {onclose}>
   <div class="form">
     <div class="row">
       <input
         bind:this={referenceInput}
         bind:value={query}
-        placeholder="Reference, e.g. acts 19:20 or ps 91:15-16"
-        aria-label="Reference"
+        placeholder={t("insert.placeholder")}
+        aria-label={t("insert.reference")}
         onkeydown={(e) => e.key === "Enter" && insert()}
       >
-      <select bind:value={bibleId} aria-label="Bible">
+      <select bind:value={bibleId} aria-label={t("insert.bible")}>
         {#each bibles.list as bible (bible.id)}
           <option value={bible.id}>{bible.abbreviation}</option>
         {/each}
@@ -92,13 +93,13 @@
     {/if}
     <label class="check">
       <input type="checkbox" bind:checked={includeReference}>
-      Add the reference on its own line
+      {t("insert.withReference")}
     </label>
   </div>
 
   {#snippet actions()}
-    <Button onclick={onclose}>Cancel</Button>
-    <Button variant="primary" disabled={!preview} onclick={insert}>Insert</Button>
+    <Button onclick={onclose}>{t("common.cancel")}</Button>
+    <Button variant="primary" disabled={!preview} onclick={insert}>{t("insert.insert")}</Button>
   {/snippet}
 </Dialog>
 

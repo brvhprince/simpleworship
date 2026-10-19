@@ -16,9 +16,11 @@
   import { getMediaUrls } from "@simpleworship/renderer";
   import { Button } from "@simpleworship/ui";
   import { onMount, untrack } from "svelte";
+  import { setMenuLabels } from "../lib/api.ts";
   import { bibles } from "../lib/bibles.svelte.ts";
   import { dialogs } from "../lib/dialogs.svelte.ts";
   import { engine } from "../lib/engine.svelte.ts";
+  import { menuLabels, t } from "../lib/i18n/i18n.svelte.ts";
   import { importer } from "../lib/importer.svelte.ts";
   import { media } from "../lib/media.svelte.ts";
   import { connectEditMenu } from "../lib/menu.ts";
@@ -30,6 +32,8 @@
     isTypingTarget,
     SectionJumper,
   } from "../lib/shortcuts.ts";
+  import { updates } from "../lib/updates.svelte.ts";
+  import AboutDialog from "./AboutDialog.svelte";
   import AudioPlayer from "./AudioPlayer.svelte";
   import ImportDialog from "./ImportDialog.svelte";
   import Library from "./library/Library.svelte";
@@ -42,6 +46,12 @@
   import VideoControls from "./VideoControls.svelte";
 
   const urls = getMediaUrls();
+
+  // The native menu bar follows the interface language.
+  $effect(() => {
+    const labels = menuLabels();
+    setMenuLabels(labels).catch((error) => engine.showError(error));
+  });
 
   // Presentations set to move on by themselves: this window keeps time and
   // tells the engine when the live slide's time is up. Stepping through by
@@ -77,6 +87,7 @@
       importer.connect(),
       dialogs.connect(),
       connectEditMenu(),
+      updates.connect(),
     ];
     for (const connection of connections) {
       connection.catch((error) => engine.showError(error));
@@ -170,7 +181,7 @@
         disabled={!engine.preview}
         onclick={() => engine.dispatch({ type: "goLive" })}
       >
-        Go Live
+        {t("pane.goLive")}
       </Button>
     {/snippet}
   </SlidePane>
@@ -188,7 +199,7 @@
     {/snippet}
     {#snippet actions()}
       <Button disabled={!engine.live} onclick={() => engine.dispatch({ type: "clearLive" })}>
-        Clear
+        {t("common.clear")}
       </Button>
     {/snippet}
   </SlidePane>
@@ -201,6 +212,8 @@
     <SettingsDialog />
   {:else if dialogs.open === "usage"}
     <UsageDialog />
+  {:else if dialogs.open === "about"}
+    <AboutDialog />
   {/if}
   {#if importer.isOpen}
     <ImportDialog />

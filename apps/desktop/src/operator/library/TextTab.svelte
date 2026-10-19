@@ -9,13 +9,14 @@
   import { Button } from "@simpleworship/ui";
   import { addCountdownToSchedule, addTextToSchedule, showTextInPreview } from "../../lib/api.ts";
   import { engine } from "../../lib/engine.svelte.ts";
+  import { t } from "../../lib/i18n/i18n.svelte.ts";
   import { withModifier } from "../../lib/platform.ts";
 
   let title = $state("");
   let text = $state("");
 
   // Countdown settings.
-  let countdownMessage = $state("Service starts in");
+  let countdownMessage = $state(t("countdown.defaultMessage"));
   let countdownMode: CountdownTarget["type"] = $state("timeOfDay");
   let countdownMinutes = $state(5);
   let countdownTime = $state("10:30");
@@ -26,11 +27,11 @@
     let label: string;
     if (countdownMode === "duration") {
       target = { type: "duration", seconds: Math.max(1, Math.round(countdownMinutes * 60)) };
-      label = `Countdown (${countdownMinutes} min)`;
+      label = t("countdown.labelFor", { minutes: countdownMinutes });
     } else {
       const [hour = 0, minute = 0] = countdownTime.split(":").map(Number);
       target = { type: "timeOfDay", hour, minute };
-      label = `Countdown to ${countdownTime}`;
+      label = t("countdown.labelUntil", { time: countdownTime });
     }
     const atEnd: CountdownEnd = countdownNext ? "nextItem" : "stay";
     try {
@@ -67,46 +68,48 @@
 
 <div class="tab">
   <div class="text-tab">
-    <input bind:value={title} placeholder="Title (optional)" aria-label="Title">
+    <input bind:value={title} placeholder={t("text.titlePlaceholder")} aria-label={t("text.title")}>
     <textarea
       bind:value={text}
       onkeydown={handleKeydown}
-      placeholder="Type the text to show. Leave a blank line between slides."
-      aria-label="Text"
+      placeholder={t("text.placeholder")}
+      aria-label={t("text.text")}
     ></textarea>
     <div class="actions">
       <span class="hint">{withModifier("Enter")}</span>
-      <Button disabled={!text.trim()} onclick={addToSchedule}>Add to Schedule</Button>
-      <Button variant="primary" disabled={!text.trim()} onclick={preview}>Show in Preview</Button>
+      <Button disabled={!text.trim()} onclick={addToSchedule}>{t("common.addToSchedule")}</Button>
+      <Button variant="primary" disabled={!text.trim()} onclick={preview}
+        >{t("common.showInPreview")}</Button
+      >
     </div>
   </div>
 
   <section class="countdown">
-    <h4>Countdown</h4>
+    <h4>{t("countdown.title")}</h4>
     <div class="row">
-      <input bind:value={countdownMessage} aria-label="Countdown message" class="message">
-      <select bind:value={countdownMode} aria-label="Count down">
-        <option value="timeOfDay">until</option>
-        <option value="duration">for</option>
+      <input bind:value={countdownMessage} aria-label={t("countdown.message")} class="message">
+      <select bind:value={countdownMode} aria-label={t("countdown.mode")}>
+        <option value="timeOfDay">{t("countdown.until")}</option>
+        <option value="duration">{t("countdown.for")}</option>
       </select>
       {#if countdownMode === "timeOfDay"}
-        <input type="time" bind:value={countdownTime} aria-label="Time">
+        <input type="time" bind:value={countdownTime} aria-label={t("countdown.time")}>
       {:else}
         <input
           type="number"
           min="1"
           max="240"
           bind:value={countdownMinutes}
-          aria-label="Minutes"
+          aria-label={t("stage.minutes")}
           class="minutes"
         >
-        <span class="hint">min</span>
+        <span class="hint">{t("stage.minutesUnit")}</span>
       {/if}
       <label class="option">
         <input type="checkbox" bind:checked={countdownNext}>
-        then go to the next item
+        {t("countdown.thenNext")}
       </label>
-      <Button onclick={addCountdown}>Add to Schedule</Button>
+      <Button onclick={addCountdown}>{t("common.addToSchedule")}</Button>
     </div>
   </section>
 </div>

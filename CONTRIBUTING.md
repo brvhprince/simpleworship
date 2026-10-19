@@ -31,6 +31,14 @@ open any file and follow it.
 - Database changes are new files in `crates/sw-db/migrations/`. Never edit a
   migration that has been released.
 
+- **Interface text is translated.** Never write words the operator reads
+  straight into a component: add them to
+  `apps/desktop/src/lib/i18n/messages/en.json` and use `t("key")`. Then run
+  `pnpm i18n:check --sync`, which adds the new key (empty) to the other
+  languages for translators. See
+  [Translating SimpleWorship](apps/desktop/src/lib/i18n/messages/README.md).
+- Releases are described in [docs/releasing.md](docs/releasing.md).
+
 ## Before opening a pull request
 
 ```sh
@@ -38,6 +46,7 @@ pnpm format
 pnpm lint
 pnpm check
 pnpm test
+pnpm i18n:check
 ```
 
 ## License

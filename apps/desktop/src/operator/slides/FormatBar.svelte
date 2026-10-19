@@ -7,6 +7,7 @@
 <script lang="ts">
   import type { HorizontalAlign, VerticalAlign } from "@simpleworship/protocol";
   import { firstFamily, fontFamily } from "../../lib/fonts.ts";
+  import { t } from "../../lib/i18n/i18n.svelte.ts";
   import { withModifier } from "../../lib/platform.ts";
   import type { SlideEditor } from "../../lib/slides/editor.svelte.ts";
   import ColorField from "../themes/ColorField.svelte";
@@ -50,11 +51,11 @@
   }
 </script>
 
-<div class="bar" class:disabled={!box} role="toolbar" aria-label="Text style">
+<div class="bar" class:disabled={!box} role="toolbar" aria-label={t("format.toolbar")}>
   <select
     value={font}
     disabled={!box}
-    aria-label="Font"
+    aria-label={t("format.font")}
     onchange={(e) => editor.formatText({ fontFamily: fontFamily(e.currentTarget.value) })}
   >
     {#if font && !fonts.includes(font)}
@@ -71,14 +72,14 @@
     max="400"
     value={size || ""}
     disabled={!box}
-    aria-label="Text size"
-    title={box?.content.autoFit ? "The largest size; long text shrinks to fit" : "Text size"}
+    aria-label={t("format.size")}
+    title={box?.content.autoFit ? t("format.sizeHint") : t("format.size")}
     onchange={(e) => editor.formatText({ fontSize: e.currentTarget.valueAsNumber || size })}
   >
   <button
     type="button"
     disabled={!box}
-    title="Larger"
+    title={t("format.larger")}
     onmousedown={keepFocus}
     onclick={() => grow(1.1)}
   >
@@ -87,7 +88,7 @@
   <button
     type="button"
     disabled={!box}
-    title="Smaller"
+    title={t("format.smaller")}
     onmousedown={keepFocus}
     onclick={() => grow(1 / 1.1)}
   >
@@ -95,7 +96,7 @@
   </button>
   {#if box}
     <ColorField
-      label="Text colour"
+      label={t("format.color")}
       value={color}
       onchange={(value) => editor.formatText({ color: value })}
     />
@@ -107,7 +108,7 @@
     class="bold"
     class:on={current?.bold}
     disabled={!box}
-    title="Bold ({withModifier("B")})"
+    title={t("format.bold", { key: withModifier("B") })}
     onmousedown={keepFocus}
     onclick={() => editor.toggleText("bold")}
   >
@@ -118,7 +119,7 @@
     class="italic"
     class:on={current?.italic}
     disabled={!box}
-    title="Italic ({withModifier("I")})"
+    title={t("format.italic", { key: withModifier("I") })}
     onmousedown={keepFocus}
     onclick={() => editor.toggleText("italic")}
   >
@@ -129,7 +130,7 @@
     class="underline"
     class:on={current?.underline}
     disabled={!box}
-    title="Underline ({withModifier("U")})"
+    title={t("format.underline", { key: withModifier("U") })}
     onmousedown={keepFocus}
     onclick={() => editor.toggleText("underline")}
   >
@@ -138,9 +139,9 @@
 
   <span class="divider"></span>
   {#each [
-    ["left", "⇤", "Align left"],
-    ["center", "↔", "Centre"],
-    ["right", "⇥", "Align right"],
+    ["left", "⇤", t("format.alignLeft")],
+    ["center", "↔", t("format.alignCenter")],
+    ["right", "⇥", t("format.alignRight")],
   ] as const as [value, icon, label] (value)}
     <button
       type="button"
@@ -156,9 +157,9 @@
   {/each}
   <span class="divider"></span>
   {#each [
-    ["top", "⤒", "Top of the box"],
-    ["middle", "↕", "Middle of the box"],
-    ["bottom", "⤓", "Bottom of the box"],
+    ["top", "⤒", t("format.top")],
+    ["middle", "↕", t("format.middle")],
+    ["bottom", "⤓", t("format.bottom")],
   ] as const as [value, icon, label] (value)}
     <button
       type="button"
@@ -175,13 +176,13 @@
 
   <span class="hint">
     {#if !box}
-      Select a text box to style its text.
+      {t("format.noBox")}
     {:else if editor.stylingWords}
-      Styling the selected words
+      {t("format.words")}
     {:else if editor.editingId}
-      Select words to style just those, or style the whole box
+      {t("format.selectWords")}
     {:else}
-      Styling the whole box · double-click to type
+      {t("format.wholeBox")}
     {/if}
   </span>
 </div>

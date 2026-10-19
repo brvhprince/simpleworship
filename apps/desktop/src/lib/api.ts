@@ -16,6 +16,7 @@ import type {
   ImportedSong,
   ImportPreview,
   ImportSummary,
+  MediaChoice,
   MediaFolderPaths,
   MediaItem,
   MonitorInfo,
@@ -24,6 +25,7 @@ import type {
   Passage,
   PreparedPdf,
   Presentation,
+  PreviewMedia,
   RecentSchedule,
   ReferenceFeedback,
   ScheduleFileStatus,
@@ -226,9 +228,16 @@ export const firstLaunchImports = () => invoke<FoundSource[]>("import_first_laun
 export const previewImport = (sources: FoundSource[]) =>
   invoke<ImportPreview>("import_preview", { sources });
 
-/** Saves the chosen songs and imports the chosen Bibles. */
-export const commitImport = (songs: ImportedSong[], bibles: BibleChoice[]) =>
-  invoke<ImportSummary>("import_commit", { songs, bibles });
+/** Saves the chosen songs, imports the chosen Bibles and copies the chosen media. */
+export const commitImport = (
+  songs: ImportedSong[],
+  bibles: BibleChoice[],
+  media: MediaChoice[] = [],
+) => invoke<ImportSummary>("import_commit", { songs, bibles, media });
+
+/** Looks for media files that were not found, in `folder` and below. */
+export const locateImportMedia = (media: PreviewMedia[], folder: string) =>
+  invoke<PreviewMedia[]>("import_locate_media", { media, folder });
 
 // ── Countdowns and background music ──────────────────────────────────────
 
@@ -330,6 +339,23 @@ export const usageReport = (from: string, to: string) =>
 /** Writes the usage report as CSV to `path`. */
 export const exportUsageCsv = (from: string, to: string, path: string) =>
   invoke<void>("usage_export_csv", { from, to, path });
+
+// ── The app ──────────────────────────────────────────────────────────────
+
+/** Tells the app the window can open files; resolves to the one it was started with. */
+export const launchReady = () => invoke<string | null>("launch_ready");
+
+/** Rebuilds the menu bar with these translated labels (keys like "menu.file"). */
+export const setMenuLabels = (labels: Record<string, string>) =>
+  invoke<void>("menu_set_labels", { labels });
+
+/** Opens one of the project's web pages in the browser. */
+export const openProjectPage = (
+  page: "website" | "guide" | "moving" | "report" | "license" | "changes",
+) => invoke<void>("open_project_page", { page });
+
+/** Opens the folder with the log files. */
+export const openLogsFolder = () => invoke<void>("open_logs_folder");
 
 // ── Outputs ──────────────────────────────────────────────────────────────
 

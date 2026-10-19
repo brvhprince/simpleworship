@@ -18,6 +18,7 @@
   import type { Snippet } from "svelte";
   import { engine } from "../lib/engine.svelte.ts";
   import { frameAt } from "../lib/frames.ts";
+  import { t } from "../lib/i18n/i18n.svelte.ts";
 
   interface Props {
     kind: "preview" | "live";
@@ -94,9 +95,9 @@
   });
 </script>
 
-<section class="pane {kind}" aria-label={kind === "live" ? "Live" : "Preview"}>
+<section class="pane {kind}" aria-label={kind === "live" ? t("pane.live") : t("pane.preview")}>
   <header>
-    <span class="badge">{kind === "live" ? "Live" : "Preview"}</span>
+    <span class="badge">{kind === "live" ? t("pane.live") : t("pane.preview")}</span>
     <span class="title">{pane?.presentation.title ?? ""}</span>
     <span class="actions">{@render actions?.()}</span>
   </header>
@@ -128,8 +129,8 @@
             <button
               type="button"
               class="remove"
-              title="Remove this slide from the schedule item"
-              aria-label="Remove slide {index + 1}"
+              title={t("pane.removeSlideHint")}
+              aria-label={t("pane.removeSlide", { number: index + 1 })}
               onclick={() => removeSlide(index)}
             >
               ×
@@ -161,7 +162,7 @@
       {/each}
     {:else}
       <li class="empty">
-        {kind === "live" ? "Nothing is live." : "Choose a song or some text to preview."}
+        {kind === "live" ? t("pane.nothingLive") : t("pane.nothingInPreview")}
       </li>
     {/if}
   </ol>

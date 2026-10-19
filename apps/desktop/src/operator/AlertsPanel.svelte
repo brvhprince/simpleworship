@@ -10,6 +10,7 @@
   import { onMount } from "svelte";
   import { getSettings } from "../lib/api.ts";
   import { engine } from "../lib/engine.svelte.ts";
+  import { t } from "../lib/i18n/i18n.svelte.ts";
   import { panels } from "../lib/panels.svelte.ts";
 
   let templates: AlertTemplate[] = $state([]);
@@ -86,9 +87,9 @@
 
 {#if showing}
   <div class="showing">
-    <span>On screen: “{showing.text}”</span>
+    <span>{t("alert.onScreen", { text: showing.text })}</span>
     <Button variant="live" active onclick={() => engine.dispatch({ type: "clearAlert" })}
-      >Clear</Button
+      >{t("common.clear")}</Button
     >
   </div>
 {/if}
@@ -103,35 +104,31 @@
 
 {#if needsBlank}
   <label class="field">
-    Fill in
+    {t("alert.fillIn")}
     <input bind:this={blankInput} bind:value={blank} onkeydown={(e) => e.key === "Enter" && show()}>
   </label>
 {/if}
 
 <label class="field">
-  Message
-  <textarea
-    bind:value={text}
-    rows="2"
-    placeholder="Type a message, or choose a template above"
-  ></textarea>
+  {t("alert.message")}
+  <textarea bind:value={text} rows="2" placeholder={t("alert.placeholder")}></textarea>
 </label>
 
 <div class="row">
-  <select bind:value={style} aria-label="Style" onchange={keepEndingValid}>
-    <option value="ticker">Scrolling</option>
-    <option value="banner">Still</option>
+  <select bind:value={style} aria-label={t("alert.style")} onchange={keepEndingValid}>
+    <option value="ticker">{t("alert.scrolling")}</option>
+    <option value="banner">{t("alert.still")}</option>
   </select>
-  <select bind:value={position} aria-label="Position">
-    <option value="bottom">Bottom</option>
-    <option value="top">Top</option>
+  <select bind:value={position} aria-label={t("alert.position")}>
+    <option value="bottom">{t("alert.bottom")}</option>
+    <option value="top">{t("alert.top")}</option>
   </select>
-  <select bind:value={endType} aria-label="Ends">
+  <select bind:value={endType} aria-label={t("alert.ends")}>
     {#if style === "ticker"}
-      <option value="afterPasses">After scrolling</option>
+      <option value="afterPasses">{t("alert.afterScrolling")}</option>
     {/if}
-    <option value="afterSeconds">After seconds</option>
-    <option value="manual">When cleared</option>
+    <option value="afterSeconds">{t("alert.afterSeconds")}</option>
+    <option value="manual">{t("alert.whenCleared")}</option>
   </select>
   {#if endType !== "manual"}
     <input
@@ -139,14 +136,14 @@
       type="number"
       min="1"
       bind:value={endAmount}
-      aria-label={endType === "afterPasses" ? "Times" : "Seconds"}
+      aria-label={endType === "afterPasses" ? t("alert.times") : t("alert.seconds")}
     >
   {/if}
 </div>
 
 <div class="actions">
   <Button variant="primary" disabled={!text.trim() || (needsBlank && !blank.trim())} onclick={show}>
-    Show Alert
+    {t("alert.show")}
   </Button>
 </div>
 

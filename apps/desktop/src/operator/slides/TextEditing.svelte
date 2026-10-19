@@ -21,6 +21,7 @@
     verticalJustify,
   } from "@simpleworship/renderer";
   import { onMount, untrack } from "svelte";
+  import { t } from "../../lib/i18n/i18n.svelte.ts";
   import type { SlideEditor } from "../../lib/slides/editor.svelte.ts";
   import {
     runsFromDom,
@@ -125,7 +126,7 @@
         role="textbox"
         tabindex="0"
         aria-multiline="true"
-        aria-label="Text box"
+        aria-label={t("textBox.label")}
         spellcheck="true"
         oninput={handleInput}
         onkeydown={handleKeys}

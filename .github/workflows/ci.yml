@@ -26,6 +26,8 @@ jobs:
         run: cargo fmt --all --check
       - name: Clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: Translations have the right keys and placeholders
+        run: pnpm i18n:check
       - name: TypeScript bindings are up to date
         run: |
           pnpm gen:bindings

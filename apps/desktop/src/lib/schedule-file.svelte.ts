@@ -13,11 +13,15 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { open, save } from "@tauri-apps/plugin-dialog";
 import * as api from "./api.ts";
 import { engine } from "./engine.svelte.ts";
+import { t } from "./i18n/i18n.svelte.ts";
 import { OPEN_RECENT_PREFIX, onMenuClick } from "./menu.ts";
 import { prompts } from "./prompts.svelte.ts";
 
 /** Must match `SCHEDULE_FILE_EVENT` in `src-tauri/src/schedule_file.rs`. */
 const SCHEDULE_FILE_EVENT = "schedule-file://status";
+
+/** Must match `OPEN_FILE_EVENT` in `src-tauri/src/launch.rs`. */
+const OPEN_FILE_EVENT = "app://open-schedule";
 
 /** File type filter for the open and save dialogs. */
 const SCHEDULE_FILTERS = [{ name: "SimpleWorship Schedule", extensions: ["sws"] }];
@@ -41,14 +45,23 @@ class ScheduleFileStore {
       event.preventDefault();
       await this.quit();
     });
+    // A schedule file double-clicked (or dropped on the app's icon).
+    const stopOpenFile = await listen<string>(OPEN_FILE_EVENT, ({ payload }) => {
+      void this.open(payload);
+    });
 
     this.#setStatus(await api.scheduleFileStatus());
     await this.#offerRestore();
+
+    // The file SimpleWorship was started with, if any.
+    const launchedWith = await api.launchReady();
+    if (launchedWith) await this.open(launchedWith);
 
     return () => {
       stopStatus();
       stopMenu();
       stopClose();
+      stopOpenFile();
     };
   }
 
@@ -145,12 +158,14 @@ class ScheduleFileStore {
   async #askToSave(): Promise<"save" | "discard" | "cancel" | "clean"> {
     if (!this.status.dirty) return "clean";
     const answer = await prompts.ask({
-      title: "Unsaved changes",
-      message: `Do you want to save the changes to “${this.status.name}”?`,
+      title: t("file.unsavedTitle"),
+      message: t("file.unsavedMessage", {
+        name: this.status.path ? this.status.name : t("schedule.untitled"),
+      }),
       buttons: [
-        { id: "discard", label: "Don't Save" },
-        { id: "cancel", label: "Cancel" },
-        { id: "save", label: "Save", variant: "primary" },
+        { id: "discard", label: t("common.dontSave") },
+        { id: "cancel", label: t("common.cancel") },
+        { id: "save", label: t("common.save"), variant: "primary" },
       ],
       cancel: "cancel",
     });
@@ -163,11 +178,11 @@ class ScheduleFileStore {
     if (!leftover) return;
 
     const answer = await prompts.ask({
-      title: "Restore schedule?",
+      title: t("file.restoreTitle"),
       message: restoreMessage(leftover),
       buttons: [
-        { id: "discard", label: "Discard" },
-        { id: "restore", label: "Restore", variant: "primary" },
+        { id: "discard", label: t("common.discard") },
+        { id: "restore", label: t("file.restore"), variant: "primary" },
       ],
       cancel: "discard",
     });
@@ -191,10 +206,7 @@ function restoreMessage(leftover: AutosaveInfo): string {
     dateStyle: "medium",
     timeStyle: "short",
   });
-  return (
-    "SimpleWorship did not close normally last time. " +
-    `A schedule with unsaved changes from ${when} was recovered.`
-  );
+  return t("file.restoreMessage", { when });
 }
 
 export const scheduleFile = new ScheduleFileStore();

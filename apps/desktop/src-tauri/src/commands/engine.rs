@@ -52,7 +52,7 @@ fn record_usage(state: &AppState, song_id: sw_core::Id, title: &str) {
     let database = state.database();
     let song = database.songs().get(song_id).ok().flatten();
     if let Err(error) = database.usage().record(song_id, title, song.as_ref(), &day) {
-        eprintln!("could not record song usage: {error}");
+        log::warn!("could not record song usage: {error}");
     }
 }
 

@@ -54,7 +54,7 @@ impl RecentSchedules {
             .map_err(std::io::Error::other)
             .and_then(|json| write_atomically(&self.file, &json));
         if let Err(error) = saved {
-            eprintln!("could not save the recent schedules list: {error}");
+            log::warn!("could not save the recent schedules list: {error}");
         }
     }
 

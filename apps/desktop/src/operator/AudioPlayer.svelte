@@ -18,6 +18,7 @@
   import { onMount } from "svelte";
   import { engine } from "../lib/engine.svelte.ts";
   import { formatDuration } from "../lib/format.ts";
+  import { t } from "../lib/i18n/i18n.svelte.ts";
 
   /** How far off the operator's own changes (a seek) may land, in seconds. */
   const OPERATOR_SEEK_S = 0.25;
@@ -109,10 +110,10 @@
 <audio bind:this={element} onended={() => engine.dispatch({ type: "trackEnded" })}></audio>
 
 {#if audio && track}
-  <fieldset class="player" aria-label="Background music">
+  <fieldset class="player" aria-label={t("music.player")}>
     <button
       type="button"
-      aria-label="Previous track"
+      aria-label={t("music.previous")}
       onclick={() => engine.dispatch({ type: "skipTrack", forward: false })}
     >
       ⏮
@@ -120,14 +121,14 @@
     <button
       type="button"
       class="play"
-      aria-label={audio.playing ? "Pause" : "Play"}
+      aria-label={audio.playing ? t("common.pause") : t("common.play")}
       onclick={() => engine.dispatch({ type: audio.playing ? "pauseAudio" : "playAudio" })}
     >
       {audio.playing ? "❚❚" : "▶"}
     </button>
     <button
       type="button"
-      aria-label="Next track"
+      aria-label={t("music.next")}
       onclick={() => engine.dispatch({ type: "skipTrack", forward: true })}
     >
       ⏭
@@ -142,7 +143,7 @@
       max={track.durationMs ?? Math.max(position, 1)}
       step="500"
       value={position}
-      aria-label="Position"
+      aria-label={t("video.position")}
       onchange={seek}
     >
     <input
@@ -152,7 +153,7 @@
       max="1"
       step="0.05"
       value={audio.volume}
-      aria-label="Volume"
+      aria-label={t("music.volume")}
       oninput={(e) => engine.dispatch({ type: "setVolume", volume: e.currentTarget.valueAsNumber })}
     >
     <label class="option">
@@ -161,7 +162,7 @@
         checked={audio.loop}
         onchange={(e) => engine.dispatch({ type: "setAudioLoop", on: e.currentTarget.checked })}
       >
-      Loop
+      {t("common.loop")}
     </label>
     <button
       type="button"
@@ -169,7 +170,7 @@
       disabled={!audio.playing || audio.fade !== null}
       onclick={() => engine.dispatch({ type: "fadeOutAudio", durationMs: 4000 })}
     >
-      Fade Out
+      {t("music.fadeOut")}
     </button>
   </fieldset>
 {/if}

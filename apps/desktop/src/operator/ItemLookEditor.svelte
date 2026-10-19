@@ -8,6 +8,7 @@
 <script lang="ts">
   import type { Background, ItemLook, ScheduleItem } from "@simpleworship/protocol";
   import { engine } from "../lib/engine.svelte.ts";
+  import { t } from "../lib/i18n/i18n.svelte.ts";
   import BackgroundEditor from "./themes/BackgroundEditor.svelte";
 
   interface Props {
@@ -49,15 +50,17 @@
 
 <div class="look">
   <label class="row">
-    Theme
+    {t("common.theme")}
     <select value={item.look.theme?.id ?? ""} onchange={(e) => chooseTheme(e.currentTarget.value)}>
-      <option value="">Automatic</option>
+      <option value="">{t("look.automatic")}</option>
       {#each themes as theme (theme.id)}
         <option value={theme.id}>{theme.theme.name}</option>
       {/each}
       {#if item.look.theme && !themes.some((theme) => theme.id === item.look.theme?.id)}
         <!-- A theme from another computer, carried in the schedule file. -->
-        <option value={item.look.theme.id}>{item.look.theme.theme.name} (from file)</option>
+        <option value={item.look.theme.id}>
+          {t("look.fromFile", { name: item.look.theme.theme.name })}
+        </option>
       {/if}
     </select>
   </label>
@@ -69,7 +72,7 @@
       onchange={(e) =>
         setLook({ ...item.look, background: e.currentTarget.checked ? BLACK : null })}
     >
-    Own background
+    {t("look.ownBackground")}
   </label>
   {#if item.look.background}
     <BackgroundEditor
@@ -80,14 +83,14 @@
   {#if canAdvance}
     {@const advance = deck?.autoAdvance ?? null}
     <label class="row">
-      Next slide
+      {t("advance.nextSlide")}
       <select
         value={advance?.seconds ?? 0}
         onchange={(e) => setAdvance(Number(e.currentTarget.value), advance?.loop ?? true)}
       >
-        <option value={0}>When I press Next</option>
+        <option value={0}>{t("advance.manual")}</option>
         {#each ADVANCE_SECONDS as seconds (seconds)}
-          <option value={seconds}>Every {seconds} seconds</option>
+          <option value={seconds}>{t("advance.every", { seconds })}</option>
         {/each}
       </select>
     </label>
@@ -98,7 +101,7 @@
           checked={advance.loop}
           onchange={(e) => setAdvance(advance.seconds, e.currentTarget.checked)}
         >
-        Start again after the last slide
+        {t("advance.loop")}
       </label>
     {/if}
   {/if}

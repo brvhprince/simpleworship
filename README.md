@@ -55,7 +55,8 @@ with EasyWorship should feel at home.
   ProPresenter 6, OpenLyrics, ChordPro and CCLI SongSelect files, and
   Bibles from EasyWorship. On first launch SimpleWorship looks for these
   programs and offers to import. See
-  [Moving from EasyWorship](docs/moving-from-easyworship.md).
+  [Moving from EasyWorship](docs/moving-from-easyworship.md). EasyWorship's
+  pictures, videos and sound come across too.
 - **Alerts:** a nursery or car-park message over the slides, scrolling or
   still, at the top or bottom. Saved templates take a number in one step
   (“Parent of child 42…”). It clears itself after a few passes or seconds,
@@ -100,6 +101,29 @@ with EasyWorship should feel at home.
 - **CCLI reporting:** every song shown live is logged once per day. The Song
   Usage Report (File menu) lists them for any period and exports CSV. Put
   your CCLI licence number in Settings and it appears in every song footer.
+
+- **In your language:** English and French, with Twi on the way (see
+  [Translating SimpleWorship](apps/desktop/src/lib/i18n/messages/README.md)).
+  Choose it in Settings › Language.
+- **Safe updates:** SimpleWorship looks for new versions and downloads them
+  quietly, but only installs when you click, and never while something is
+  live.
+
+## Installing
+
+Download the installer for your computer from the
+[releases page](https://github.com/brvhprince/simpleworship/releases):
+
+| Computer | File |
+| -------- | ---- |
+| Mac (Apple Silicon or Intel), macOS 11+ | `SimpleWorship_…_universal.dmg` |
+| Windows 10 or 11 | `SimpleWorship_…_x64-setup.exe` (or the `.msi` for managed computers) |
+| Linux | `.AppImage`, or the `.deb` / `.rpm` for your distribution |
+
+Until the installers are signed, the system warns the first time: on a
+Mac, right-click SimpleWorship and choose **Open**; on Windows, click
+**More info › Run anyway**. Double-clicking a `.sws` schedule opens it in
+SimpleWorship.
 
 ## Keyboard shortcuts
 
@@ -155,6 +179,7 @@ pnpm check          # TypeScript / Svelte type checks
 pnpm lint           # Biome + Clippy
 pnpm format         # Biome + rustfmt
 pnpm gen:bindings   # regenerate TypeScript types after changing Rust types
+pnpm i18n:check     # check the translations (add --sync after adding English text)
 pnpm build          # build installers for your platform
 ```
 
@@ -200,7 +225,7 @@ projector, the stage display and every thumbnail look the same.
 | M6        | Importers: EasyWorship 6/7, OpenLP, OpenLyrics, ProPresenter, ChordPro, CCLI | ✅     |
 | M7        | Alerts, countdowns, background audio, presentations (PDF/PPTX), CCLI report | ✅     |
 | M8        | Presentation editor, slideshows, scripture styling (verse numbers, reference box) | ✅     |
-| M9        | Installers, auto-update, translations                               |        |
+| M9        | Installers, auto-update, translations (English, French; Twi in progress), EasyWorship media import | ✅     |
 
 Later: remote control from a phone, NDI / stream output, multi-operator
 sync, and AI-assisted features.

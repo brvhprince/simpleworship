@@ -18,7 +18,9 @@
   import { onMount } from "svelte";
   import { closeOutput, listMonitors, openOutput } from "../lib/api.ts";
   import { engine } from "../lib/engine.svelte.ts";
+  import { t } from "../lib/i18n/i18n.svelte.ts";
   import { panels } from "../lib/panels.svelte.ts";
+  import { updates } from "../lib/updates.svelte.ts";
   import AlertsPanel from "./AlertsPanel.svelte";
   import Popover from "./Popover.svelte";
   import StagePanel from "./StagePanel.svelte";
@@ -100,36 +102,41 @@
       onfocus={refreshMonitors}
       onchange={(e) => onchange(e.currentTarget.value)}
     >
-      <option value={WINDOWED}>In a window</option>
+      <option value={WINDOWED}>{t("toolbar.inWindow")}</option>
       {#each monitors as monitor (monitor.index)}
         <option value={String(monitor.index)}>
           {monitor.name}
-          ({monitor.width}×{monitor.height}){monitor.isPrimary ? " · main" : ""}
+          ({monitor.width}×{monitor.height}){monitor.isPrimary ? t("toolbar.mainScreen") : ""}
         </option>
       {/each}
     </select>
-    <Button onclick={() => show(kind, screen)}>Show</Button>
-    <Button onclick={() => hide(kind)}>Hide</Button>
+    <Button onclick={() => show(kind, screen)}>{t("common.show")}</Button>
+    <Button onclick={() => hide(kind)}>{t("common.hide")}</Button>
   </fieldset>
 {/snippet}
 
 <header class="toolbar">
   <span class="brand">SimpleWorship</span>
 
-  {@render screenPicker("Output", "projector", projectorScreen, (v) => (projectorScreen = v))}
-  {@render screenPicker("Stage", "stage", stageScreen, (v) => (stageScreen = v))}
+  {@render screenPicker(
+    t("toolbar.output"),
+    "projector",
+    projectorScreen,
+    (v) => (projectorScreen = v),
+  )}
+  {@render screenPicker(t("toolbar.stage"), "stage", stageScreen, (v) => (stageScreen = v))}
 
   <span class="spacer"></span>
 
   {#if flags}
-    <fieldset class="group" aria-label="Display controls">
+    <fieldset class="group" aria-label={t("toolbar.displayControls")}>
       <Button
         variant="live"
         active={flags.black}
         shortcut="F6"
         onclick={() => engine.dispatch({ type: "setBlack", on: !flags.black })}
       >
-        Black
+        {t("toolbar.black")}
       </Button>
       <Button
         variant="live"
@@ -137,7 +144,7 @@
         shortcut="F7"
         onclick={() => engine.dispatch({ type: "setLogo", on: !flags.logo })}
       >
-        Logo
+        {t("toolbar.logo")}
       </Button>
       <Button
         variant="live"
@@ -145,7 +152,7 @@
         shortcut="F8"
         onclick={() => engine.dispatch({ type: "setHideText", on: !flags.hideText })}
       >
-        Clear Text
+        {t("toolbar.clearText")}
       </Button>
       <Button
         variant="live"
@@ -153,13 +160,24 @@
         shortcut="F9"
         onclick={() => engine.dispatch({ type: "setHideBackground", on: !flags.hideBackground })}
       >
-        Clear Background
+        {t("toolbar.clearBackground")}
       </Button>
     </fieldset>
   {/if}
 
+  {#if updates.status === "ready" || updates.status === "installing"}
+    <Button
+      variant="primary"
+      disabled={updates.status === "installing"}
+      title={t("toolbar.updateHint", { version: updates.version ?? "" })}
+      onclick={() => updates.install()}
+    >
+      {updates.status === "installing" ? t("toolbar.updateInstalling") : t("toolbar.updateReady")}
+    </Button>
+  {/if}
+
   <Popover
-    label="Alert"
+    label={t("toolbar.alert")}
     shortcut="A"
     open={panels.open === "alerts"}
     active={engine.output?.alert != null}
@@ -169,7 +187,7 @@
     <AlertsPanel />
   </Popover>
   <Popover
-    label="Stage"
+    label={t("toolbar.stage")}
     open={panels.open === "stage"}
     active={engine.stage.timer != null || engine.stage.message != null}
     ontoggle={() => panels.toggle("stage")}
@@ -179,14 +197,14 @@
   </Popover>
 
   {#if transition}
-    <fieldset class="group" aria-label="Transition">
-      <span class="label">Transition</span>
+    <fieldset class="group" aria-label={t("toolbar.transition")}>
+      <span class="label">{t("toolbar.transition")}</span>
       <select
         value={transition.kind}
         onchange={(e) => setTransitionKind(e.currentTarget.value as TransitionKind)}
       >
-        <option value="fade">Fade</option>
-        <option value="cut">Cut</option>
+        <option value="fade">{t("toolbar.fade")}</option>
+        <option value="cut">{t("toolbar.cut")}</option>
       </select>
       {#if transition.kind === "fade"}
         <input
@@ -196,10 +214,10 @@
           max="10"
           step="0.1"
           value={transition.durationMs / 1000}
-          aria-label="Fade duration in seconds"
+          aria-label={t("toolbar.fadeSeconds")}
           onchange={(e) => setTransitionDuration(e.currentTarget.valueAsNumber)}
         >
-        <span class="unit">s</span>
+        <span class="unit">{t("toolbar.secondsUnit")}</span>
       {/if}
     </fieldset>
   {/if}

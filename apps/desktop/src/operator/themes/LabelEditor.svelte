@@ -8,6 +8,7 @@
 <script lang="ts">
   import type { FooterStyle, HorizontalAlign } from "@simpleworship/protocol";
   import { firstFamily, fontFamily } from "../../lib/fonts.ts";
+  import { t } from "../../lib/i18n/i18n.svelte.ts";
   import {
     applyPreset,
     currentPreset,
@@ -43,10 +44,10 @@
       checked={value.visible}
       onchange={(e) => set("visible", e.currentTarget.checked)}
     >
-    Show
+    {t("label.show")}
   </label>
   <label class="inline">
-    Size
+    {t("label.size")}
     <input
       type="number"
       min="10"
@@ -61,7 +62,7 @@
       checked={value.bold}
       onchange={(e) => set("bold", e.currentTarget.checked)}
     >
-    Bold
+    {t("label.bold")}
   </label>
 </div>
 
@@ -72,22 +73,22 @@
       checked={value.color === ""}
       onchange={(e) => set("color", e.currentTarget.checked ? "" : "#ffffff")}
     >
-    Text colour
+    {t("label.textColour")}
   </label>
   {#if value.color !== ""}
     <ColorField
-      label="{name} colour"
+      label={t("label.colour", { name })}
       value={value.color}
       onchange={(color) => set("color", color)}
     />
   {/if}
   <select
     value={font}
-    aria-label="{name} font"
+    aria-label={t("label.font", { name })}
     onchange={(e) =>
       set("fontFamily", e.currentTarget.value ? fontFamily(e.currentTarget.value) : "")}
   >
-    <option value="">Text font</option>
+    <option value="">{t("label.textFont")}</option>
     {#if font && !fonts.includes(font)}
       <option value={font}>{font}</option>
     {/if}
@@ -97,17 +98,17 @@
   </select>
   <select
     value={value.align ?? ""}
-    aria-label="{name} alignment"
+    aria-label={t("label.alignment", { name })}
     onchange={(e) => set("align", (e.currentTarget.value || null) as HorizontalAlign | null)}
   >
-    <option value="">Aligned like the text</option>
-    <option value="left">Left</option>
-    <option value="center">Centre</option>
-    <option value="right">Right</option>
+    <option value="">{t("label.likeText")}</option>
+    <option value="left">{t("designer.left")}</option>
+    <option value="center">{t("designer.centre")}</option>
+    <option value="right">{t("designer.right")}</option>
   </select>
 </div>
 
-<fieldset class="presets" aria-label="{name} position">
+<fieldset class="presets" aria-label={t("label.position", { name })}>
   {#each LABEL_PRESETS as option (option.value)}
     <button
       type="button"
@@ -115,7 +116,7 @@
       aria-pressed={preset === option.value}
       onclick={() => onchange(applyPreset(value, option.value, spacing))}
     >
-      {option.label}
+      {t(option.label)}
     </button>
   {/each}
 </fieldset>
@@ -126,7 +127,7 @@
       checked={value.textBox.autoFit}
       onchange={(e) => set("textBox", { ...value.textBox, autoFit: e.currentTarget.checked })}
     >
-    Shrink to fit its box · or drag the “{name}” box on the preview
+    {t("label.shrink", { name })}
   </label>
 {/if}
 

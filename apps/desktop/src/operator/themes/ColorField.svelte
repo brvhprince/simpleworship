@@ -5,6 +5,8 @@
   which the system picker cannot do).
 -->
 <script lang="ts">
+  import { t } from "../../lib/i18n/i18n.svelte.ts";
+
   interface Props {
     value: string;
     label: string;
@@ -21,7 +23,7 @@
   <input
     type="color"
     value={swatch}
-    aria-label="{label} (picker)"
+    aria-label={t("colour.picker", { label })}
     oninput={(e) => onchange(e.currentTarget.value)}
   >
   <input

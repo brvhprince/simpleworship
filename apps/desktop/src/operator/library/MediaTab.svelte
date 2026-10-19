@@ -29,12 +29,13 @@
   import { MEDIA_DRAG_TYPE } from "../../lib/drag.ts";
   import { engine } from "../../lib/engine.svelte.ts";
   import { formatBytes, formatDuration } from "../../lib/format.ts";
+  import { t } from "../../lib/i18n/i18n.svelte.ts";
   import { media } from "../../lib/media.svelte.ts";
   import { prompts } from "../../lib/prompts.svelte.ts";
 
   const MEDIA_FILTERS = [
     {
-      name: "Images, videos and sound",
+      name: t("media.filesFilter"),
       extensions: [
         ...["png", "jpg", "jpeg", "gif", "webp", "bmp", "avif"],
         ...["mp4", "m4v", "mov", "webm"],
@@ -75,11 +76,11 @@
 
   async function remove(item: MediaItem) {
     const answer = await prompts.ask({
-      title: "Delete media?",
-      message: `Delete “${item.name}”? Themes and schedule items that use it will show nothing in its place.`,
+      title: t("media.deleteTitle"),
+      message: t("media.deleteOne", { name: item.name }),
       buttons: [
-        { id: "cancel", label: "Cancel" },
-        { id: "delete", label: "Delete", variant: "live" },
+        { id: "cancel", label: t("common.cancel") },
+        { id: "delete", label: t("common.delete"), variant: "live" },
       ],
       cancel: "cancel",
     });
@@ -105,7 +106,7 @@
   }
 
   function kindLabel(item: MediaItem): string {
-    return { image: "Image", video: "Video", audio: "Sound" }[item.kind];
+    return { image: t("media.image"), video: t("media.video"), audio: t("media.sound") }[item.kind];
   }
 
   /** Click: pick one. ⌘/Ctrl-click: add or remove one. Shift-click: a range. */
@@ -130,7 +131,7 @@
     const ids = pickedItems.map((item) => item.id);
     try {
       if (pickedItems.every((item) => item.kind === "audio")) {
-        await addPlaylistToSchedule(`Music (${ids.length} tracks)`, ids);
+        await addPlaylistToSchedule(t("schedule.musicTracks", { count: ids.length }), ids);
       } else {
         await addSlideshowToSchedule(ids);
       }
@@ -141,11 +142,11 @@
 
   async function removePicked() {
     const answer = await prompts.ask({
-      title: "Delete media?",
-      message: `Delete ${pickedItems.length} items? Themes and schedule items that use them will show nothing in their place.`,
+      title: t("media.deleteTitle"),
+      message: t("media.deleteMany", { count: pickedItems.length }),
       buttons: [
-        { id: "cancel", label: "Cancel" },
-        { id: "delete", label: "Delete", variant: "live" },
+        { id: "cancel", label: t("common.cancel") },
+        { id: "delete", label: t("common.delete"), variant: "live" },
       ],
       cancel: "cancel",
     });
@@ -164,12 +165,12 @@
 
 <div class="media-tab">
   <div class="toolbar">
-    <div class="filters" role="radiogroup" aria-label="Show">
+    <div class="filters" role="radiogroup" aria-label={t("media.show")}>
       {#each [
-        ["all", "All"],
-        ["image", "Images"],
-        ["video", "Videos"],
-        ["audio", "Sound"],
+        ["all", t("media.filterAll")],
+        ["image", t("media.filterImages")],
+        ["video", t("media.filterVideos")],
+        ["audio", t("media.filterSound")],
       ] as [value, label] (value)}
         <label>
           <input type="radio" bind:group={filter} {value}>
@@ -178,10 +179,12 @@
       {/each}
     </div>
 
-    <Button onclick={chooseAndImport} disabled={media.progress !== null}>Import…</Button>
+    <Button onclick={chooseAndImport} disabled={media.progress !== null}
+      >{t("common.import")}</Button
+    >
     {#if media.progress}
       <span class="progress">
-        Copying {media.progress.name}…
+        {t("media.copying", { name: media.progress.name })}
         {Math.round((media.progress.copied / media.progress.total) * 100)}%
       </span>
     {/if}
@@ -189,49 +192,55 @@
     <span class="spacer"></span>
 
     {#if pickedItems.length > 1}
-      <span class="progress">{pickedItems.length} selected</span>
-      <Button onclick={removePicked}>Delete</Button>
+      <span class="progress">{t("media.selected", { count: pickedItems.length })}</span>
+      <Button onclick={removePicked}>{t("common.delete")}</Button>
       <Button variant="primary" onclick={addPicked}>
-        {pickedItems.every((item) => item.kind === "audio") ? "Add as Music" : "Add as Slideshow"}
+        {pickedItems.every((item) => item.kind === "audio")
+          ? t("media.addAsMusic")
+          : t("media.addAsSlideshow")}
       </Button>
     {:else}
       {#if selected}
         <input
           class="name"
           value={selected.name}
-          aria-label="Name"
+          aria-label={t("common.name")}
           onchange={(e) => onSelected((item) => renameMedia(item.id, e.currentTarget.value))}
         >
       {/if}
       {#if selected?.kind === "image"}
         {#if selected.id === logoId}
-          <Button onclick={() => onSelected(() => setLogo(null))}>Remove Logo</Button>
+          <Button onclick={() => onSelected(() => setLogo(null))}>{t("media.removeLogo")}</Button>
         {:else}
-          <Button onclick={() => onSelected((item) => setLogo(item.id))}>Set as Logo</Button>
+          <Button onclick={() => onSelected((item) => setLogo(item.id))}
+            >{t("media.setLogo")}</Button
+          >
         {/if}
       {/if}
-      <Button disabled={!selected} onclick={() => onSelected(remove)}>Delete</Button>
+      <Button disabled={!selected} onclick={() => onSelected(remove)}>{t("common.delete")}</Button>
       <Button
         disabled={!selected}
         onclick={() => onSelected((item) => addMediaToSchedule(item.id))}
       >
-        Add to Schedule
+        {t("common.addToSchedule")}
       </Button>
       {#if selected?.kind === "audio"}
-        <Button variant="primary" onclick={() => selected && play(selected)}>Play</Button>
+        <Button variant="primary" onclick={() => selected && play(selected)}
+          >{t("common.play")}</Button
+        >
       {:else}
         <Button
           variant="primary"
           disabled={!selected}
           onclick={() => onSelected((item) => showMediaInPreview(item.id))}
         >
-          Show in Preview
+          {t("common.showInPreview")}
         </Button>
       {/if}
     {/if}
   </div>
 
-  <ul class="grid" aria-label="Media">
+  <ul class="grid" aria-label={t("media.list")}>
     {#each shown as item (item.id)}
       <li>
         <button
@@ -253,7 +262,7 @@
               <span class="badge">{formatDuration(item.durationMs)}</span>
             {/if}
             {#if item.id === logoId}
-              <span class="badge logo">Logo</span>
+              <span class="badge logo">{t("media.logo")}</span>
             {/if}
           </span>
           <span class="caption">
@@ -270,8 +279,7 @@
       </li>
     {:else}
       <li class="empty">
-        Nothing here yet. Import images or videos to use as backgrounds, logos, or schedule items,
-        and MP3 or M4A files for background music. MP4 (H.264) videos play everywhere.
+        {t("media.empty")}
       </li>
     {/each}
   </ul>

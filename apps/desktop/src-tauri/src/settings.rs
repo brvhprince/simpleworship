@@ -47,6 +47,9 @@ pub struct AppSettings {
     pub alert_templates: Vec<AlertTemplate>,
     /// Stage display options.
     pub stage: StageOptions,
+    /// Look for a new version at startup and once a day. Updates are only
+    /// ever installed when the operator says so.
+    pub check_for_updates: bool,
 }
 
 impl Default for AppSettings {
@@ -56,6 +59,7 @@ impl Default for AppSettings {
             ccli_license: String::new(),
             alert_templates: starter_templates(),
             stage: StageOptions::default(),
+            check_for_updates: true,
         }
     }
 }

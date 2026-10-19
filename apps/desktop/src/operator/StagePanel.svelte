@@ -8,8 +8,15 @@
   import { Button } from "@simpleworship/ui";
   import { onMount } from "svelte";
   import { engine } from "../lib/engine.svelte.ts";
+  import { t } from "../lib/i18n/i18n.svelte.ts";
 
-  const QUICK_MESSAGES = ["5 minutes", "2 minutes", "Wrap up", "Please speak up"];
+  /** One-click messages, in the interface language. */
+  const quickMessages = $derived([
+    t("stage.quick5"),
+    t("stage.quick2"),
+    t("stage.quickWrap"),
+    t("stage.quickLouder"),
+  ]);
 
   let minutes = $state(30);
   let message = $state("");
@@ -29,34 +36,40 @@
   }
 </script>
 
-<h4>Timer</h4>
+<h4>{t("stage.timer")}</h4>
 {#if timer}
   <div class="timer" class:over={shown < 0}>{formatClock(shown)}</div>
   <div class="row">
     {#if timer.running}
-      <Button onclick={() => engine.dispatch({ type: "pauseStageTimer" })}>Pause</Button>
+      <Button onclick={() => engine.dispatch({ type: "pauseStageTimer" })}
+        >{t("common.pause")}</Button
+      >
     {:else}
-      <Button onclick={() => engine.dispatch({ type: "resumeStageTimer" })}>Resume</Button>
+      <Button onclick={() => engine.dispatch({ type: "resumeStageTimer" })}
+        >{t("stage.resume")}</Button
+      >
     {/if}
-    <Button onclick={() => engine.dispatch({ type: "clearStageTimer" })}>Clear</Button>
+    <Button onclick={() => engine.dispatch({ type: "clearStageTimer" })}
+      >{t("common.clear")}</Button
+    >
   </div>
 {:else}
   <div class="row">
     <Button
       onclick={() => engine.dispatch({ type: "startStageTimer", mode: "countUp", durationMs: 0 })}
     >
-      Count Up
+      {t("stage.countUp")}
     </Button>
-    <span class="or">or</span>
+    <span class="or">{t("stage.or")}</span>
     <input
       class="minutes"
       type="number"
       min="1"
       max="240"
       bind:value={minutes}
-      aria-label="Minutes"
+      aria-label={t("stage.minutes")}
     >
-    <span class="or">min</span>
+    <span class="or">{t("stage.minutesUnit")}</span>
     <Button
       onclick={() =>
         engine.dispatch({
@@ -65,20 +78,20 @@
           durationMs: Math.max(1, Math.round(minutes)) * 60_000,
         })}
     >
-      Count Down
+      {t("stage.countDown")}
     </Button>
   </div>
 {/if}
 
-<h4>Message to the stage</h4>
+<h4>{t("stage.messageTitle")}</h4>
 {#if engine.stage.message}
   <div class="row showing">
-    <span>“{engine.stage.message}”</span>
-    <Button onclick={() => sendMessage("")}>Clear</Button>
+    <span>{t("stage.quoted", { text: engine.stage.message })}</span>
+    <Button onclick={() => sendMessage("")}>{t("common.clear")}</Button>
   </div>
 {/if}
 <div class="row">
-  {#each QUICK_MESSAGES as quick (quick)}
+  {#each quickMessages as quick (quick)}
     <Button onclick={() => sendMessage(quick)}>{quick}</Button>
   {/each}
 </div>
@@ -86,11 +99,11 @@
   <input
     class="message"
     bind:value={message}
-    placeholder="Type a message"
+    placeholder={t("stage.placeholder")}
     onkeydown={(e) => e.key === "Enter" && sendMessage(message)}
   >
   <Button variant="primary" disabled={!message.trim()} onclick={() => sendMessage(message)}
-    >Send</Button
+    >{t("common.send")}</Button
   >
 </div>
 

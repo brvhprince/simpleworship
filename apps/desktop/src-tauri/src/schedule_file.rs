@@ -78,7 +78,7 @@ pub fn with_schedule_extension(path: PathBuf) -> PathBuf {
 /// Tells every window about a new file status.
 pub fn announce(app: &AppHandle, status: &ScheduleFileStatus) {
     if let Err(error) = app.emit(SCHEDULE_FILE_EVENT, status) {
-        eprintln!("could not announce the schedule file status: {error}");
+        log::warn!("could not announce the schedule file status: {error}");
     }
 }
 

@@ -291,6 +291,6 @@ pub fn on_window_event(window: &Window, event: &WindowEvent) {
 /// [`update_stacking`] for event handlers, which cannot return errors.
 fn restack(app: &AppHandle) {
     if let Err(error) = update_stacking(app) {
-        eprintln!("could not update window stacking: {error}");
+        log::warn!("could not update window stacking: {error}");
     }
 }

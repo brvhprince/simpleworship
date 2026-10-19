@@ -21,6 +21,7 @@ import type {
 } from "@simpleworship/protocol";
 import { CANVAS_HEIGHT, CANVAS_WIDTH } from "@simpleworship/renderer";
 import { uuidV7 } from "../api.ts";
+import { t } from "../i18n/i18n.svelte.ts";
 import { plainText } from "./rich-text.ts";
 
 type TextContent = Extract<ElementContent, { type: "text" }>;
@@ -233,7 +234,7 @@ export function slideLabel(slide: DeckSlide): string {
   const hasPicture =
     slide.background?.type === "image" ||
     slide.elements.some((item) => item.content.type === "media");
-  return hasPicture ? "Picture" : "Blank slide";
+  return hasPicture ? t("slides.picture") : t("slides.blank");
 }
 
 /** A blank slide: no elements, the presentation's theme and background. */

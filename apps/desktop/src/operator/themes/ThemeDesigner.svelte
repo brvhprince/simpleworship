@@ -18,6 +18,7 @@
   import { onMount, untrack } from "svelte";
   import { listFonts, saveTheme } from "../../lib/api.ts";
   import { firstFamily, fontFamily } from "../../lib/fonts.ts";
+  import { t } from "../../lib/i18n/i18n.svelte.ts";
   import { FOOTER_SPACING, REFERENCE_SPACING } from "../../lib/label-placement.ts";
   import { overrideMenuItem } from "../../lib/menu.ts";
   import { sampleLyrics, sampleScripture } from "../../lib/samples.ts";
@@ -52,13 +53,15 @@
 
   /** The boxes that can be dragged on the preview: those that are shown. */
   const boxes: EditableBox[] = $derived.by(() => {
-    const list: EditableBox[] = [{ id: "text", label: "Text", box: draft.theme.textBox }];
+    const list: EditableBox[] = [
+      { id: "text", label: t("designer.boxText"), box: draft.theme.textBox },
+    ];
     const { caption, footer } = draft.theme;
     if (sample === "scripture" && caption.visible && caption.placement === "box") {
-      list.push({ id: "caption", label: "Reference", box: caption.textBox });
+      list.push({ id: "caption", label: t("designer.boxReference"), box: caption.textBox });
     }
     if (footer.visible && footer.placement === "box") {
-      list.push({ id: "footer", label: "Footer", box: footer.textBox });
+      list.push({ id: "footer", label: t("designer.boxFooter"), box: footer.textBox });
     }
     return list;
   });
@@ -94,7 +97,7 @@
 
   async function save() {
     if (!draft.theme.name.trim()) {
-      error = "Please give the theme a name.";
+      error = t("designer.needsName");
       return;
     }
     saving = true;
@@ -110,7 +113,7 @@
   }
 </script>
 
-<Dialog title="Theme: {draft.theme.name || "Untitled"}" {onclose}>
+<Dialog title={t("designer.title", { name: draft.theme.name || t("editor.untitled") })} {onclose}>
   <div class="designer">
     <div class="preview-column">
       <div class="preview">
@@ -122,23 +125,29 @@
           onchange={moveBox}
         />
       </div>
-      <div class="sample" role="radiogroup" aria-label="Sample">
-        <label><input type="radio" bind:group={sample} value="lyrics"> Song</label>
-        <label><input type="radio" bind:group={sample} value="scripture"> Scripture</label>
-        <span class="hint">Drag a dashed box to move it; drag a corner to resize it.</span>
+      <div class="sample" role="radiogroup" aria-label={t("designer.sample")}>
+        <label
+          ><input type="radio" bind:group={sample} value="lyrics">
+          {t("designer.song")}</label
+        >
+        <label
+          ><input type="radio" bind:group={sample} value="scripture">
+          {t("designer.scripture")}</label
+        >
+        <span class="hint">{t("designer.dragHint")}</span>
       </div>
     </div>
 
     <div class="settings">
       <section>
         <label class="row">
-          Name
+          {t("common.name")}
           <input bind:value={draft.theme.name}>
         </label>
       </section>
 
       <section>
-        <h4>Background</h4>
+        <h4>{t("designer.background")}</h4>
         <BackgroundEditor
           value={draft.theme.background}
           onchange={(background) => (draft.theme.background = background)}
@@ -146,11 +155,11 @@
       </section>
 
       <section>
-        <h4>Text</h4>
+        <h4>{t("designer.text")}</h4>
         <div class="row">
           <select
             value={currentFont}
-            aria-label="Font"
+            aria-label={t("designer.font")}
             onchange={(e) => setText("fontFamily", fontFamily(e.currentTarget.value))}
           >
             {#if !fonts.includes(currentFont)}
@@ -161,7 +170,7 @@
             {/each}
           </select>
           <label class="inline">
-            Size
+            {t("designer.size")}
             <input
               type="number"
               min="12"
@@ -172,19 +181,19 @@
           </label>
           <select
             value={String(draft.theme.text.fontWeight)}
-            aria-label="Weight"
+            aria-label={t("designer.weight")}
             onchange={(e) => setText("fontWeight", Number(e.currentTarget.value))}
           >
-            <option value="300">Light</option>
-            <option value="400">Regular</option>
-            <option value="600">Semibold</option>
-            <option value="700">Bold</option>
-            <option value="900">Black</option>
+            <option value="300">{t("designer.light")}</option>
+            <option value="400">{t("designer.regular")}</option>
+            <option value="600">{t("designer.semibold")}</option>
+            <option value="700">{t("designer.bold")}</option>
+            <option value="900">{t("designer.black")}</option>
           </select>
         </div>
         <div class="row">
           <ColorField
-            label="Text colour"
+            label={t("designer.textColour")}
             value={draft.theme.text.color}
             onchange={(color) => setText("color", color)}
           />
@@ -194,7 +203,7 @@
               checked={draft.theme.text.italic}
               onchange={(e) => setText("italic", e.currentTarget.checked)}
             >
-            Italic
+            {t("designer.italic")}
           </label>
           <label class="inline">
             <input
@@ -202,15 +211,15 @@
               checked={draft.theme.text.uppercase}
               onchange={(e) => setText("uppercase", e.currentTarget.checked)}
             >
-            Capitals
+            {t("designer.capitals")}
           </label>
         </div>
         <div class="row">
-          <div class="segmented" role="radiogroup" aria-label="Alignment">
+          <div class="segmented" role="radiogroup" aria-label={t("designer.alignment")}>
             {#each [
-              ["left", "Left"],
-              ["center", "Centre"],
-              ["right", "Right"],
+              ["left", t("designer.left")],
+              ["center", t("designer.centre")],
+              ["right", t("designer.right")],
             ] as [value, label] (value)}
               <label>
                 <input
@@ -224,7 +233,7 @@
             {/each}
           </div>
           <label class="inline">
-            Line spacing
+            {t("designer.lineSpacing")}
             <input
               type="number"
               min="0.8"
@@ -243,12 +252,12 @@
               onchange={(e) =>
                 setText("outline", e.currentTarget.checked ? { color: "#000000", width: 2 } : null)}
             >
-            Outline
+            {t("designer.outline")}
           </label>
           {#if draft.theme.text.outline}
             {@const outline = draft.theme.text.outline}
             <ColorField
-              label="Outline colour"
+              label={t("designer.outlineColour")}
               value={outline.color}
               onchange={(color) => setText("outline", { ...outline, color })}
             />
@@ -258,7 +267,7 @@
               max="20"
               step="0.5"
               value={outline.width}
-              aria-label="Outline width"
+              aria-label={t("designer.outlineWidth")}
               onchange={(e) =>
                 setText("outline", { ...outline, width: e.currentTarget.valueAsNumber || 1 })}
             >
@@ -277,17 +286,17 @@
                     : null,
                 )}
             >
-            Shadow
+            {t("designer.shadow")}
           </label>
           {#if draft.theme.text.shadow}
             {@const shadow = draft.theme.text.shadow}
             <ColorField
-              label="Shadow colour"
+              label={t("designer.shadowColour")}
               value={shadow.color}
               onchange={(color) => setText("shadow", { ...shadow, color })}
             />
             <label class="inline">
-              Blur
+              {t("designer.blur")}
               <input
                 type="number"
                 min="0"
@@ -302,13 +311,13 @@
       </section>
 
       <section>
-        <h4>Text area</h4>
+        <h4>{t("designer.textArea")}</h4>
         <div class="row">
           {#each [
-            ["top", "Top"],
-            ["bottom", "Bottom"],
-            ["left", "Left"],
-            ["right", "Right"],
+            ["top", t("designer.top")],
+            ["bottom", t("designer.bottom")],
+            ["left", t("designer.left")],
+            ["right", t("designer.right")],
           ] as const as [key, label] (key)}
             <label class="inline">
               {label}
@@ -325,12 +334,12 @@
         <div class="row">
           <select
             value={draft.theme.textBox.verticalAlign}
-            aria-label="Vertical position"
+            aria-label={t("designer.verticalPosition")}
             onchange={(e) => setBox("verticalAlign", e.currentTarget.value as VerticalAlign)}
           >
-            <option value="top">Top of the area</option>
-            <option value="middle">Middle of the area</option>
-            <option value="bottom">Bottom of the area</option>
+            <option value="top">{t("designer.areaTop")}</option>
+            <option value="middle">{t("designer.areaMiddle")}</option>
+            <option value="bottom">{t("designer.areaBottom")}</option>
           </select>
           <label class="inline">
             <input
@@ -338,13 +347,13 @@
               checked={draft.theme.textBox.autoFit}
               onchange={(e) => setBox("autoFit", e.currentTarget.checked)}
             >
-            Shrink long text to fit
+            {t("designer.shrink")}
           </label>
         </div>
       </section>
 
       <section>
-        <h4>Scripture</h4>
+        <h4>{t("designer.scriptureSection")}</h4>
         <div class="row">
           <label class="inline">
             <input
@@ -355,10 +364,10 @@
                 setNumbers("visible", e.currentTarget.checked);
               }}
             >
-            Verse numbers
+            {t("designer.verseNumbers")}
           </label>
           <label class="inline">
-            Size
+            {t("designer.size")}
             <select
               value={draft.theme.scripture.verseNumbers.sizePercent}
               onchange={(e) => setNumbers("sizePercent", Number(e.currentTarget.value))}
@@ -374,7 +383,7 @@
               checked={draft.theme.scripture.verseNumbers.superscript}
               onchange={(e) => setNumbers("superscript", e.currentTarget.checked)}
             >
-            Raised
+            {t("designer.raised")}
           </label>
           <label class="inline">
             <input
@@ -382,7 +391,7 @@
               checked={draft.theme.scripture.verseNumbers.bold}
               onchange={(e) => setNumbers("bold", e.currentTarget.checked)}
             >
-            Bold
+            {t("designer.bold")}
           </label>
         </div>
         <div class="row">
@@ -392,11 +401,11 @@
               checked={draft.theme.scripture.verseNumbers.color === ""}
               onchange={(e) => setNumbers("color", e.currentTarget.checked ? "" : "#f5c542")}
             >
-            Numbers in the text colour
+            {t("designer.numbersTextColour")}
           </label>
           {#if draft.theme.scripture.verseNumbers.color !== ""}
             <ColorField
-              label="Verse number colour"
+              label={t("designer.numberColour")}
               value={draft.theme.scripture.verseNumbers.color}
               onchange={(color) => setNumbers("color", color)}
             />
@@ -412,14 +421,14 @@
                 referenceOnEverySlide: e.currentTarget.checked,
               })}
           >
-          Show the reference on every slide (not just the first)
+          {t("designer.everySlide")}
         </label>
       </section>
 
       <section>
-        <h4>Scripture reference</h4>
+        <h4>{t("designer.reference")}</h4>
         <LabelEditor
-          name="Reference"
+          name={t("designer.boxReference")}
           value={draft.theme.caption}
           spacing={REFERENCE_SPACING}
           {fonts}
@@ -432,9 +441,9 @@
       </section>
 
       <section>
-        <h4>Footer (copyright, CCLI)</h4>
+        <h4>{t("designer.footer")}</h4>
         <LabelEditor
-          name="Footer"
+          name={t("designer.boxFooter")}
           value={draft.theme.footer}
           spacing={FOOTER_SPACING}
           {fonts}
@@ -451,8 +460,8 @@
     {#if error}
       <span class="error" role="alert">{error}</span>
     {/if}
-    <Button onclick={onclose}>Cancel</Button>
-    <Button variant="primary" disabled={saving} onclick={save}>Save Theme</Button>
+    <Button onclick={onclose}>{t("common.cancel")}</Button>
+    <Button variant="primary" disabled={saving} onclick={save}>{t("designer.save")}</Button>
   {/snippet}
 </Dialog>
 

@@ -1,25 +1,39 @@
 <!--
   @component
   The church's settings: name and CCLI licence (shown in song footers),
-  the alert templates in the Alert panel, and the stage display options.
+  the alert templates in the Alert panel, updates, the stage display
+  options, and the interface language (kept on this computer).
 -->
 <script lang="ts">
   import type { AlertTemplate, AppSettings } from "@simpleworship/protocol";
   import { Button, Dialog } from "@simpleworship/ui";
+  import { getVersion } from "@tauri-apps/api/app";
   import { onMount } from "svelte";
   import { getSettings, saveSettings } from "../lib/api.ts";
   import { dialogs } from "../lib/dialogs.svelte.ts";
   import { engine } from "../lib/engine.svelte.ts";
+  import { i18n, LANGUAGES, type Language, t } from "../lib/i18n/i18n.svelte.ts";
+  import { updates } from "../lib/updates.svelte.ts";
 
   let settings: AppSettings | null = $state(null);
+  let version = $state("");
+  /** The language chosen here ("" follows the computer); applied on Save. */
+  let language: Language | "" = $state(i18n.chosen ?? "");
+
+  /** "Twi (12% translated)" for a language that is not finished. */
+  function languageName(code: Language, name: string): string {
+    const percent = Math.floor(i18n.coverage(code) * 100);
+    return percent >= 100 ? name : t("settings.languagePartial", { name, percent });
+  }
 
   onMount(async () => {
     settings = await getSettings();
+    version = await getVersion();
   });
 
   function addTemplate() {
     settings?.alertTemplates.push({
-      name: "New alert",
+      name: t("settings.newAlert"),
       text: "",
       style: "ticker",
       position: "bottom",
@@ -36,6 +50,7 @@
     if (!settings) return;
     try {
       await saveSettings($state.snapshot(settings));
+      i18n.choose(language || null);
       dialogs.close();
     } catch (error) {
       engine.showError(error);
@@ -43,74 +58,96 @@
   }
 </script>
 
-<Dialog title="Settings" onclose={() => dialogs.close()}>
+<Dialog title={t("settings.title")} onclose={() => dialogs.close()}>
   {#if settings}
     <div class="settings">
       <section>
-        <h3>Church</h3>
+        <h3>{t("settings.church")}</h3>
         <label class="field">
-          Name
-          <input bind:value={settings.churchName} placeholder="e.g. Winners Chapel Int'l, Abesim">
+          {t("common.name")}
+          <input bind:value={settings.churchName} placeholder={t("settings.churchPlaceholder")}>
         </label>
         <label class="field">
-          CCLI licence number
-          <input bind:value={settings.ccliLicense} placeholder="e.g. 1234567">
-          <span class="hint">
-            Added to every song's copyright line as “CCLI License # …”. Leave empty to leave it off.
-          </span>
+          {t("settings.ccli")}
+          <input bind:value={settings.ccliLicense} placeholder={t("settings.ccliPlaceholder")}>
+          <span class="hint">{t("settings.ccliHint")}</span>
         </label>
       </section>
 
       <section>
-        <h3>Alert templates</h3>
-        <p class="hint">
-          One click in the Alert panel. Put <code>___</code> where a number or name goes, e.g.
-          “Parent of child ___, please come to the nursery”.
-        </p>
+        <h3>{t("settings.alerts")}</h3>
+        <p class="hint">{t("settings.alertsHint")}</p>
         {#each settings.alertTemplates as template, index (index)}
           <div class="template">
-            <input class="template-name" bind:value={template.name} aria-label="Name">
-            <input class="template-text" bind:value={template.text} aria-label="Message">
-            <select bind:value={template.style} aria-label="Style">
-              <option value="ticker">Scrolling</option>
-              <option value="banner">Still</option>
+            <input class="template-name" bind:value={template.name} aria-label={t("common.name")}>
+            <input class="template-text" bind:value={template.text} aria-label={t("alert.message")}>
+            <select bind:value={template.style} aria-label={t("alert.style")}>
+              <option value="ticker">{t("alert.scrolling")}</option>
+              <option value="banner">{t("alert.still")}</option>
             </select>
-            <select bind:value={template.position} aria-label="Position">
-              <option value="bottom">Bottom</option>
-              <option value="top">Top</option>
+            <select bind:value={template.position} aria-label={t("alert.position")}>
+              <option value="bottom">{t("alert.bottom")}</option>
+              <option value="top">{t("alert.top")}</option>
             </select>
-            <Button onclick={() => removeTemplate(template)}>Remove</Button>
+            <Button onclick={() => removeTemplate(template)}>{t("settings.remove")}</Button>
           </div>
         {/each}
-        <Button onclick={addTemplate}>Add Template</Button>
+        <Button onclick={addTemplate}>{t("settings.addTemplate")}</Button>
       </section>
 
       <section>
-        <h3>Stage display</h3>
+        <h3>{t("settings.updates")}</h3>
+        <label class="option">
+          <input type="checkbox" bind:checked={settings.checkForUpdates}>
+          {t("settings.autoUpdates")}
+        </label>
+        <div class="option">
+          <span class="hint">{t("settings.thisVersion", { version })}</span>
+          <Button disabled={updates.status === "checking"} onclick={() => updates.checkNow()}>
+            {updates.status === "checking" ? t("about.checking") : t("settings.checkNow")}
+          </Button>
+        </div>
+      </section>
+
+      <section>
+        <h3>{t("settings.stage")}</h3>
         <label class="option">
           <input type="checkbox" bind:checked={settings.stage.showClock}>
-          Show the time of day
+          {t("settings.showClock")}
         </label>
         <label class="option">
           <input type="checkbox" bind:checked={settings.stage.showNext}>
-          Show the next slide
+          {t("settings.showNext")}
         </label>
         <label class="field narrow">
-          Text size
+          {t("settings.textSize")}
           <select bind:value={settings.stage.textScale}>
-            <option value={80}>Smaller</option>
-            <option value={100}>Normal</option>
-            <option value={125}>Larger</option>
-            <option value={150}>Largest</option>
+            <option value={80}>{t("settings.smaller")}</option>
+            <option value={100}>{t("settings.normal")}</option>
+            <option value={125}>{t("settings.larger")}</option>
+            <option value={150}>{t("settings.largest")}</option>
           </select>
+        </label>
+      </section>
+
+      <section>
+        <h3>{t("settings.language")}</h3>
+        <label class="field">
+          <select bind:value={language} aria-label={t("settings.language")}>
+            <option value="">{t("settings.languageSystem")}</option>
+            {#each LANGUAGES as option (option.code)}
+              <option value={option.code}>{languageName(option.code, option.name)}</option>
+            {/each}
+          </select>
+          <span class="hint">{t("settings.languageHint")}</span>
         </label>
       </section>
     </div>
   {/if}
 
   {#snippet actions()}
-    <Button onclick={() => dialogs.close()}>Cancel</Button>
-    <Button variant="primary" disabled={!settings} onclick={save}>Save</Button>
+    <Button onclick={() => dialogs.close()}>{t("common.cancel")}</Button>
+    <Button variant="primary" disabled={!settings} onclick={save}>{t("common.save")}</Button>
   {/snippet}
 </Dialog>
 

@@ -5,6 +5,7 @@
 -->
 <script lang="ts">
   import type { Background, MediaFit, MediaItem } from "@simpleworship/protocol";
+  import { t } from "../../lib/i18n/i18n.svelte.ts";
   import ColorField from "./ColorField.svelte";
   import MediaPicker from "./MediaPicker.svelte";
 
@@ -69,26 +70,34 @@
 <div class="background-editor">
   <select
     value={shownType}
-    aria-label="Background type"
+    aria-label={t("background.type")}
     onchange={(e) => setType(e.currentTarget.value as Background["type"])}
   >
-    <option value="color">Colour</option>
-    <option value="linearGradient">Gradient</option>
-    <option value="image">Image</option>
-    <option value="video">Video</option>
+    <option value="color">{t("background.colour")}</option>
+    <option value="linearGradient">{t("background.gradient")}</option>
+    <option value="image">{t("background.image")}</option>
+    <option value="video">{t("background.video")}</option>
   </select>
 
   {#if shownType === "color" && value.type === "color"}
     <ColorField
-      label="Colour"
+      label={t("background.colour")}
       value={value.color}
       onchange={(color) => onchange({ ...value, color })}
     />
   {:else if shownType === "linearGradient" && value.type === "linearGradient"}
-    <ColorField label="From" value={value.from} onchange={(from) => onchange({ ...value, from })} />
-    <ColorField label="To" value={value.to} onchange={(to) => onchange({ ...value, to })} />
+    <ColorField
+      label={t("background.from")}
+      value={value.from}
+      onchange={(from) => onchange({ ...value, from })}
+    />
+    <ColorField
+      label={t("background.to")}
+      value={value.to}
+      onchange={(to) => onchange({ ...value, to })}
+    />
     <label class="inline">
-      Angle
+      {t("background.angle")}
       <input
         type="number"
         min="0"
@@ -105,18 +114,18 @@
     />
     {#if value.type === "image" || value.type === "video"}
       <label class="inline">
-        Fit
+        {t("background.fit")}
         <select
           value={value.fit}
           onchange={(e) => onchange({ ...value, fit: e.currentTarget.value as MediaFit })}
         >
-          <option value="cover">Fill the screen (crop edges)</option>
-          <option value="contain">Show it all (black bars)</option>
-          <option value="stretch">Stretch to the screen</option>
+          <option value="cover">{t("background.cover")}</option>
+          <option value="contain">{t("background.contain")}</option>
+          <option value="stretch">{t("background.stretch")}</option>
         </select>
       </label>
-      <label class="inline" title="Lower values fade it into black, so text on top stands out">
-        Opacity
+      <label class="inline" title={t("background.opacityHint")}>
+        {t("background.opacity")}
         <input
           type="range"
           min="0.05"
@@ -135,7 +144,7 @@
           checked={value.loop}
           onchange={(e) => onchange({ ...value, loop: e.currentTarget.checked })}
         >
-        Loop
+        {t("common.loop")}
       </label>
       <label class="inline">
         <input
@@ -143,7 +152,7 @@
           checked={value.playAudio}
           onchange={(e) => onchange({ ...value, playAudio: e.currentTarget.checked })}
         >
-        Play sound
+        {t("background.playSound")}
       </label>
     {/if}
   {/if}

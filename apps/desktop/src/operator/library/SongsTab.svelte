@@ -20,6 +20,7 @@
   } from "../../lib/api.ts";
   import { SONG_DRAG_TYPE } from "../../lib/drag.ts";
   import { engine } from "../../lib/engine.svelte.ts";
+  import { t } from "../../lib/i18n/i18n.svelte.ts";
   import { importer } from "../../lib/importer.svelte.ts";
   import { library } from "../../lib/library.svelte.ts";
   import SongEditor from "./SongEditor.svelte";
@@ -142,23 +143,27 @@
       type="search"
       bind:value={query}
       onkeydown={handleListKeys}
-      placeholder="Search songs by title, author or lyrics"
-      aria-label="Search songs"
+      placeholder={t("songs.search")}
+      aria-label={t("songs.searchLabel")}
     >
-    <Button onclick={() => (editing = newSong())}>New Song</Button>
-    <Button onclick={() => importer.open()}>Import…</Button>
-    <Button disabled={!selected} onclick={() => edit()}>Edit</Button>
+    <Button onclick={() => (editing = newSong())}>{t("songs.new")}</Button>
+    <Button onclick={() => importer.open()}>{t("common.import")}</Button>
+    <Button disabled={!selected} onclick={() => edit()}>{t("common.edit")}</Button>
     {#if confirmingDelete}
-      <span class="confirm">Delete “{selected?.title}”?</span>
-      <Button variant="live" active onclick={remove}>Delete</Button>
-      <Button onclick={() => (confirmingDelete = false)}>Keep</Button>
+      <span class="confirm">{t("songs.confirmDelete", { title: selected?.title ?? "" })}</span>
+      <Button variant="live" active onclick={remove}>{t("common.delete")}</Button>
+      <Button onclick={() => (confirmingDelete = false)}>{t("songs.keep")}</Button>
     {:else}
-      <Button disabled={!selected} onclick={() => (confirmingDelete = true)}>Delete</Button>
+      <Button disabled={!selected} onclick={() => (confirmingDelete = true)}
+        >{t("common.delete")}</Button
+      >
     {/if}
     <span class="spacer"></span>
-    <Button disabled={!selected} onclick={() => addToSchedule()}>Add to Schedule</Button>
+    <Button disabled={!selected} onclick={() => addToSchedule()}
+      >{t("common.addToSchedule")}</Button
+    >
     <Button variant="primary" disabled={!selected} onclick={() => preview()}>
-      Show in Preview
+      {t("common.showInPreview")}
     </Button>
   </div>
 
@@ -170,7 +175,7 @@
   <div
     class="results"
     role="listbox"
-    aria-label="Songs"
+    aria-label={t("songs.list")}
     tabindex="0"
     aria-activedescendant={selectedId ? optionId(selectedId) : undefined}
     onkeydown={handleListKeys}
@@ -194,9 +199,7 @@
       </div>
     {:else}
       <p class="empty">
-        {query
-          ? "No songs match your search."
-          : "Your library is empty. Add a song with “New Song”."}
+        {query ? t("songs.noMatch") : t("songs.empty")}
       </p>
     {/each}
   </div>

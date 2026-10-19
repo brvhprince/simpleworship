@@ -6,6 +6,7 @@
 
 import type { FoundSource } from "@simpleworship/protocol";
 import { firstLaunchImports } from "./api.ts";
+import { listOf, t } from "./i18n/i18n.svelte.ts";
 import { onMenuClick } from "./menu.ts";
 import { prompts } from "./prompts.svelte.ts";
 
@@ -44,16 +45,14 @@ class Importer {
     const bibles = found.length - songs.length;
     const parts = [
       ...songs.map((source) => source.label),
-      ...(bibles > 0 ? [`${bibles} ${bibles === 1 ? "Bible" : "Bibles"}`] : []),
+      ...(bibles > 0 ? [t("count.bibles", { count: bibles })] : []),
     ];
     const answer = await prompts.ask({
-      title: "Bring your library across?",
-      message:
-        `SimpleWorship found ${parts.join(", ")} on this computer. ` +
-        "Would you like to import them? Nothing in the other program is changed.",
+      title: t("firstRun.title"),
+      message: t("firstRun.message", { what: listOf(parts) }),
       buttons: [
-        { id: "later", label: "Not Now" },
-        { id: "import", label: "Review and Import", variant: "primary" },
+        { id: "later", label: t("firstRun.notNow") },
+        { id: "import", label: t("firstRun.review"), variant: "primary" },
       ],
       cancel: "later",
     });

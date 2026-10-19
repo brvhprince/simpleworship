@@ -25,6 +25,7 @@ mod commands;
 mod error;
 mod files;
 mod import_sources;
+mod launch;
 mod media;
 mod menu;
 mod office;
@@ -42,9 +43,27 @@ use crate::state::AppState;
 /// Builds and runs the application. Returns when the last window closes.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default();
+
+    // First, so a second copy hands over its file and quits before doing
+    // anything else.
+    #[cfg(desktop)]
+    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
+        match launch::schedule_in_args(&args) {
+            Some(path) => launch::open_schedule(app, path),
+            None => launch::show_main_window(app),
+        }
+    }));
+
+    let app = builder
+        .plugin(logging())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .manage(launch::PendingOpen::default())
         .setup(|app| {
+            log::info!("SimpleWorship {} starting", app.package_info().version);
             let state = AppState::load(app.handle())?;
             let recent = state.recent().list();
             app.manage(state);
@@ -59,6 +78,12 @@ pub fn run() {
             commands::themes::sync_themes(app.handle(), &state)?;
             commands::themes::sync_logo(app.handle(), &state)?;
             commands::themes::sync_settings(app.handle(), &state)?;
+
+            // Windows and Linux: started by double-clicking a schedule file.
+            let args: Vec<String> = std::env::args().collect();
+            if let Some(path) = launch::schedule_in_args(&args) {
+                launch::open_schedule(app.handle(), path);
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -111,6 +136,7 @@ pub fn run() {
             commands::import::import_first_launch,
             commands::import::import_preview,
             commands::import::import_commit,
+            commands::import::import_locate_media,
             commands::schedule::schedule_add_countdown,
             commands::schedule::schedule_add_playlist,
             commands::presentations::presentations_list,
@@ -138,8 +164,43 @@ pub fn run() {
             commands::outputs::monitors_list,
             commands::outputs::output_open,
             commands::outputs::output_close,
+            launch::launch_ready,
+            menu::open_logs_folder,
+            menu::open_project_page,
+            menu::menu_set_labels,
         ])
         .on_window_event(windows::on_window_event)
-        .run(tauri::generate_context!())
+        .build(tauri::generate_context!())
         .expect("SimpleWorship failed to start");
+
+    app.run(|_app, _event| {
+        // macOS: a schedule file was double-clicked or dropped on the icon.
+        #[cfg(target_os = "macos")]
+        if let tauri::RunEvent::Opened { urls } = _event {
+            for url in urls {
+                if let Ok(path) = url.to_file_path() {
+                    launch::open_schedule(_app, path);
+                }
+            }
+        }
+    });
+}
+
+/// Logs to the terminal and to a file in the system's log folder, so a
+/// problem in Sunday's service can be looked at afterwards (Help › Open
+/// Logs Folder). Keeps the last few files of up to 5 MB each.
+fn logging() -> tauri::plugin::TauriPlugin<tauri::Wry> {
+    use tauri_plugin_log::{RotationStrategy, Target, TargetKind};
+    tauri_plugin_log::Builder::new()
+        .clear_targets()
+        .targets([
+            Target::new(TargetKind::Stdout),
+            Target::new(TargetKind::LogDir {
+                file_name: Some("simpleworship".into()),
+            }),
+        ])
+        .level(log::LevelFilter::Info)
+        .max_file_size(5_000_000)
+        .rotation_strategy(RotationStrategy::KeepSome(5))
+        .build()
 }

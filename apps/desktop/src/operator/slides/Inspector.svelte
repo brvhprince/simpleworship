@@ -15,6 +15,7 @@
   import type { ElementContent, MediaFit, ShapeKind, SlideElement } from "@simpleworship/protocol";
   import { Button } from "@simpleworship/ui";
   import { engine } from "../../lib/engine.svelte.ts";
+  import { t } from "../../lib/i18n/i18n.svelte.ts";
   import type { SlideEditor } from "../../lib/slides/editor.svelte.ts";
   import { applyElementToAll, applySlideLookToAll, arrange } from "../../lib/slides/slide-ops.ts";
   import BackgroundEditor from "../themes/BackgroundEditor.svelte";
@@ -35,11 +36,13 @@
   const themes = $derived(engine.themes.themes);
   const others = $derived(editor.deck.slides.length - 1);
 
-  const KIND_NAMES = { text: "Text box", shape: "Shape", media: "Picture" } as const;
-
   function kindName(item: SlideElement): string {
-    if (item.content.type === "media" && item.content.kind === "video") return "Video";
-    return KIND_NAMES[item.content.type];
+    if (item.content.type === "media" && item.content.kind === "video") return t("inspector.video");
+    return {
+      text: t("inspector.textBox"),
+      shape: t("inspector.shape"),
+      media: t("inspector.picture"),
+    }[item.content.type];
   }
 
   /** Changes the selected element (undoably; `tag` groups slider drags). */
@@ -74,12 +77,12 @@
     const target = element;
     if (!target) return;
     editor.change((deck) => applyElementToAll(deck, editor.slideIndex, target.id));
-    confirm(`Applied to ${others} other ${others === 1 ? "slide" : "slides"}.`);
+    confirm(t("inspector.appliedOthers", { count: others }));
   }
 
   function applySlide() {
     editor.change((deck) => applySlideLookToAll(deck, editor.slideIndex));
-    confirm(`Background and theme applied to every slide.`);
+    confirm(t("inspector.appliedLook"));
   }
 </script>
 
@@ -96,17 +99,17 @@
             update((item) => (item.locked = locked));
           }}
         >
-        Lock
+        {t("inspector.lock")}
       </label>
     </header>
 
     <section>
       <div class="grid">
         {#each [
-          ["x", "X"],
-          ["y", "Y"],
-          ["width", "Width"],
-          ["height", "Height"],
+          ["x", t("inspector.x")],
+          ["y", t("inspector.y")],
+          ["width", t("inspector.width")],
+          ["height", t("inspector.height")],
         ] as const as [key, label] (key)}
           <label>
             {label}
@@ -119,7 +122,7 @@
         {/each}
       </div>
       <label class="row">
-        Opacity
+        {t("inspector.opacity")}
         <input
           type="range"
           min="0.05"
@@ -133,12 +136,12 @@
         >
         <span class="value">{Math.round(element.opacity * 100)}%</span>
       </label>
-      <fieldset class="arrange" aria-label="Arrange">
+      <fieldset class="arrange" aria-label={t("inspector.arrange")}>
         {#each [
-          ["front", "To Front"],
-          ["forward", "Forward"],
-          ["backward", "Backward"],
-          ["back", "To Back"],
+          ["front", t("inspector.toFront")],
+          ["forward", t("inspector.forward")],
+          ["backward", t("inspector.backward")],
+          ["back", t("inspector.toBack")],
         ] as const as [move, label] (move)}
           <Button onclick={() => slide && editor.change(() => arrange(slide, element.id, move))}>
             {label}
@@ -150,7 +153,7 @@
     {#if element.content.type === "text"}
       {@const content = element.content}
       <section>
-        <h5>Box</h5>
+        <h5>{t("inspector.box")}</h5>
         <label class="check">
           <input
             type="checkbox"
@@ -160,7 +163,7 @@
               updateContent("text", (text) => (text.autoFit = on));
             }}
           >
-          Shrink long text to fit
+          {t("inspector.shrink")}
         </label>
         <label class="check">
           <input
@@ -171,18 +174,18 @@
               updateContent("text", (text) => (text.fill = on ? "rgba(0, 0, 0, 0.6)" : null));
             }}
           >
-          Colour behind the text
+          {t("inspector.boxFill")}
         </label>
         {#if content.fill !== null}
           <ColorField
-            label="Box colour"
+            label={t("inspector.boxColour")}
             value={content.fill}
             onchange={(fill) => updateContent("text", (text) => (text.fill = fill), "fill")}
           />
         {/if}
         <div class="grid">
           <label>
-            Padding
+            {t("inspector.padding")}
             <input
               type="number"
               min="0"
@@ -195,7 +198,7 @@
             >
           </label>
           <label>
-            Corners
+            {t("inspector.corners")}
             <input
               type="number"
               min="0"
@@ -208,7 +211,7 @@
             >
           </label>
           <label>
-            Line spacing
+            {t("inspector.lineSpacing")}
             <input
               type="number"
               min="0.7"
@@ -231,7 +234,7 @@
               updateContent("text", (text) => (text.style = { ...text.style, uppercase }));
             }}
           >
-          Capitals
+          {t("inspector.capitals")}
         </label>
         <label class="check">
           <input
@@ -249,13 +252,13 @@
               );
             }}
           >
-          Outline
+          {t("inspector.outline")}
         </label>
         {#if content.style.outline}
           {@const outline = content.style.outline}
           <div class="row">
             <ColorField
-              label="Outline colour"
+              label={t("inspector.outlineColour")}
               value={outline.color}
               onchange={(color) =>
                 updateContent(
@@ -270,7 +273,7 @@
               max="20"
               step="0.5"
               value={outline.width}
-              aria-label="Outline width"
+              aria-label={t("inspector.outlineWidth")}
               onchange={(e) => {
                 const width = e.currentTarget.valueAsNumber || 1;
                 updateContent(
@@ -299,24 +302,24 @@
               );
             }}
           >
-          Shadow
+          {t("inspector.shadow")}
         </label>
       </section>
     {:else if element.content.type === "shape"}
       {@const content = element.content}
       <section>
-        <h5>Shape</h5>
+        <h5>{t("inspector.shape")}</h5>
         <select
           value={content.shape}
-          aria-label="Shape"
+          aria-label={t("inspector.shape")}
           onchange={(e) => {
             const shape = e.currentTarget.value as ShapeKind;
             updateContent("shape", (item) => (item.shape = shape));
           }}
         >
-          <option value="rectangle">Rectangle</option>
-          <option value="ellipse">Ellipse</option>
-          <option value="line">Line</option>
+          <option value="rectangle">{t("inspector.rectangle")}</option>
+          <option value="ellipse">{t("inspector.ellipse")}</option>
+          <option value="line">{t("inspector.line")}</option>
         </select>
         {#if content.shape !== "line"}
           <label class="check">
@@ -328,11 +331,11 @@
                 updateContent("shape", (item) => (item.fill = on ? "#ffffff" : null));
               }}
             >
-            Fill
+            {t("inspector.fill")}
           </label>
           {#if content.fill !== null}
             <ColorField
-              label="Fill colour"
+              label={t("inspector.fillColour")}
               value={content.fill}
               onchange={(fill) => updateContent("shape", (item) => (item.fill = fill), "fill")}
             />
@@ -350,13 +353,13 @@
               );
             }}
           >
-          {content.shape === "line" ? "Line colour" : "Border"}
+          {content.shape === "line" ? t("inspector.lineColour") : t("inspector.border")}
         </label>
         {#if content.stroke}
           {@const stroke = content.stroke}
           <div class="row">
             <ColorField
-              label="Border colour"
+              label={t("inspector.borderColour")}
               value={stroke.color}
               onchange={(color) =>
                 updateContent("shape", (item) => (item.stroke = { ...stroke, color }), "stroke")}
@@ -366,7 +369,7 @@
               min="1"
               max="60"
               value={stroke.width}
-              aria-label="Border width"
+              aria-label={t("inspector.borderWidth")}
               onchange={(e) => {
                 const width = e.currentTarget.valueAsNumber || 1;
                 updateContent("shape", (item) => (item.stroke = { ...stroke, width }));
@@ -376,7 +379,7 @@
         {/if}
         {#if content.shape === "rectangle"}
           <label class="row">
-            Corners
+            {t("inspector.corners")}
             <input
               type="number"
               min="0"
@@ -393,9 +396,9 @@
     {:else}
       {@const content = element.content}
       <section>
-        <h5>{content.kind === "video" ? "Video" : "Picture"}</h5>
+        <h5>{content.kind === "video" ? t("inspector.video") : t("inspector.picture")}</h5>
         <label class="row">
-          Fit
+          {t("inspector.fit")}
           <select
             value={content.fit}
             onchange={(e) => {
@@ -403,13 +406,13 @@
               updateContent("media", (item) => (item.fit = fit));
             }}
           >
-            <option value="contain">Show it all</option>
-            <option value="cover">Fill the box (crop)</option>
-            <option value="stretch">Stretch to the box</option>
+            <option value="contain">{t("inspector.showAll")}</option>
+            <option value="cover">{t("inspector.cover")}</option>
+            <option value="stretch">{t("inspector.stretch")}</option>
           </select>
         </label>
         <label class="row">
-          Corners
+          {t("inspector.corners")}
           <input
             type="number"
             min="0"
@@ -431,25 +434,22 @@
                 updateContent("media", (item) => (item.playAudio = on));
               }}
             >
-            Play sound on the projector
+            {t("inspector.playSound")}
           </label>
-          <p class="hint">
-            Videos on a slide loop. Transparent videos (and animated WebP or PNG) show the slide
-            through.
-          </p>
+          <p class="hint">{t("inspector.videoHint")}</p>
         {/if}
       </section>
     {/if}
 
     <section class="actions">
-      <Button disabled={others === 0} onclick={applyElement}>Apply to All Slides</Button>
-      <Button variant="live" onclick={() => editor.deleteSelected()}>Delete</Button>
+      <Button disabled={others === 0} onclick={applyElement}>{t("inspector.applyAll")}</Button>
+      <Button variant="live" onclick={() => editor.deleteSelected()}>{t("common.delete")}</Button>
     </section>
   {:else if slide}
-    <header><h4>Slide {editor.slideIndex + 1}</h4></header>
+    <header><h4>{t("inspector.slide", { number: editor.slideIndex + 1 })}</h4></header>
     <section>
       <label class="column">
-        Theme
+        {t("common.theme")}
         <select
           value={slide.themeId ?? ""}
           onchange={(e) => {
@@ -457,7 +457,7 @@
             editor.change(() => (slide.themeId = id));
           }}
         >
-          <option value="">The presentation's theme</option>
+          <option value="">{t("inspector.presentationTheme")}</option>
           {#each themes as theme (theme.id)}
             <option value={theme.id}>{theme.theme.name}</option>
           {/each}
@@ -474,7 +474,7 @@
             );
           }}
         >
-        Its own background
+        {t("inspector.ownBackground")}
       </label>
       {#if slide.background}
         <BackgroundEditor
@@ -485,11 +485,9 @@
       {/if}
     </section>
     <section class="actions">
-      <Button disabled={others === 0} onclick={applySlide}>Apply to All Slides</Button>
+      <Button disabled={others === 0} onclick={applySlide}>{t("inspector.applyAll")}</Button>
     </section>
-    <p class="hint">
-      Click a text box, shape or picture to change it. Double-click a text box to type.
-    </p>
+    <p class="hint">{t("inspector.slideHint")}</p>
   {/if}
 
   {#if applied}

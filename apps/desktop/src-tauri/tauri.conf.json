@@ -52,6 +52,48 @@
     "resources": {
       "../../../resources/bibles/eng-kjv2006_usfm.zip": "bibles/eng-kjv2006_usfm.zip",
       "../../../resources/bibles/engwebp_usfm.zip": "bibles/engwebp_usfm.zip"
+    },
+    "publisher": "SimpleWorship contributors",
+    "copyright": "\u00a9 SimpleWorship contributors. GPL-3.0-or-later.",
+    "homepage": "https://github.com/brvhprince/simpleworship",
+    "fileAssociations": [
+      {
+        "ext": ["sws"],
+        "name": "SimpleWorship Schedule",
+        "description": "SimpleWorship schedule",
+        "role": "Editor",
+        "mimeType": "application/x-simpleworship-schedule"
+      }
+    ],
+    "macOS": {
+      "minimumSystemVersion": "11.0"
+    },
+    "windows": {
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      },
+      "nsis": {
+        "installMode": "currentUser"
+      }
+    },
+    "linux": {
+      "deb": {
+        "depends": ["gstreamer1.0-plugins-good", "gstreamer1.0-plugins-bad", "gstreamer1.0-libav"]
+      },
+      "rpm": {
+        "depends": ["gstreamer1-plugins-good", "gstreamer1-plugins-bad-free", "gstreamer1-libav"]
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEUxNTk4MDU2QjYxMkM5MEIKUldRTHlSSzJWb0JaNGZheWJSRVNFOGE5aHdtVWdsQ1N0TUlJcGJ3MHZ1Z1cxS1pnb0llYjBmNnEK",
+      "endpoints": [
+        "https://github.com/brvhprince/simpleworship/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
     }
   }
 }

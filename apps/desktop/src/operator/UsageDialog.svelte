@@ -11,6 +11,7 @@
   import { exportUsageCsv, usageReport } from "../lib/api.ts";
   import { dialogs } from "../lib/dialogs.svelte.ts";
   import { engine } from "../lib/engine.svelte.ts";
+  import { t } from "../lib/i18n/i18n.svelte.ts";
 
   /** A date as `YYYY-MM-DD`, in local time. */
   function isoDate(date: Date): string {
@@ -33,7 +34,7 @@
 
   async function exportCsv() {
     const path = await save({
-      defaultPath: `Song usage ${from} to ${to}.csv`,
+      defaultPath: t("usage.fileName", { from, to }),
       filters: [{ name: "CSV", extensions: ["csv"] }],
     });
     if (!path) return;
@@ -45,22 +46,22 @@
   }
 </script>
 
-<Dialog title="Song Usage (CCLI Report)" onclose={() => dialogs.close()}>
+<Dialog title={t("usage.title")} onclose={() => dialogs.close()}>
   <div class="range">
-    <label>From <input type="date" bind:value={from}></label>
-    <label>to <input type="date" bind:value={to}></label>
-    <span class="hint">{rows.length} {rows.length === 1 ? "song" : "songs"}</span>
+    <label>{t("usage.from")} <input type="date" bind:value={from}></label>
+    <label>{t("usage.to")} <input type="date" bind:value={to}></label>
+    <span class="hint">{t("usage.count", { count: rows.length })}</span>
   </div>
 
   <div class="table">
     <table>
       <thead>
         <tr>
-          <th>Title</th>
-          <th>Author</th>
-          <th>CCLI #</th>
-          <th class="number">Times</th>
-          <th>Last used</th>
+          <th>{t("usage.songTitle")}</th>
+          <th>{t("usage.author")}</th>
+          <th>{t("usage.ccli")}</th>
+          <th class="number">{t("usage.times")}</th>
+          <th>{t("usage.lastUsed")}</th>
         </tr>
       </thead>
       <tbody>
@@ -74,7 +75,7 @@
           </tr>
         {:else}
           <tr>
-            <td colspan="5" class="empty">No songs were shown live in this period.</td>
+            <td colspan="5" class="empty">{t("usage.empty")}</td>
           </tr>
         {/each}
       </tbody>
@@ -82,8 +83,10 @@
   </div>
 
   {#snippet actions()}
-    <Button onclick={() => dialogs.close()}>Close</Button>
-    <Button variant="primary" disabled={rows.length === 0} onclick={exportCsv}>Export CSV…</Button>
+    <Button onclick={() => dialogs.close()}>{t("common.close")}</Button>
+    <Button variant="primary" disabled={rows.length === 0} onclick={exportCsv}
+      >{t("usage.export")}</Button
+    >
   {/snippet}
 </Dialog>
 

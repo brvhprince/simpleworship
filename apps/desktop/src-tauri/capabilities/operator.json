@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "operator",
+  "description": "Extra permissions for the operator window: logging, updates and restarting after an update.",
+  "windows": ["main"],
+  "permissions": ["log:default", "updater:default", "process:allow-restart"]
+}

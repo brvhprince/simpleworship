@@ -6,6 +6,7 @@
 <script lang="ts">
   import type { MediaItem, MediaKind, MediaRef } from "@simpleworship/protocol";
   import { getMediaUrls } from "@simpleworship/renderer";
+  import { t } from "../../lib/i18n/i18n.svelte.ts";
   import { media } from "../../lib/media.svelte.ts";
 
   interface Props {
@@ -20,7 +21,11 @@
   const choices = $derived(media.list.filter((item) => item.kind === kind));
 </script>
 
-<div class="picker" role="listbox" aria-label="Choose {kind === "video" ? "a video" : "an image"}">
+<div
+  class="picker"
+  role="listbox"
+  aria-label={kind === "video" ? t("picker.video") : t("picker.image")}
+>
   {#each choices as item (item.id)}
     <button
       type="button"
@@ -35,9 +40,7 @@
       >
     </button>
   {:else}
-    <p class="empty">
-      No {kind === "video" ? "videos" : "images"} in the library yet. Import some in the Media tab.
-    </p>
+    <p class="empty">{kind === "video" ? t("picker.noVideos") : t("picker.noImages")}</p>
   {/each}
 </div>
 

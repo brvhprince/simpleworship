@@ -311,6 +311,6 @@ fn remember_recent(app: &AppHandle, state: &AppState, path: &std::path::Path) {
         recent.list()
     };
     if let Err(error) = menu::update_recent(app, &list) {
-        eprintln!("could not update the Open Recent menu: {error}");
+        log::warn!("could not update the Open Recent menu: {error}");
     }
 }

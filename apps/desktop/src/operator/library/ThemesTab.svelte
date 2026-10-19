@@ -9,17 +9,18 @@
   import { Button } from "@simpleworship/ui";
   import { deleteTheme, saveTheme, setThemeDefaults, uuidV7 } from "../../lib/api.ts";
   import { engine } from "../../lib/engine.svelte.ts";
+  import { t } from "../../lib/i18n/i18n.svelte.ts";
   import { prompts } from "../../lib/prompts.svelte.ts";
   import { sampleLyrics } from "../../lib/samples.ts";
   import ThemeDesigner from "../themes/ThemeDesigner.svelte";
 
   /** The kinds of content with a default theme, and their labels. */
-  const KINDS: [keyof ThemeDefaults, string][] = [
-    ["song", "Songs"],
-    ["scripture", "Scripture"],
-    ["text", "Text"],
-    ["presentation", "Presentations"],
-  ];
+  const KINDS: [keyof ThemeDefaults, string][] = $derived([
+    ["song", t("library.songs")],
+    ["scripture", t("library.scripture")],
+    ["text", t("library.text")],
+    ["presentation", t("library.presentations")],
+  ]);
 
   let selectedId: string | null = $state(null);
   /** The theme open in the designer, if any. */
@@ -39,7 +40,7 @@
   }
 
   async function duplicate() {
-    const copy = copyOf(selected, `${selected?.theme.name ?? "Theme"} copy`);
+    const copy = copyOf(selected, t("themes.copyName", { name: selected?.theme.name ?? "" }));
     if (!copy) return;
     try {
       await saveTheme(copy);
@@ -50,7 +51,7 @@
   }
 
   function create() {
-    editing = copyOf(null, "New Theme");
+    editing = copyOf(null, t("themes.newName"));
   }
 
   function editSelected() {
@@ -59,11 +60,11 @@
 
   async function remove(theme: ThemeRecord) {
     const answer = await prompts.ask({
-      title: "Delete theme?",
-      message: `Delete “${theme.theme.name}”? Anything that uses it will use the default theme instead.`,
+      title: t("themes.deleteTitle"),
+      message: t("themes.deleteMessage", { name: theme.theme.name }),
       buttons: [
-        { id: "cancel", label: "Cancel" },
-        { id: "delete", label: "Delete", variant: "live" },
+        { id: "cancel", label: t("common.cancel") },
+        { id: "delete", label: t("common.delete"), variant: "live" },
       ],
       cancel: "cancel",
     });
@@ -92,15 +93,17 @@
 
 <div class="themes-tab">
   <div class="toolbar">
-    <Button onclick={create}>New Theme</Button>
-    <Button disabled={!selected} onclick={duplicate}>Duplicate</Button>
-    <Button disabled={!selected} onclick={editSelected}>Edit</Button>
-    <Button disabled={!selected} onclick={() => selected && remove(selected)}>Delete</Button>
+    <Button onclick={create}>{t("themes.new")}</Button>
+    <Button disabled={!selected} onclick={duplicate}>{t("themes.duplicate")}</Button>
+    <Button disabled={!selected} onclick={editSelected}>{t("common.edit")}</Button>
+    <Button disabled={!selected} onclick={() => selected && remove(selected)}
+      >{t("common.delete")}</Button
+    >
 
     <span class="spacer"></span>
 
     {#if selected}
-      <span class="label">Use “{selected.theme.name}” for</span>
+      <span class="label">{t("themes.useFor", { name: selected.theme.name })}</span>
       {#each KINDS as [kind, label] (kind)}
         <Button active={defaults[kind] === selected.id} onclick={() => useFor(kind, selected)}>
           {label}
@@ -109,7 +112,7 @@
     {/if}
   </div>
 
-  <ul class="grid" aria-label="Themes">
+  <ul class="grid" aria-label={t("themes.list")}>
     {#each themes as theme (theme.id)}
       <li>
         <button

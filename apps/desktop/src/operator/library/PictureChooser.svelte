@@ -8,6 +8,7 @@
   import { getMediaUrls } from "@simpleworship/renderer";
   import { Button, Dialog } from "@simpleworship/ui";
   import { open } from "@tauri-apps/plugin-dialog";
+  import { t } from "../../lib/i18n/i18n.svelte.ts";
   import { media } from "../../lib/media.svelte.ts";
 
   interface Props {
@@ -32,7 +33,7 @@
       multiple: true,
       filters: [
         {
-          name: "Pictures and videos",
+          name: t("pictures.filter"),
           extensions: [
             "png",
             "jpg",
@@ -53,8 +54,8 @@
   }
 </script>
 
-<Dialog title="Add Pictures" size="small" {onclose}>
-  <div class="grid" role="listbox" aria-label="Pictures and videos" aria-multiselectable="true">
+<Dialog title={t("pictures.title")} size="small" {onclose}>
+  <div class="grid" role="listbox" aria-label={t("pictures.list")} aria-multiselectable="true">
     {#each choices as item (item.id)}
       {@const order = chosen.indexOf(item.id)}
       <button
@@ -73,19 +74,18 @@
         {/if}
       </button>
     {:else}
-      <p class="empty">No pictures in the library yet. Import some to add them.</p>
+      <p class="empty">{t("pictures.empty")}</p>
     {/each}
   </div>
 
   {#snippet actions()}
     <Button disabled={media.progress !== null} onclick={importFiles}>
-      {media.progress ? `Copying ${media.progress.name}…` : "Import…"}
+      {media.progress ? t("media.copying", { name: media.progress.name }) : t("common.import")}
     </Button>
     <span class="spacer"></span>
-    <Button onclick={onclose}>Cancel</Button>
+    <Button onclick={onclose}>{t("common.cancel")}</Button>
     <Button variant="primary" disabled={chosen.length === 0} onclick={() => onchoose(chosen)}>
-      Add {chosen.length || ""}
-      {chosen.length === 1 ? "Slide" : "Slides"}
+      {chosen.length ? t("pictures.add", { count: chosen.length }) : t("pictures.addNone")}
     </Button>
   {/snippet}
 </Dialog>

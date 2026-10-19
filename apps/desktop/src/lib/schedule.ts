@@ -4,14 +4,15 @@
  */
 
 import type { ScheduleItem } from "@simpleworship/protocol";
+import { t } from "./i18n/i18n.svelte.ts";
 
 /** The title shown in the schedule list. */
 export function itemTitle(item: ScheduleItem): string {
   switch (item.content.type) {
     case "song":
-      return item.content.song.title || "Untitled song";
+      return item.content.song.title || t("kind.untitledSong");
     case "text":
-      return item.content.title || "Text";
+      return item.content.title || t("kind.text");
     case "scripture": {
       const abbreviations = item.content.translations.map((t) => t.abbreviation).join(" · ");
       return `${item.content.reference} (${abbreviations})`;
@@ -24,7 +25,7 @@ export function itemTitle(item: ScheduleItem): string {
     case "playlist":
       return item.content.name;
     case "deck":
-      return item.content.deck.name || "Presentation";
+      return item.content.deck.name || t("kind.presentation");
   }
 }
 
@@ -49,20 +50,20 @@ export function canHoldSlides(item: ScheduleItem): boolean {
 export function itemKind(item: ScheduleItem): string {
   switch (item.content.type) {
     case "song":
-      return "Song";
+      return t("kind.song");
     case "text":
-      return "Text";
+      return t("kind.text");
     case "scripture":
-      return "Bible";
+      return t("kind.bible");
     case "media":
-      return item.content.media.kind === "video" ? "Video" : "Image";
+      return item.content.media.kind === "video" ? t("kind.video") : t("kind.image");
     case "countdown":
-      return "Timer";
+      return t("kind.timer");
     case "slides":
-      return "Slides";
+      return t("kind.slides");
     case "playlist":
-      return "Music";
+      return t("kind.music");
     case "deck":
-      return `Slides · ${item.content.deck.slides.length}`;
+      return t("kind.deckSlides", { count: item.content.deck.slides.length });
   }
 }

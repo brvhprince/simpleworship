@@ -166,7 +166,7 @@ pub fn thumbnail_path(folders: &MediaFolders, id: Id) -> PathBuf {
 /// Tells every window that the media library changed.
 pub fn announce(app: &AppHandle) {
     if let Err(error) = app.emit(MEDIA_EVENT, ()) {
-        eprintln!("could not announce media changes: {error}");
+        log::warn!("could not announce media changes: {error}");
     }
 }
 

@@ -37,6 +37,7 @@
     SONG_DRAG_TYPE,
   } from "../lib/drag.ts";
   import { engine } from "../lib/engine.svelte.ts";
+  import { t } from "../lib/i18n/i18n.svelte.ts";
   import { library } from "../lib/library.svelte.ts";
   import { media } from "../lib/media.svelte.ts";
   import { canHoldSlides, itemKind, itemTitle } from "../lib/schedule.ts";
@@ -214,26 +215,28 @@
     const kinds = ids.map((id) => media.list.find((item) => item.id === id)?.kind);
     if (kinds.every((kind) => kind === "audio")) {
       const count = ids.length;
-      await addPlaylistToSchedule(`Music (${count} tracks)`, ids, insertion);
+      await addPlaylistToSchedule(t("schedule.musicTracks", { count }), ids, insertion);
     } else {
       await addSlideshowToSchedule(ids, insertion);
     }
   }
 </script>
 
-<section class="schedule" aria-label="Schedule">
+<section class="schedule" aria-label={t("schedule.title")}>
   <header>
-    <span class="heading">Schedule</span>
-    <span class="file" title={scheduleFile.status.path ?? "Not saved yet"}>
-      {scheduleFile.status.name}{scheduleFile.status.dirty ? " •" : ""}
+    <span class="heading">{t("schedule.title")}</span>
+    <span class="file" title={scheduleFile.status.path ?? t("schedule.notSaved")}>
+      {scheduleFile.status.path ? scheduleFile.status.name : t("schedule.untitled")}{scheduleFile
+        .status.dirty
+        ? " •"
+        : ""}
     </span>
   </header>
 
   {#if missingSongs > 0}
     <div class="notice">
-      {missingSongs === 1 ? "1 song is" : `${missingSongs} songs are`}
-      not in your library.
-      <Button onclick={addMissingSongs}>Add to Library</Button>
+      {t("schedule.missingSongs", { count: missingSongs })}
+      <Button onclick={addMissingSongs}>{t("schedule.addToLibrary")}</Button>
     </div>
   {/if}
 
@@ -244,7 +247,7 @@
   <div
     class="items"
     role="listbox"
-    aria-label="Schedule items"
+    aria-label={t("schedule.items")}
     tabindex="0"
     aria-activedescendant={previewId ? `schedule-${previewId}` : undefined}
     onkeydown={handleKeys}
@@ -280,8 +283,7 @@
       </div>
     {:else}
       <p class="empty">
-        Drag songs here from the library, or use “Add to Schedule”. Save the schedule with File ›
-        Save.
+        {t("schedule.empty")}
       </p>
     {/each}
   </div>
@@ -291,10 +293,10 @@
       <ItemLookEditor item={previewed} />
     </div>
     <label class="notes">
-      Notes for “{itemTitle(previewed)}”
+      {t("schedule.notesFor", { title: itemTitle(previewed) })}
       <textarea
         value={previewed.notes}
-        placeholder="Only you see these, e.g. “Pastor prays after verse 2”"
+        placeholder={t("schedule.notesPlaceholder")}
         onchange={(event) => setNotes(previewed, event.currentTarget.value)}
       ></textarea>
     </label>

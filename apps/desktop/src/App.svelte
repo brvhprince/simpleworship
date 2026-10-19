@@ -8,6 +8,8 @@
   import type { MediaFolderPaths, MediaRef } from "@simpleworship/protocol";
   import { setMediaUrls } from "@simpleworship/renderer";
   import { convertFileSrc } from "@tauri-apps/api/core";
+  import { onMount } from "svelte";
+  import { i18n } from "./lib/i18n/i18n.svelte.ts";
   import Operator from "./operator/Operator.svelte";
   import Output from "./output/Output.svelte";
   import Stage from "./stage/Stage.svelte";
@@ -27,6 +29,9 @@
     file: (media: MediaRef) => convertFileSrc(`${folders.media}/${media.file}`),
     thumbnail: (media: MediaRef) => convertFileSrc(`${folders.thumbnails}/${media.id}.jpg`),
   });
+
+  // A language chosen in Settings reaches every window (the stage display too).
+  onMount(() => i18n.listen());
 </script>
 
 {#if view === "output"}

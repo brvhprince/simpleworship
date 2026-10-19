@@ -1,4 +1,5 @@
-//! Importing songs and Bibles from other worship software.
+//! Importing songs, Bibles, and pictures and videos from other worship
+//! software.
 //!
 //! The flow is: find sources ([`import_scan`]), read them and show the
 //! operator what was found ([`import_preview`]), then save what they chose
@@ -10,15 +11,17 @@ use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
+use sw_core::MediaKind;
+use sw_import::formats::easyworship_media::{self, EasyWorshipMedia};
 use sw_import::formats::{easyworship, openlp, read_file};
 use sw_import::{ImportProblem, ImportReport, ImportedSong, duplicates};
 use tauri::{AppHandle, Manager};
 use ts_rs::TS;
 
-use crate::bibles;
 use crate::error::AppResult;
 use crate::import_sources::{self, FoundSource, SourceKind};
 use crate::state::AppState;
+use crate::{bibles, media};
 
 /// Settings key recording that the first-launch scan has happened.
 const FIRST_LAUNCH_KEY: &str = "importOffered";
@@ -51,6 +54,38 @@ pub struct PreviewBible {
     pub installed: bool,
 }
 
+/// A picture, video or sound file from another program's media library.
+#[derive(Clone, Debug, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "desktop.ts")]
+pub struct PreviewMedia {
+    /// Its title in the other program.
+    pub title: String,
+    /// The file's name.
+    pub file_name: String,
+    /// The `Resources` subfolder it should be in, e.g. "Videos".
+    pub folder: Option<String>,
+    /// The library's `Data` folder, to search from again.
+    pub data_folder: String,
+    /// Where the file was found, if it was.
+    pub path: Option<String>,
+    /// What it is, or `None` for a format SimpleWorship cannot show (e.g. WMV).
+    pub kind: Option<MediaKind>,
+    /// The media library already has it (same title and size).
+    pub duplicate: bool,
+}
+
+/// A media file to import, with the title to give it.
+#[derive(Clone, Debug, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "desktop.ts")]
+pub struct MediaChoice {
+    /// The file.
+    pub path: String,
+    /// Its title.
+    pub title: String,
+}
+
 /// Everything found in the chosen sources.
 #[derive(Clone, Debug, Default, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -60,6 +95,8 @@ pub struct ImportPreview {
     pub songs: Vec<PreviewSong>,
     /// The Bibles.
     pub bibles: Vec<PreviewBible>,
+    /// Pictures, videos and sound from media libraries.
+    pub media: Vec<PreviewMedia>,
     /// What could not be read.
     pub problems: Vec<ImportProblem>,
 }
@@ -86,7 +123,10 @@ pub struct ImportSummary {
     pub songs: u32,
     /// How many Bibles were added.
     pub bibles: u32,
-    /// Bibles that failed to import.
+    /// How many pictures, videos and sound files were added.
+    #[serde(default)]
+    pub media: u32,
+    /// Bibles and media that failed to import.
     pub problems: Vec<ImportProblem>,
 }
 
@@ -126,11 +166,17 @@ pub async fn import_preview(app: AppHandle, sources: Vec<FoundSource>) -> AppRes
         let state = app.state::<AppState>();
         let mut report = ImportReport::default();
         let mut bible_paths = Vec::new();
+        let mut media = Vec::new();
 
         for source in &sources {
             match source.kind {
                 SourceKind::EasyWorshipSongs => {
-                    report.extend(easyworship::read_library(Path::new(&source.path)));
+                    let data = Path::new(&source.path);
+                    report.extend(easyworship::read_library(data));
+                    match easyworship_media::read_media(data) {
+                        Ok(found) => media.extend(preview_media(data, &found, &[])),
+                        Err(message) => report.problem(source.path.clone(), message),
+                    }
                 }
                 SourceKind::OpenLpSongs => {
                     report.extend(openlp::read_library(Path::new(&source.path)))
@@ -185,22 +231,100 @@ pub async fn import_preview(app: AppHandle, sources: Vec<FoundSource>) -> AppRes
             }
         }
 
+        mark_known_media(&state, &mut media)?;
         Ok(ImportPreview {
             songs,
             bibles: preview_bibles,
+            media,
             problems: report.problems,
         })
     };
     tauri::async_runtime::spawn_blocking(read).await?
 }
 
-/// Saves the chosen songs (in one transaction) and imports the chosen
-/// Bibles. Runs in the background.
+/// Looks for media files that were not found, in `folder` (and below), e.g.
+/// a copy of EasyWorship's `Resources` folder from another computer.
+#[tauri::command]
+pub async fn import_locate_media(
+    app: AppHandle,
+    media: Vec<PreviewMedia>,
+    folder: String,
+) -> AppResult<Vec<PreviewMedia>> {
+    let locate = move || -> AppResult<Vec<PreviewMedia>> {
+        let state = app.state::<AppState>();
+        let extra = [PathBuf::from(&folder)];
+        let mut updated: Vec<PreviewMedia> = media
+            .into_iter()
+            .map(|item| {
+                if item.path.is_some() {
+                    return item;
+                }
+                let wanted = EasyWorshipMedia {
+                    title: item.title.clone(),
+                    file_name: item.file_name.clone(),
+                    folder: item.folder.clone(),
+                    absolute_folder: None,
+                };
+                let data = PathBuf::from(&item.data_folder);
+                preview_media(&data, &[wanted], &extra)
+                    .pop()
+                    .unwrap_or(item)
+            })
+            .collect();
+        mark_known_media(&state, &mut updated)?;
+        Ok(updated)
+    };
+    tauri::async_runtime::spawn_blocking(locate).await?
+}
+
+/// Media entries for a library's items, with the files found so far.
+fn preview_media(data: &Path, items: &[EasyWorshipMedia], extra: &[PathBuf]) -> Vec<PreviewMedia> {
+    let found = easyworship_media::locate(data, items, extra);
+    items
+        .iter()
+        .zip(found)
+        .map(|(item, path)| PreviewMedia {
+            title: item.title.clone(),
+            file_name: item.file_name.clone(),
+            folder: item.folder.clone(),
+            data_folder: data.display().to_string(),
+            kind: media::kind_of(Path::new(&item.file_name)),
+            path: path.map(|path| path.display().to_string()),
+            duplicate: false,
+        })
+        .collect()
+}
+
+/// Marks media the library already has: the same title and file size.
+fn mark_known_media(state: &AppState, media: &mut [PreviewMedia]) -> AppResult<()> {
+    let known: HashSet<(String, u64)> = state
+        .database()
+        .media()
+        .list()?
+        .into_iter()
+        .map(|item| (item.name.to_lowercase(), item.size_bytes))
+        .collect();
+    for item in media {
+        let size = item
+            .path
+            .as_ref()
+            .and_then(|path| std::fs::metadata(path).ok())
+            .map(|metadata| metadata.len());
+        item.duplicate =
+            size.is_some_and(|size| known.contains(&(item.title.to_lowercase(), size)));
+    }
+    Ok(())
+}
+
+/// Saves the chosen songs (in one transaction), imports the chosen Bibles,
+/// and copies the chosen media into the media library. Runs in the
+/// background.
 #[tauri::command]
 pub async fn import_commit(
     app: AppHandle,
     songs: Vec<ImportedSong>,
     bibles: Vec<BibleChoice>,
+    media: Option<Vec<MediaChoice>>,
 ) -> AppResult<ImportSummary> {
     let commit = move || -> AppResult<ImportSummary> {
         let state = app.state::<AppState>();
@@ -210,6 +334,7 @@ pub async fn import_commit(
         let mut summary = ImportSummary {
             songs: saved as u32,
             bibles: 0,
+            media: 0,
             problems: Vec::new(),
         };
         for choice in bibles {
@@ -223,7 +348,27 @@ pub async fn import_commit(
                 }),
             }
         }
+        for choice in media.unwrap_or_default() {
+            match import_media_file(&app, &choice) {
+                Ok(()) => summary.media += 1,
+                Err(error) => summary.problems.push(ImportProblem {
+                    source: choice.title,
+                    message: error.to_string(),
+                }),
+            }
+        }
         Ok(summary)
     };
     tauri::async_runtime::spawn_blocking(commit).await?
+}
+
+/// Copies one media file into the library, titled as in the other program.
+fn import_media_file(app: &AppHandle, choice: &MediaChoice) -> AppResult<()> {
+    let mut item = media::import_file(app, Path::new(&choice.path))?;
+    if !choice.title.trim().is_empty() {
+        item.name = choice.title.trim().to_owned();
+        app.state::<AppState>().database().media().save(&item)?;
+    }
+    media::announce(app);
+    Ok(())
 }

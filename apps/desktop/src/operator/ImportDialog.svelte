@@ -4,8 +4,10 @@
 
   1. **Sources**: libraries found on this computer (EasyWorship, OpenLP,
      ProPresenter), plus any folder the operator picks.
-  2. **Review**: every song and Bible found. Songs already in the library
-     are marked and left unticked; Bible names can be corrected.
+  2. **Review**: every song and Bible found, and EasyWorship's pictures,
+     videos and sound. Songs and media already in the library are marked
+     and left unticked; Bible names can be corrected. Media files that are
+     not where EasyWorship keeps them can be looked for in another folder.
   3. **Done**: what was added.
 -->
 <script lang="ts">
@@ -14,12 +16,14 @@
     ImportPreview,
     ImportSummary,
     PreviewBible,
+    PreviewMedia,
   } from "@simpleworship/protocol";
   import { Button, Dialog } from "@simpleworship/ui";
   import { open } from "@tauri-apps/plugin-dialog";
   import { onMount } from "svelte";
   import { SvelteSet } from "svelte/reactivity";
-  import { commitImport, previewImport, scanForImports } from "../lib/api.ts";
+  import { commitImport, locateImportMedia, previewImport, scanForImports } from "../lib/api.ts";
+  import { listOf, t } from "../lib/i18n/i18n.svelte.ts";
   import { importer } from "../lib/importer.svelte.ts";
   import { library } from "../lib/library.svelte.ts";
 
@@ -36,16 +40,25 @@
   let preview: ImportPreview | null = $state(null);
   let chosenSongs = $state(new SvelteSet<number>());
   let bibles: (PreviewBible & { chosen: boolean })[] = $state([]);
+  let media: PreviewMedia[] = $state.raw([]);
+  /** Whether to copy the media that was found. */
+  let importMedia = $state(true);
   let summary: ImportSummary | null = $state(null);
 
   const songCount = $derived(chosenSongs.size);
   const bibleCount = $derived(bibles.filter((bible) => bible.chosen).length);
+  /** Media that can be copied: found, a format SimpleWorship shows, and new. */
+  const importable = $derived(media.filter((item) => item.path && item.kind && !item.duplicate));
+  const missing = $derived(media.filter((item) => !item.path));
+  const unsupported = $derived(media.filter((item) => item.path && !item.kind));
+  const mediaCount = $derived(importMedia ? importable.length : 0);
+  const countOf = (kind: string) => importable.filter((item) => item.kind === kind).length;
 
   onMount(async () => {
     if (importer.initialSources) {
       addSources(importer.initialSources);
     } else {
-      await run("Looking for other worship software…", async () => {
+      await run(t("import.looking"), async () => {
         addSources(await scanForImports());
       });
     }
@@ -68,22 +81,23 @@
   async function chooseFolder() {
     const folder = await open({ directory: true, multiple: false });
     if (typeof folder !== "string") return;
-    await run("Searching the folder…", async () => {
+    await run(t("import.searchingFolder"), async () => {
       const found = await scanForImports(folder);
-      if (found.length === 0) error = "Nothing SimpleWorship can import was found in that folder.";
+      if (found.length === 0) error = t("import.nothingInFolder");
       addSources(found);
     });
   }
 
   async function review() {
     const selected = sources.filter((source) => chosenSources.has(key(source)));
-    await run("Reading songs and Bibles…", async () => {
+    await run(t("import.reading"), async () => {
       const result = await previewImport(selected);
       preview = result;
       chosenSongs = new SvelteSet(
         result.songs.flatMap((entry, index) => (entry.duplicate ? [] : [index])),
       );
       bibles = result.bibles.map((bible) => ({ ...bible, chosen: !bible.installed }));
+      media = result.media;
       step = "review";
     });
   }
@@ -96,10 +110,38 @@
     const choices = bibles
       .filter((bible) => bible.chosen)
       .map(({ path, name, abbreviation }) => ({ path, name, abbreviation }));
-    await run(`Importing ${songs.length} songs and ${choices.length} Bibles…`, async () => {
-      summary = await commitImport(songs, choices);
+    const files = importMedia
+      ? importable.map((item) => ({ path: item.path ?? "", title: item.title }))
+      : [];
+    const what = listOf([
+      t("count.songs", { count: songs.length }),
+      t("count.bibles", { count: choices.length }),
+      ...(files.length > 0 ? [t("count.media", { count: files.length })] : []),
+    ]);
+    await run(t("import.importing", { what }), async () => {
+      summary = await commitImport(songs, choices, files);
       library.changed();
       step = "done";
+    });
+  }
+
+  /** "Imported 12 songs, 1 Bible and 40 pictures and videos." */
+  function doneMessage(result: ImportSummary): string {
+    const parts = [t("count.songs", { count: result.songs })];
+    if (result.bibles > 0) parts.push(t("count.bibles", { count: result.bibles }));
+    if (result.media > 0) parts.push(t("count.media", { count: result.media }));
+    return t("import.done", { what: listOf(parts) });
+  }
+
+  /** Looks for the media files that were not found, in a folder the operator picks. */
+  async function locateMedia() {
+    const folder = await open({ directory: true, multiple: false });
+    if (typeof folder !== "string") return;
+    await run(t("import.lookingFiles"), async () => {
+      const before = missing.length;
+      media = await locateImportMedia(media, folder);
+      const found = before - media.filter((item) => !item.path).length;
+      if (found === 0) error = t("import.noneInFolder");
     });
   }
 
@@ -129,21 +171,17 @@
     );
   }
 
-  const kindLabel: Record<FoundSource["kind"], string> = {
-    easyWorshipSongs: "Song library",
-    easyWorshipBible: "Bible",
-    openLpSongs: "Song library",
-    songFiles: "Song files",
-  };
+  const kindLabel: Record<FoundSource["kind"], string> = $derived({
+    easyWorshipSongs: t("import.songLibrary"),
+    easyWorshipBible: t("import.bible"),
+    openLpSongs: t("import.songLibrary"),
+    songFiles: t("import.songFiles"),
+  });
 </script>
 
-<Dialog title="Import from Other Software" onclose={() => importer.close()}>
+<Dialog title={t("import.title")} onclose={() => importer.close()}>
   {#if step === "sources"}
-    <p class="intro">
-      SimpleWorship can import songs from EasyWorship 6/7, OpenLP, ProPresenter 6, OpenLyrics,
-      ChordPro and CCLI SongSelect files, and Bibles from EasyWorship. The other program's files are
-      only read, never changed.
-    </p>
+    <p class="intro">{t("import.intro")}</p>
     {#if sources.length > 0}
       <ul class="sources">
         {#each sources as source (key(source))}
@@ -162,18 +200,15 @@
         {/each}
       </ul>
     {:else if !busy}
-      <p class="hint">
-        Nothing was found in the usual places. Choose a folder: for example a copy of EasyWorship's
-        folders from a Windows computer, or a folder of song files.
-      </p>
+      <p class="hint">{t("import.nothingFound")}</p>
     {/if}
   {:else if step === "review" && preview}
     <section>
       <header class="section-head">
-        <h4>Songs · {songCount} of {preview.songs.length} chosen</h4>
-        <Button onclick={() => setAllSongs(true, true)}>New Only</Button>
-        <Button onclick={() => setAllSongs(true)}>All</Button>
-        <Button onclick={() => setAllSongs(false)}>None</Button>
+        <h4>{t("import.songsChosen", { chosen: songCount, total: preview.songs.length })}</h4>
+        <Button onclick={() => setAllSongs(true, true)}>{t("import.newOnly")}</Button>
+        <Button onclick={() => setAllSongs(true)}>{t("common.all")}</Button>
+        <Button onclick={() => setAllSongs(false)}>{t("common.none")}</Button>
       </header>
       <div class="table">
         {#each preview.songs as entry, index (index)}
@@ -186,39 +221,92 @@
             <span class="title">{entry.song.title}</span>
             <span class="author">{entry.song.author}</span>
             {#if entry.duplicate}
-              <span class="badge">Already in library</span>
+              <span class="badge">{t("import.inLibrary")}</span>
             {/if}
           </label>
         {:else}
-          <p class="hint">No songs.</p>
+          <p class="hint">{t("import.noSongs")}</p>
         {/each}
       </div>
     </section>
 
     {#if bibles.length > 0}
       <section>
-        <h4>Bibles · {bibleCount} of {bibles.length} chosen</h4>
+        <h4>{t("import.biblesChosen", { chosen: bibleCount, total: bibles.length })}</h4>
         {#each bibles as bible (bible.path)}
           <div class="bible">
-            <input type="checkbox" bind:checked={bible.chosen} aria-label="Import {bible.name}">
-            <input class="abbreviation" bind:value={bible.abbreviation} aria-label="Short name">
-            <input class="bible-name" bind:value={bible.name} aria-label="Name">
-            <span class="author">{bible.verseCount.toLocaleString()} verses</span>
+            <input
+              type="checkbox"
+              bind:checked={bible.chosen}
+              aria-label={t("import.importBible", { name: bible.name })}
+            >
+            <input
+              class="abbreviation"
+              bind:value={bible.abbreviation}
+              aria-label={t("bibles.shortName")}
+            >
+            <input class="bible-name" bind:value={bible.name} aria-label={t("common.name")}>
+            <span class="author">
+              {t("import.verses", { count: bible.verseCount.toLocaleString() })}
+            </span>
             {#if bible.installed}
-              <span class="badge">Installed</span>
+              <span class="badge">{t("import.installed")}</span>
             {/if}
           </div>
         {/each}
-        <p class="hint">
-          Check the short names: a Bible copied from another may still carry the other's name. Only
-          import Bibles you are licensed to use.
-        </p>
+        <p class="hint">{t("import.bibleHint")}</p>
+      </section>
+    {/if}
+
+    {#if media.length > 0}
+      <section>
+        <h4>{t("import.mediaTitle")}</h4>
+        <label class="row">
+          <input type="checkbox" bind:checked={importMedia} disabled={importable.length === 0}>
+          <span class="title">
+            {t("import.copyMedia", {
+              what: listOf([
+                t("count.pictures", { count: countOf("image") }),
+                t("count.videos", { count: countOf("video") }),
+                ...(countOf("audio") > 0
+                  ? [t("count.soundFiles", { count: countOf("audio") })]
+                  : []),
+              ]),
+            })}
+          </span>
+        </label>
+        {#if media.some((item) => item.duplicate)}
+          <p class="hint">
+            {t("import.mediaDuplicates", { count: media.filter((item) => item.duplicate).length })}
+          </p>
+        {/if}
+        {#if missing.length > 0}
+          <div class="missing">
+            <span
+              >{t("import.mediaMissing", { missing: missing.length, total: media.length })}</span
+            >
+            <Button disabled={busy !== null} onclick={locateMedia}
+              >{t("import.lookElsewhere")}</Button
+            >
+          </div>
+        {/if}
+        {#if unsupported.length > 0}
+          <details>
+            <summary>{t("import.unsupported", { count: unsupported.length })}</summary>
+            <p class="hint">{t("import.unsupportedHint")}</p>
+            <ul class="problems">
+              {#each unsupported as item (item.dataFolder + item.fileName)}
+                <li>{item.title} ({item.fileName})</li>
+              {/each}
+            </ul>
+          </details>
+        {/if}
       </section>
     {/if}
 
     {#if preview.problems.length > 0}
       <details>
-        <summary>{preview.problems.length} could not be imported</summary>
+        <summary>{t("import.problems", { count: preview.problems.length })}</summary>
         <ul class="problems">
           {#each preview.problems as problem, index (index)}
             <li><strong>{problem.source}</strong>: {problem.message}</li>
@@ -227,13 +315,7 @@
       </details>
     {/if}
   {:else if step === "done" && summary}
-    <p class="done">
-      Imported {summary.songs} {summary.songs === 1 ? "song" : "songs"}
-      {#if summary.bibles > 0}
-        and {summary.bibles} {summary.bibles === 1 ? "Bible" : "Bibles"}
-      {/if}
-      .
-    </p>
+    <p class="done">{doneMessage(summary)}</p>
     {#each summary.problems as problem, index (index)}
       <p class="error">{problem.source}: {problem.message}</p>
     {/each}
@@ -247,28 +329,34 @@
     {/if}
 
     {#if step === "sources"}
-      <Button disabled={busy !== null} onclick={chooseFolder}>Choose Folder…</Button>
-      <Button onclick={() => importer.close()}>Cancel</Button>
+      <Button disabled={busy !== null} onclick={chooseFolder}>{t("import.chooseFolder")}</Button>
+      <Button onclick={() => importer.close()}>{t("common.cancel")}</Button>
       <Button
         variant="primary"
         disabled={busy !== null || chosenSources.size === 0}
         onclick={review}
       >
-        Continue
+        {t("common.continue")}
       </Button>
     {:else if step === "review"}
-      <Button disabled={busy !== null} onclick={() => (step = "sources")}>Back</Button>
+      <Button disabled={busy !== null} onclick={() => (step = "sources")}
+        >{t("common.back")}</Button
+      >
       <Button
         variant="primary"
-        disabled={busy !== null || songCount + bibleCount === 0}
+        disabled={busy !== null || songCount + bibleCount + mediaCount === 0}
         onclick={commit}
       >
-        Import {songCount} {songCount === 1 ? "Song" : "Songs"}{bibleCount > 0
-          ? ` and ${bibleCount} ${bibleCount === 1 ? "Bible" : "Bibles"}`
-          : ""}
+        {t("import.button", {
+          what: listOf([
+            t("count.songs", { count: songCount }),
+            ...(bibleCount > 0 ? [t("count.bibles", { count: bibleCount })] : []),
+            ...(mediaCount > 0 ? [t("count.media", { count: mediaCount })] : []),
+          ]),
+        })}
       </Button>
     {:else}
-      <Button variant="primary" onclick={() => importer.close()}>Done</Button>
+      <Button variant="primary" onclick={() => importer.close()}>{t("common.done")}</Button>
     {/if}
   {/snippet}
 </Dialog>
@@ -392,6 +480,17 @@
 
   .done {
     font-size: 1.1em;
+  }
+
+  .missing {
+    display: flex;
+    align-items: center;
+    gap: var(--sw-space-2);
+    margin: var(--sw-space-2) 0;
+    padding: var(--sw-space-2);
+    border-radius: var(--sw-radius-small);
+    background: rgba(245, 159, 0, 0.12);
+    color: var(--sw-text-muted);
   }
 
   .status {

@@ -6,19 +6,20 @@
 
 import type { FooterStyle, HorizontalAlign } from "@simpleworship/protocol";
 import { CANVAS_HEIGHT } from "@simpleworship/renderer";
+import type { MessageKey } from "./i18n/i18n.svelte.ts";
 
 /** A quick position: an edge and an alignment, or after the text. */
 export type LabelPreset = `${"top" | "bottom"}-${HorizontalAlign}` | "after-text";
 
 /** The quick positions, in the order the designer shows them. */
-export const LABEL_PRESETS: { value: LabelPreset; label: string }[] = [
-  { value: "top-left", label: "Top left" },
-  { value: "top-center", label: "Top centre" },
-  { value: "top-right", label: "Top right" },
-  { value: "bottom-left", label: "Bottom left" },
-  { value: "bottom-center", label: "Bottom centre" },
-  { value: "bottom-right", label: "Bottom right" },
-  { value: "after-text", label: "After the text" },
+export const LABEL_PRESETS: { value: LabelPreset; label: MessageKey }[] = [
+  { value: "top-left", label: "place.topLeft" },
+  { value: "top-center", label: "place.topCenter" },
+  { value: "top-right", label: "place.topRight" },
+  { value: "bottom-left", label: "place.bottomLeft" },
+  { value: "bottom-center", label: "place.bottomCenter" },
+  { value: "bottom-right", label: "place.bottomRight" },
+  { value: "after-text", label: "place.afterText" },
 ];
 
 /** Side margins of a label box, in canvas pixels (like the text box). */

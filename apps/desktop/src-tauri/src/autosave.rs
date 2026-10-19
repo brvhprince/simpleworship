@@ -144,7 +144,7 @@ fn run_worker(directory: &Path, queue: Receiver<Job>) {
             Some(Job::Flush(_)) | None => Ok(()),
         };
         if let Err(error) = result {
-            eprintln!("autosave failed: {error}");
+            log::warn!("autosave failed: {error}");
         }
 
         for done in flushes {

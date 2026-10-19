@@ -10,7 +10,9 @@
     "check": "pnpm -r check",
     "test": "cargo test --workspace && pnpm -r test",
     "lint": "biome check . && cargo clippy --workspace --all-targets -- -D warnings",
-    "format": "biome format --write . && cargo fmt --all"
+    "format": "biome format --write . && cargo fmt --all",
+    "set-version": "node scripts/set-version.mjs",
+    "i18n:check": "node scripts/i18n-check.mjs"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.15"

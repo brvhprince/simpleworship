@@ -30,4 +30,4 @@ function run(command, args, env = {}) {
 }
 
 run("cargo", ["test", "--workspace", "export_bindings"], { TS_RS_EXPORT_DIR: output });
-run("pnpm", ["exec", "biome", "format", "--write", output]);
+run("pnpm", ["exec", "biome", "check", "--write", output]);

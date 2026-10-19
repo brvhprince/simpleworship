@@ -14,6 +14,7 @@
   import { onMount } from "svelte";
   import { getSettings } from "../lib/api.ts";
   import { engine } from "../lib/engine.svelte.ts";
+  import { t } from "../lib/i18n/i18n.svelte.ts";
   import { closeOnEscape } from "../lib/output-window.ts";
   import { itemTitle } from "../lib/schedule.ts";
 
@@ -64,9 +65,9 @@
 
   /** A short status note when the audience is not seeing the slide text. */
   const status = $derived.by(() => {
-    if (flags?.black) return "Screen is black";
-    if (flags?.logo) return "Showing logo";
-    if (flags?.hideText) return "Text hidden";
+    if (flags?.black) return t("stageView.black");
+    if (flags?.logo) return t("stageView.logo");
+    if (flags?.hideText) return t("stageView.textHidden");
     return null;
   });
 
@@ -84,7 +85,7 @@
       <span class="status">{status}</span>
     {/if}
     {#if nextItem}
-      <span class="next-item">Next: {itemTitle(nextItem)}</span>
+      <span class="next-item">{t("stageView.nextItem", { title: itemTitle(nextItem) })}</span>
     {/if}
     {#if timer}
       <span class="timer" class:over={timerMs < 0} class:paused={!timer.running}>
@@ -105,7 +106,9 @@
       <p class="countdown">{formatClock(remainingMs(countdown.endsAt, now))}</p>
     {:else if picture}
       <img src={picture} alt="">
-      <span class="section">Slide {index + 1} of {slides.length}</span>
+      <span class="section">
+        {t("stageView.slideOf", { number: index + 1, total: slides.length })}
+      </span>
     {:else}
       <p>{current?.text ?? ""}</p>
     {/if}
@@ -113,8 +116,12 @@
 
   {#if options.showNext}
     <section class="next">
-      <span class="section">Next{next?.section ? ` · ${next.section.name}` : ""}</span>
-      <p>{next?.text || (next ? "(picture)" : "—")}</p>
+      <span class="section">
+        {next?.section
+          ? t("stageView.nextSection", { section: next.section.name })
+          : t("stageView.next")}
+      </span>
+      <p>{next?.text || (next ? t("stageView.picture") : "—")}</p>
     </section>
   {/if}
 

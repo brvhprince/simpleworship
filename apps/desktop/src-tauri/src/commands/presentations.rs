@@ -374,6 +374,6 @@ fn delete_deck(state: &AppState, id: Id) -> AppResult<()> {
 
 fn announce(app: &AppHandle) {
     if let Err(error) = app.emit(PRESENTATIONS_EVENT, ()) {
-        eprintln!("could not announce presentation changes: {error}");
+        log::warn!("could not announce presentation changes: {error}");
     }
 }

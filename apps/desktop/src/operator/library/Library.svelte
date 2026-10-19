@@ -5,6 +5,7 @@
   so the layout already matches what operators know from EasyWorship.
 -->
 <script lang="ts">
+  import { t } from "../../lib/i18n/i18n.svelte.ts";
   import MediaTab from "./MediaTab.svelte";
   import PresentationsTab from "./PresentationsTab.svelte";
   import ScriptureTab from "./ScriptureTab.svelte";
@@ -15,30 +16,27 @@
   interface Tab {
     id: string;
     label: string;
-    available: boolean;
   }
 
-  const tabs: Tab[] = [
-    { id: "songs", label: "Songs", available: true },
-    { id: "text", label: "Text", available: true },
-    { id: "scripture", label: "Scripture", available: true },
-    { id: "media", label: "Media", available: true },
-    { id: "presentations", label: "Presentations", available: true },
-    { id: "themes", label: "Themes", available: true },
-  ];
+  const tabs: Tab[] = $derived([
+    { id: "songs", label: t("library.songs") },
+    { id: "text", label: t("library.text") },
+    { id: "scripture", label: t("library.scripture") },
+    { id: "media", label: t("library.media") },
+    { id: "presentations", label: t("library.presentations") },
+    { id: "themes", label: t("library.themes") },
+  ]);
 
   let current = $state("songs");
 </script>
 
-<section class="library" aria-label="Library">
+<section class="library" aria-label={t("library.title")}>
   <div class="tabs" role="tablist">
     {#each tabs as tab (tab.id)}
       <button
         type="button"
         role="tab"
         aria-selected={current === tab.id}
-        disabled={!tab.available}
-        title={tab.available ? undefined : "Coming soon"}
         onclick={() => (current = tab.id)}
       >
         {tab.label}

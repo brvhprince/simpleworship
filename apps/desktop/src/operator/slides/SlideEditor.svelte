@@ -21,6 +21,7 @@
   import { onMount, untrack } from "svelte";
   import { listFonts, savePresentation } from "../../lib/api.ts";
   import { engine } from "../../lib/engine.svelte.ts";
+  import { t } from "../../lib/i18n/i18n.svelte.ts";
   import { media } from "../../lib/media.svelte.ts";
   import { overrideMenuItem } from "../../lib/menu.ts";
   import { withModifier } from "../../lib/platform.ts";
@@ -243,7 +244,7 @@
 
   async function save() {
     if (!editor.deck.name.trim()) {
-      error = "Please give the presentation a name.";
+      error = t("editor.needsName");
       return;
     }
     saving = true;
@@ -268,11 +269,13 @@
       return;
     }
     const answer = await prompts.ask({
-      title: "Discard changes?",
-      message: `Your changes to “${editor.deck.name || "this presentation"}” have not been saved.`,
+      title: t("editor.discardTitle"),
+      message: t("editor.discardMessage", {
+        name: editor.deck.name || t("editor.thisPresentation"),
+      }),
       buttons: [
-        { id: "keep", label: "Keep Editing" },
-        { id: "discard", label: "Discard", variant: "live" },
+        { id: "keep", label: t("common.keepEditing") },
+        { id: "discard", label: t("common.discard"), variant: "live" },
       ],
       cancel: "keep",
     });
@@ -283,22 +286,30 @@
 <svelte:window onkeydowncapture={handleKeys} />
 <svelte:document oncopy={handleCopy} onpaste={handlePaste} />
 
-<Dialog title="Presentation: {editor.deck.name || "Untitled"}" size="full" onclose={cancel}>
+<Dialog
+  title={t("editor.title", { name: editor.deck.name || t("editor.untitled") })}
+  size="full"
+  onclose={cancel}
+>
   <div class="top">
     <input
       class="name"
       bind:value={editor.deck.name}
-      placeholder="Presentation name"
-      aria-label="Name"
+      placeholder={t("editor.namePlaceholder")}
+      aria-label={t("common.name")}
     >
-    <select bind:value={editor.deck.themeId} aria-label="Presentation theme" title="Theme">
-      <option value={null}>Default theme for presentations</option>
+    <select
+      bind:value={editor.deck.themeId}
+      aria-label={t("editor.theme")}
+      title={t("common.theme")}
+    >
+      <option value={null}>{t("editor.defaultTheme")}</option>
       {#each themes as record (record.id)}
         <option value={record.id}>{record.theme.name}</option>
       {/each}
     </select>
     <select
-      aria-label="Next slide by itself"
+      aria-label={t("editor.advance")}
       value={editor.deck.autoAdvance?.seconds ?? 0}
       onchange={(e) => {
         const seconds = Number(e.currentTarget.value);
@@ -307,22 +318,22 @@
           : null;
       }}
     >
-      <option value={0}>Next slide: when I press Next</option>
+      <option value={0}>{t("editor.advanceManual")}</option>
       {#each ADVANCE_SECONDS as seconds (seconds)}
-        <option value={seconds}>Next slide every {seconds} s</option>
+        <option value={seconds}>{t("editor.advanceEvery", { seconds })}</option>
       {/each}
     </select>
     {#if editor.deck.autoAdvance}
       <label class="check">
         <input type="checkbox" bind:checked={editor.deck.autoAdvance.loop}>
-        Loop
+        {t("common.loop")}
       </label>
     {/if}
 
     <span class="divider"></span>
-    <Button onclick={addText}>+ Text</Button>
+    <Button onclick={addText}>{t("editor.addText")}</Button>
     <select
-      aria-label="Add a shape"
+      aria-label={t("editor.addShape")}
       value=""
       onchange={(e) => {
         const shape = e.currentTarget.value as ShapeKind;
@@ -330,29 +341,31 @@
         if (shape) addShape(shape);
       }}
     >
-      <option value="" disabled>+ Shape</option>
-      <option value="rectangle">Rectangle</option>
-      <option value="ellipse">Ellipse</option>
-      <option value="line">Line</option>
+      <option value="" disabled>{t("editor.shapeMenu")}</option>
+      <option value="rectangle">{t("editor.rectangle")}</option>
+      <option value="ellipse">{t("editor.ellipse")}</option>
+      <option value="line">{t("editor.line")}</option>
     </select>
-    <Button onclick={() => (choosingPictures = true)}>+ Picture</Button>
-    <Button onclick={() => (insertingScripture = true)}>+ Scripture</Button>
+    <Button onclick={() => (choosingPictures = true)}>{t("editor.addPicture")}</Button>
+    <Button onclick={() => (insertingScripture = true)}>{t("editor.addScripture")}</Button>
 
     <span class="divider"></span>
     <Button
       disabled={!editor.canUndo}
-      title="Undo ({withModifier("Z")})"
+      title={t("editor.undoHint", { key: withModifier("Z") })}
       onclick={() => editor.undo()}
-      >↶ Undo</Button
+      >{t("editor.undo")}</Button
     >
-    <Button disabled={!editor.canRedo} title="Redo" onclick={() => editor.redo()}>↷ Redo</Button>
+    <Button disabled={!editor.canRedo} title={t("editor.redoHint")} onclick={() => editor.redo()}
+      >{t("editor.redo")}</Button
+    >
 
     <span class="spacer"></span>
     <label class="check">
-      Zoom
+      {t("editor.zoom")}
       <select bind:value={zoom}>
         {#each ZOOMS as level (level)}
-          <option value={level}>{level === 1 ? "Fit" : `${level * 100}%`}</option>
+          <option value={level}>{level === 1 ? t("editor.fit") : `${level * 100}%`}</option>
         {/each}
       </select>
     </label>
@@ -364,19 +377,19 @@
     <aside class="slides">
       <SlideList {editor} />
       <div class="slide-actions">
-        <Button variant="primary" onclick={newSlide} title="A new slide with this slide's layout"
-          >+ New Slide</Button
+        <Button variant="primary" onclick={newSlide} title={t("editor.newSlideHint")}
+          >{t("editor.newSlide")}</Button
         >
-        <Button onclick={() => insertSlide(blankSlide())}>+ Blank</Button>
+        <Button onclick={() => insertSlide(blankSlide())}>{t("editor.blank")}</Button>
         <Button
           disabled={!editor.slide}
           onclick={() =>
             editor.slide &&
             insertSlide(duplicateSlide($state.snapshot(editor.slide) as typeof editor.slide))}
         >
-          Duplicate
+          {t("editor.duplicate")}
         </Button>
-        <Button disabled={!editor.slide} onclick={deleteSlide}>Delete</Button>
+        <Button disabled={!editor.slide} onclick={deleteSlide}>{t("common.delete")}</Button>
       </div>
     </aside>
 
@@ -386,7 +399,7 @@
           <SlideCanvas {editor} />
         </div>
       {:else}
-        <p class="empty">Add a slide to start.</p>
+        <p class="empty">{t("editor.empty")}</p>
       {/if}
     </main>
 
@@ -400,12 +413,11 @@
       <span class="error" role="alert">{error}</span>
     {/if}
     <span class="count">
-      {editor.deck.slides.length}
-      {editor.deck.slides.length === 1 ? "slide" : "slides"}
+      {t("common.slides", { count: editor.deck.slides.length })}
     </span>
-    <Button onclick={cancel}>Cancel</Button>
+    <Button onclick={cancel}>{t("common.cancel")}</Button>
     <Button variant="primary" disabled={saving} shortcut={withModifier("S")} onclick={save}
-      >Save</Button
+      >{t("common.save")}</Button
     >
   {/snippet}
 </Dialog>

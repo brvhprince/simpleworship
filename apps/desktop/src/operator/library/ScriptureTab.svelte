@@ -28,6 +28,7 @@
   } from "../../lib/api.ts";
   import { bibles } from "../../lib/bibles.svelte.ts";
   import { engine } from "../../lib/engine.svelte.ts";
+  import { t } from "../../lib/i18n/i18n.svelte.ts";
   import ManageBibles from "./ManageBibles.svelte";
 
   /** Wait this long after the last keystroke before looking things up. */
@@ -289,13 +290,13 @@
 
 <div class="scripture-tab">
   <div class="toolbar">
-    <select bind:value={primaryId} aria-label="Translation">
+    <select bind:value={primaryId} aria-label={t("scripture.translation")}>
       {#each bibles.list as bible (bible.id)}
         <option value={bible.id}>{bible.abbreviation}</option>
       {/each}
     </select>
-    <select bind:value={secondaryId} aria-label="Second translation, side by side">
-      <option value={null}>No parallel</option>
+    <select bind:value={secondaryId} aria-label={t("scripture.second")}>
+      <option value={null}>{t("scripture.noParallel")}</option>
       {#each bibles.list.filter((b) => b.id !== primaryId) as bible (bible.id)}
         <option value={bible.id}>+ {bible.abbreviation}</option>
       {/each}
@@ -306,33 +307,35 @@
         type="search"
         bind:value={query}
         onkeydown={handleQueryKeys}
-        placeholder="Reference (jn 3:16-18) or words to search"
-        aria-label="Reference or search"
+        placeholder={t("scripture.placeholder")}
+        aria-label={t("scripture.search")}
         aria-describedby="reference-feedback"
       >
       <span id="reference-feedback" class="feedback" class:error={feedback?.error && !searching}>
         {#if searching}
-          Searching for “{query.trim()}”
+          {t("scripture.searching", { words: query.trim() })}
         {:else if feedback?.error}
           {feedback.error}
         {:else if feedback}
           {feedback.display}
           {#if feedback.alternatives.length}
-            <span class="alternatives">· or {feedback.alternatives.slice(0, 3).join(", ")}</span>
+            <span class="alternatives">
+              {t("scripture.alternatives", { names: feedback.alternatives.slice(0, 3).join(", ") })}
+            </span>
           {/if}
         {/if}
       </span>
     </div>
 
     <label class="option">
-      Verses per slide
+      {t("scripture.versesPerSlide")}
       <select bind:value={maxVerses}>
         {#each [1, 2, 3, 4, 6] as count (count)}
           <option value={count}>{count}</option>
         {/each}
       </select>
     </label>
-    <label class="option" title="The scripture theme decides this; switch it here for this passage">
+    <label class="option" title={t("scripture.numbersHint")}>
       <input
         type="checkbox"
         checked={verseNumbers ?? themeShowsNumbers}
@@ -341,31 +344,30 @@
           verseNumbers = on === themeShowsNumbers ? null : on;
         }}
       >
-      Verse numbers
+      {t("scripture.verseNumbers")}
     </label>
 
     <span class="spacer"></span>
-    <Button onclick={() => (managing = true)}>Bibles…</Button>
+    <Button onclick={() => (managing = true)}>{t("scripture.bibles")}</Button>
     <Button disabled={!passage || bibleIds.length === 0} onclick={addToSchedule}>
-      Add to Schedule
+      {t("common.addToSchedule")}
     </Button>
     <Button
       variant="primary"
       disabled={!passage || bibleIds.length === 0}
       onclick={() => preview()}
     >
-      Show in Preview
+      {t("common.showInPreview")}
     </Button>
   </div>
 
   {#if bibles.loaded && bibles.list.length === 0}
     <p class="empty">
-      Preparing the bundled Bibles… This takes a few seconds the first time. You can also import
-      your own with “Bibles…”.
+      {t("scripture.preparing")}
     </p>
   {:else}
     <div class="picker">
-      <ul class="books" aria-label="Books">
+      <ul class="books" aria-label={t("scripture.books")}>
         {#each outline as book (book.book)}
           <li>
             <button
@@ -379,7 +381,7 @@
         {/each}
       </ul>
 
-      <fieldset class="chapters" aria-label="Chapters">
+      <fieldset class="chapters" aria-label={t("scripture.chapters")}>
         {#if currentBook}
           {#each currentBook.chapters as verseCount, index (index)}
             {#if verseCount > 0}
@@ -395,7 +397,7 @@
         {/if}
       </fieldset>
 
-      <ol class="verses" aria-label={searching ? "Search results" : "Verses"}>
+      <ol class="verses" aria-label={searching ? t("scripture.results") : t("scripture.verses")}>
         {#if searching}
           {#each searchResults as verse (`${verse.book}.${verse.chapter}.${verse.verse}`)}
             <li>
@@ -405,7 +407,7 @@
               </button>
             </li>
           {:else}
-            <li class="hint">No verses contain all of these words.</li>
+            <li class="hint">{t("scripture.noResults")}</li>
           {/each}
         {:else}
           {#each chapterVerses as verse (verse.verse)}
@@ -420,7 +422,7 @@
               </button>
             </li>
           {:else}
-            <li class="hint">Pick a book and chapter, or type a reference above.</li>
+            <li class="hint">{t("scripture.pick")}</li>
           {/each}
         {/if}
       </ol>

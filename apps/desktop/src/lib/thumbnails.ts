@@ -10,6 +10,8 @@
  * `crossOrigin = "anonymous"` keeps the canvas exportable.
  */
 
+import { t } from "./i18n/i18n.svelte.ts";
+
 /** Thumbnail size: 16:9, big enough for the media grid. */
 const WIDTH = 384;
 const HEIGHT = 216;
@@ -78,11 +80,9 @@ export async function audioDetails(url: string): Promise<{ durationMs: number | 
 function waitFor(element: HTMLMediaElement, event: string): Promise<void> {
   return new Promise((resolve, reject) => {
     element.addEventListener(event, () => resolve(), { once: true });
-    element.addEventListener(
-      "error",
-      () => reject(new Error("This file cannot be played here. MP4 (H.264) videos work best.")),
-      { once: true },
-    );
+    element.addEventListener("error", () => reject(new Error(t("thumbs.cannotPlay"))), {
+      once: true,
+    });
   });
 }
 
@@ -92,7 +92,7 @@ async function drawThumbnail(source: CanvasImageSource, width: number, height: n
   canvas.width = WIDTH;
   canvas.height = HEIGHT;
   const context = canvas.getContext("2d");
-  if (!context) throw new Error("Cannot draw thumbnails in this window.");
+  if (!context) throw new Error(t("thumbs.cannotDraw"));
 
   const scale = Math.max(WIDTH / width, HEIGHT / height);
   const drawWidth = width * scale;
@@ -110,6 +110,6 @@ async function drawThumbnail(source: CanvasImageSource, width: number, height: n
   const blob = await new Promise<Blob | null>((resolve) =>
     canvas.toBlob(resolve, "image/jpeg", 0.8),
   );
-  if (!blob) throw new Error("Could not create a thumbnail.");
+  if (!blob) throw new Error(t("thumbs.failed"));
   return new Uint8Array(await blob.arrayBuffer());
 }

@@ -1,0 +1,128 @@
+# Builds the installers for macOS, Windows and Linux when a version tag is
+# pushed (e.g. `v0.2.0`), and puts them on a *draft* GitHub release. Check
+# the draft, then publish it: only published releases reach the app's
+# updater. See docs/releasing.md.
+#
+# Secrets (Settings › Secrets and variables › Actions):
+#
+# - TAURI_SIGNING_PRIVATE_KEY (required) and TAURI_SIGNING_PRIVATE_KEY_PASSWORD:
+#   sign the update files, so the app only installs real releases.
+# - Optional macOS signing and notarisation: APPLE_CERTIFICATE,
+#   APPLE_CERTIFICATE_PASSWORD, APPLE_SIGNING_IDENTITY, APPLE_ID,
+#   APPLE_PASSWORD, APPLE_TEAM_ID.
+# - Optional Windows signing with Azure Trusted Signing: AZURE_CLIENT_ID,
+#   AZURE_CLIENT_SECRET, AZURE_TENANT_ID, plus the variables
+#   AZURE_SIGNING_ENDPOINT, AZURE_SIGNING_ACCOUNT, AZURE_SIGNING_PROFILE.
+#
+# Without the optional ones the installers are built unsigned.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: Installers (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macOS
+            runner: macos-latest
+            args: --target universal-apple-darwin
+          - name: Windows
+            runner: windows-latest
+            args: ""
+          - name: Linux
+            runner: ubuntu-22.04
+            args: ""
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup
+
+      - name: Both Mac processors (Apple Silicon and Intel)
+        if: runner.os == 'macOS'
+        run: rustup target add aarch64-apple-darwin x86_64-apple-darwin
+
+      - name: Use the Apple signing certificate, if configured
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          ID: ${{ secrets.APPLE_ID }}
+          PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [ -n "$CERTIFICATE" ]; then
+            {
+              echo "APPLE_CERTIFICATE=$CERTIFICATE"
+              echo "APPLE_CERTIFICATE_PASSWORD=$CERTIFICATE_PASSWORD"
+              echo "APPLE_SIGNING_IDENTITY=$SIGNING_IDENTITY"
+              echo "APPLE_ID=$ID"
+              echo "APPLE_PASSWORD=$PASSWORD"
+              echo "APPLE_TEAM_ID=$TEAM_ID"
+            } >> "$GITHUB_ENV"
+            echo "Signing and notarising the Mac app."
+          else
+            echo "No Apple certificate: the Mac app will be unsigned."
+          fi
+
+      - name: Use Azure Trusted Signing, if configured
+        if: runner.os == 'Windows'
+        shell: bash
+        env:
+          CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          ENDPOINT: ${{ vars.AZURE_SIGNING_ENDPOINT }}
+          ACCOUNT: ${{ vars.AZURE_SIGNING_ACCOUNT }}
+          PROFILE: ${{ vars.AZURE_SIGNING_PROFILE }}
+        run: |
+          # A config file, merged into tauri.conf.json for this build.
+          config="$GITHUB_WORKSPACE/windows-signing.conf.json"
+          if [ -n "$CLIENT_ID" ]; then
+            cargo install trusted-signing-cli --locked
+            command="trusted-signing-cli -e $ENDPOINT -a $ACCOUNT -c $PROFILE -d SimpleWorship %1"
+            printf '{"bundle":{"windows":{"signCommand":"%s"}}}' "$command" > "$config"
+            echo "Signing the Windows installers."
+          else
+            echo '{}' > "$config"
+            echo "No Azure signing: the Windows installers will be unsigned."
+          fi
+          echo "SIGNING_CONFIG=$config" >> "$GITHUB_ENV"
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        with:
+          projectPath: apps/desktop
+          tagName: ${{ github.ref_name }}
+          releaseName: SimpleWorship ${{ github.ref_name }}
+          releaseBody: |
+            See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for what is new.
+
+            **Which file do I need?** macOS: the `.dmg`. Windows: the `-setup.exe` (or the `.msi` for managed computers). Linux: the `.AppImage`, or the `.deb` / `.rpm` for your distribution.
+          releaseDraft: true
+          prerelease: false
+          # latest.json tells installed copies about this release.
+          includeUpdaterJson: true
+          # The release config adds the update files; on Windows the signing
+          # config is merged in too.
+          args: >-
+            ${{ matrix.args }}
+            --config src-tauri/tauri.release.conf.json
+            ${{ runner.os == 'Windows' && format('--config {0}', env.SIGNING_CONFIG) || '' }}

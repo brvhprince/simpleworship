@@ -8,6 +8,7 @@
   import { onMount } from "svelte";
   import { engine } from "../lib/engine.svelte.ts";
   import { formatDuration } from "../lib/format.ts";
+  import { t } from "../lib/i18n/i18n.svelte.ts";
   import { media } from "../lib/media.svelte.ts";
 
   const playback = $derived(engine.output?.video ?? null);
@@ -37,11 +38,11 @@
 </script>
 
 {#if playback}
-  <fieldset class="video-controls" aria-label="Live video">
+  <fieldset class="video-controls" aria-label={t("video.controls")}>
     <button
       type="button"
       class="play"
-      aria-label={playback.playing ? "Pause" : "Play"}
+      aria-label={playback.playing ? t("common.pause") : t("common.play")}
       onclick={() => engine.dispatch({ type: playback.playing ? "pauseVideo" : "playVideo" })}
     >
       {playback.playing ? "❚❚" : "▶"}
@@ -53,7 +54,7 @@
       max={duration ?? Math.max(position, 1)}
       step="100"
       value={position}
-      aria-label="Position"
+      aria-label={t("video.position")}
       onchange={seek}
     >
     <span class="time">{duration ? `-${formatDuration(duration - position)}` : ""}</span>
@@ -63,15 +64,15 @@
         checked={playback.loop}
         onchange={(e) => engine.dispatch({ type: "setVideoLoop", on: e.currentTarget.checked })}
       >
-      Loop
+      {t("common.loop")}
     </label>
-    <label class="option" title="Silences the video on the projector and every other screen">
+    <label class="option" title={t("video.muteHint")}>
       <input
         type="checkbox"
         checked={playback.muted}
         onchange={(e) => engine.dispatch({ type: "setVideoMuted", on: e.currentTarget.checked })}
       >
-      Mute
+      {t("video.mute")}
     </label>
   </fieldset>
 {/if}

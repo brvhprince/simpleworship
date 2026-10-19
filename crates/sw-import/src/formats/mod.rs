@@ -3,6 +3,7 @@
 
 pub mod chordpro;
 pub mod easyworship;
+pub mod easyworship_media;
 pub mod openlp;
 pub mod openlyrics;
 pub mod plain;

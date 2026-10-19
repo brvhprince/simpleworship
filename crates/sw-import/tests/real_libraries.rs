@@ -88,3 +88,30 @@ fn easyworship_headings() {
     println!("tags: {tags:?}");
     println!("possible missed headings: {suspects:?}");
 }
+
+#[test]
+#[ignore = "needs a real EasyWorship library; see the module docs"]
+fn easyworship_media_library() {
+    use sw_import::formats::easyworship_media;
+
+    let Ok(folder) = std::env::var("SW_EASYWORSHIP_DATA") else {
+        eprintln!("SW_EASYWORSHIP_DATA is not set; nothing to test");
+        return;
+    };
+    let data = std::path::Path::new(&folder);
+    let media = easyworship_media::read_media(data).expect("Media.db reads");
+    let found = easyworship_media::locate(data, &media, &[]);
+    let videos = media
+        .iter()
+        .filter(|m| m.folder.as_deref() == Some("Videos"))
+        .count();
+    let images = media
+        .iter()
+        .filter(|m| m.folder.as_deref() == Some("Images"))
+        .count();
+    println!(
+        "media: {} · videos: {videos} · images: {images} · files found: {}",
+        media.len(),
+        found.iter().flatten().count()
+    );
+}

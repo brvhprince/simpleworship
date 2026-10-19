@@ -52,7 +52,7 @@ pub fn install_bundled(app: &AppHandle) {
     let app = app.clone();
     std::thread::spawn(move || {
         if let Err(error) = install_missing_bundled(&app) {
-            eprintln!("could not install the bundled Bibles: {error}");
+            log::warn!("could not install the bundled Bibles: {error}");
         }
     });
 }
@@ -111,6 +111,6 @@ pub fn read(path: &Path) -> AppResult<BibleData> {
 /// Tells every window that the list of Bibles changed.
 pub fn announce(app: &AppHandle) {
     if let Err(error) = app.emit(BIBLES_EVENT, ()) {
-        eprintln!("could not announce Bible changes: {error}");
+        log::warn!("could not announce Bible changes: {error}");
     }
 }

@@ -33,6 +33,7 @@
   import { PRESENTATION_DRAG_TYPE } from "../../lib/drag.ts";
   import { engine } from "../../lib/engine.svelte.ts";
   import { frameAt } from "../../lib/frames.ts";
+  import { t } from "../../lib/i18n/i18n.svelte.ts";
   import { renderPdfPages } from "../../lib/pdf.ts";
   import { prompts } from "../../lib/prompts.svelte.ts";
   import SlideEditor from "../slides/SlideEditor.svelte";
@@ -111,19 +112,25 @@
 
   async function chooseAndImport() {
     const extensions = canConvert ? ["pdf", "pptx", "ppt", "key", "odp"] : ["pdf"];
-    const path = await open({ filters: [{ name: "Presentations", extensions }], multiple: false });
+    const path = await open({
+      filters: [{ name: t("decks.filesFilter"), extensions }],
+      multiple: false,
+    });
     if (typeof path !== "string") return;
 
     let deck: string | null = null;
     let file: string | null = null;
     try {
-      progress = canConvert && !path.toLowerCase().endsWith(".pdf") ? "Converting…" : "Opening…";
+      progress =
+        canConvert && !path.toLowerCase().endsWith(".pdf")
+          ? t("decks.converting")
+          : t("decks.opening");
       const prepared = await preparePresentation(path);
       file = prepared.file;
       deck = await createPresentation(prepared.name);
       const id = deck;
       await renderPdfPages(urls.file({ id, file: prepared.file }), async (index, total, jpeg) => {
-        progress = `Page ${index + 1} of ${total}`;
+        progress = t("decks.page", { page: index + 1, total });
         await addPresentationPage(id, index, jpeg);
       });
       await finishPresentation(prepared.file, deck);
@@ -138,11 +145,11 @@
 
   async function remove(deck: SlideDeck) {
     const answer = await prompts.ask({
-      title: "Delete presentation?",
-      message: `Delete “${deck.name}” and its ${deck.slides.length} slides? Schedules that use it keep their copy.`,
+      title: t("decks.deleteTitle"),
+      message: t("decks.deleteMessage", { name: deck.name, count: deck.slides.length }),
       buttons: [
-        { id: "cancel", label: "Cancel" },
-        { id: "delete", label: "Delete", variant: "live" },
+        { id: "cancel", label: t("common.cancel") },
+        { id: "delete", label: t("common.delete"), variant: "live" },
       ],
       cancel: "cancel",
     });
@@ -165,35 +172,42 @@
 
 <div class="presentations-tab">
   <div class="toolbar">
-    <Button onclick={newPresentation}>New Presentation</Button>
-    <Button disabled={progress !== null} onclick={chooseAndImport}>Import…</Button>
-    <input type="search" bind:value={query} placeholder="Search presentations" aria-label="Search">
+    <Button onclick={newPresentation}>{t("decks.new")}</Button>
+    <Button disabled={progress !== null} onclick={chooseAndImport}>{t("common.import")}</Button>
+    <input
+      type="search"
+      bind:value={query}
+      placeholder={t("decks.search")}
+      aria-label={t("decks.searchLabel")}
+    >
     {#if progress}
       <span class="progress">{progress}</span>
     {:else if !canConvert}
-      <span class="hint"
-        >To import PowerPoint or Keynote, save as PDF (or install LibreOffice).</span
-      >
+      <span class="hint">{t("decks.needsLibreOffice")}</span>
     {/if}
     <span class="spacer"></span>
-    <Button disabled={!selected} onclick={() => selected && remove(selected)}>Delete</Button>
-    <Button disabled={!selected} onclick={() => selected && edit(selected)}>Edit</Button>
+    <Button disabled={!selected} onclick={() => selected && remove(selected)}
+      >{t("common.delete")}</Button
+    >
+    <Button disabled={!selected} onclick={() => selected && edit(selected)}
+      >{t("common.edit")}</Button
+    >
     <Button
       disabled={!selected}
       onclick={() => selected && attempt(() => addPresentationToSchedule(selected.id))}
     >
-      Add to Schedule
+      {t("common.addToSchedule")}
     </Button>
     <Button
       variant="primary"
       disabled={!selected}
       onclick={() => selected && attempt(() => showPresentationInPreview(selected.id))}
     >
-      Show in Preview
+      {t("common.showInPreview")}
     </Button>
   </div>
 
-  <ul class="grid" aria-label="Presentations">
+  <ul class="grid" aria-label={t("decks.list")}>
     {#each shown as deck (deck.id)}
       {@const slides = covers[deck.id]}
       {@const cover = slides ? frameAt(slides, 0) : null}
@@ -215,17 +229,16 @@
           <span class="caption">
             <span class="title">{deck.name}</span>
             <span class="meta">
-              {deck.slides.length}
-              slides{deck.autoAdvance ? ` · every ${deck.autoAdvance.seconds}s` : ""}
+              {t("common.slides", { count: deck.slides.length })}{deck.autoAdvance
+                ? t("decks.everySeconds", { seconds: deck.autoAdvance.seconds })
+                : ""}
             </span>
           </span>
         </button>
       </li>
     {:else}
       <li class="empty">
-        {query
-          ? "No presentation matches."
-          : "No presentations yet. Make one for this week's announcements, or import a PDF of sermon slides."}
+        {query ? t("decks.noMatch") : t("decks.empty")}
       </li>
     {/each}
   </ul>
