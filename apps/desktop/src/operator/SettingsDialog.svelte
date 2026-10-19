@@ -50,7 +50,7 @@
         <h3>Church</h3>
         <label class="field">
           Name
-          <input bind:value={settings.churchName} placeholder="e.g. Grace Chapel, Kumasi">
+          <input bind:value={settings.churchName} placeholder="e.g. Winners Chapel Int'l, Abesim">
         </label>
         <label class="field">
           CCLI licence number
