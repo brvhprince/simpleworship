@@ -2,6 +2,150 @@
 import type { BookId, Passage } from "./bible";
 
 /**
+ * An alert on screen.
+ */
+export type Alert = {
+  /**
+   * When it appeared (milliseconds since the Unix epoch), so every screen
+   * scrolls it in step and knows when it ends.
+   */
+  startedAt: number;
+  /**
+   * The message.
+   */
+  text: string;
+  /**
+   * Banner or ticker.
+   */
+  style: AlertStyle;
+  /**
+   * Top or bottom.
+   */
+  position: AlertPosition;
+  /**
+   * When it goes away by itself.
+   */
+  end: AlertEnd;
+};
+
+/**
+ * When an alert goes away by itself.
+ */
+export type AlertEnd =
+  | { type: "manual" }
+  | {
+      type: "afterSeconds";
+      /**
+       * How long it stays, in seconds.
+       */
+      seconds: number;
+    }
+  | {
+      type: "afterPasses";
+      /**
+       * How many times it scrolls across.
+       */
+      passes: number;
+    };
+
+/**
+ * Where an alert appears.
+ */
+export type AlertPosition = "top" | "bottom";
+
+/**
+ * What the operator asks to show.
+ */
+export type AlertRequest = {
+  /**
+   * The message.
+   */
+  text: string;
+  /**
+   * Banner or ticker.
+   */
+  style: AlertStyle;
+  /**
+   * Top or bottom.
+   */
+  position: AlertPosition;
+  /**
+   * When it goes away by itself.
+   */
+  end: AlertEnd;
+};
+
+/**
+ * How an alert looks.
+ */
+export type AlertStyle = "banner" | "ticker";
+
+/**
+ * A saved alert the operator can show in one click. `___` in the text is
+ * replaced with what the operator types (a child number, a plate).
+ */
+export type AlertTemplate = {
+  /**
+   * Button label, e.g. "Nursery".
+   */
+  name: string;
+  /**
+   * The message.
+   */
+  text: string;
+  /**
+   * Banner or ticker.
+   */
+  style: AlertStyle;
+  /**
+   * Top or bottom.
+   */
+  position: AlertPosition;
+  /**
+   * When it goes away by itself.
+   */
+  end: AlertEnd;
+};
+
+/**
+ * The background audio player.
+ */
+export type AudioState = {
+  /**
+   * The tracks, in playing order.
+   */
+  playlist: Array<MediaItem>;
+  /**
+   * The current track.
+   */
+  index: number;
+  /**
+   * Whether it is playing.
+   */
+  playing: boolean;
+  /**
+   * Position in the current track at `anchor`, in milliseconds.
+   */
+  positionMs: number;
+  /**
+   * When `position_ms` was measured.
+   */
+  anchor: number;
+  /**
+   * Volume, from 0 (silent) to 1 (full).
+   */
+  volume: number;
+  /**
+   * Start the playlist again after the last track.
+   */
+  loop: boolean;
+  /**
+   * A fade-out in progress, if any.
+   */
+  fade: Fade | null;
+};
+
+/**
  * What is drawn behind the slide text.
  */
 export type Background =
@@ -255,6 +399,106 @@ export type Command =
       on: boolean;
     }
   | {
+      type: "showAlert";
+      /**
+       * What to show and how.
+       */
+      alert: AlertRequest;
+    }
+  | { type: "clearAlert" }
+  | { type: "countdownFinished" }
+  | {
+      type: "startStageTimer";
+      /**
+       * Up or down.
+       */
+      mode: TimerMode;
+      /**
+       * For a count-down, its length in milliseconds.
+       */
+      durationMs: number;
+    }
+  | { type: "pauseStageTimer" }
+  | { type: "resumeStageTimer" }
+  | { type: "clearStageTimer" }
+  | {
+      type: "setStageMessage";
+      /**
+       * The message.
+       */
+      message: string | null;
+    }
+  | {
+      type: "setPlaylist";
+      /**
+       * The tracks.
+       */
+      tracks: Array<MediaItem>;
+      /**
+       * Start playing straight away.
+       */
+      play: boolean;
+    }
+  | { type: "playAudio" }
+  | { type: "pauseAudio" }
+  | {
+      type: "playTrack";
+      /**
+       * The track's position in the playlist.
+       */
+      index: number;
+    }
+  | {
+      type: "skipTrack";
+      /**
+       * `true` for next, `false` for previous.
+       */
+      forward: boolean;
+    }
+  | { type: "trackEnded" }
+  | {
+      type: "seekAudio";
+      /**
+       * Position in milliseconds.
+       */
+      positionMs: number;
+    }
+  | {
+      type: "setVolume";
+      /**
+       * The volume.
+       */
+      volume: number;
+    }
+  | {
+      type: "setAudioLoop";
+      /**
+       * `true` to loop.
+       */
+      on: boolean;
+    }
+  | {
+      type: "fadeOutAudio";
+      /**
+       * How long the fade takes.
+       */
+      durationMs: number;
+    }
+  | {
+      type: "setCcliLicense";
+      /**
+       * The licence number.
+       */
+      license: string | null;
+    }
+  | {
+      type: "setUtcOffset";
+      /**
+       * Minutes ahead of UTC (e.g. 60 for UTC+1).
+       */
+      minutes: number;
+    }
+  | {
       type: "setThemes";
       /**
        * The themes and defaults.
@@ -342,6 +586,66 @@ export type Command =
     };
 
 /**
+ * What happens when a countdown reaches zero.
+ */
+export type CountdownEnd = "stay" | "nextItem";
+
+/**
+ * A live countdown, as renderers draw it.
+ */
+export type CountdownFrame = {
+  /**
+   * Text above the time.
+   */
+  message: string;
+  /**
+   * When it reaches zero (milliseconds since the Unix epoch).
+   */
+  endsAt: number;
+};
+
+/**
+ * A countdown on a slide, before it goes live.
+ */
+export type CountdownSlide = {
+  /**
+   * Text above the time, e.g. "Service starts in".
+   */
+  message: string;
+  /**
+   * What it counts down to.
+   */
+  target: CountdownTarget;
+  /**
+   * What happens at zero.
+   */
+  atEnd: CountdownEnd;
+};
+
+/**
+ * What a countdown counts down to.
+ */
+export type CountdownTarget =
+  | {
+      type: "duration";
+      /**
+       * How long, in seconds.
+       */
+      seconds: number;
+    }
+  | {
+      type: "timeOfDay";
+      /**
+       * Hour, 0–23.
+       */
+      hour: number;
+      /**
+       * Minute, 0–59.
+       */
+      minute: number;
+    };
+
+/**
  * The operator's "panic buttons". Each one hides part of the output without
  * changing which slide is live.
  */
@@ -402,6 +706,31 @@ export type EngineEvent =
        * The new library.
        */
       themes: ThemeLibrary;
+    }
+  | {
+      type: "stageChanged";
+      /**
+       * The new stage state.
+       */
+      stage: StageState;
+    }
+  | {
+      type: "audioChanged";
+      /**
+       * The new audio state.
+       */
+      audio: AudioState;
+    }
+  | {
+      type: "songWentLive";
+      /**
+       * The song.
+       */
+      songId: Id;
+      /**
+       * Its title, in case the song is not in this computer's library.
+       */
+      title: string;
     };
 
 /**
@@ -429,6 +758,28 @@ export type EngineSnapshot = {
    * What the output screens draw.
    */
   output: OutputState;
+  /**
+   * The stage display's timer and message.
+   */
+  stage: StageState;
+  /**
+   * The background audio.
+   */
+  audio: AudioState;
+};
+
+/**
+ * A fade-out in progress.
+ */
+export type Fade = {
+  /**
+   * When the fade began.
+   */
+  startedAt: number;
+  /**
+   * How long it takes, in milliseconds. Playback stops at the end.
+   */
+  durationMs: number;
 };
 
 /**
@@ -514,6 +865,39 @@ export type ItemContent =
        * The media item (the file travels with a saved schedule).
        */
       media: MediaItem;
+    }
+  | {
+      type: "countdown";
+      /**
+       * Title in the schedule, e.g. "Countdown to 10:30".
+       */
+      title: string;
+      /**
+       * What it counts down to and what happens at zero.
+       */
+      countdown: CountdownSlide;
+    }
+  | {
+      type: "slides";
+      /**
+       * The presentation's name.
+       */
+      name: string;
+      /**
+       * Its pages, in order (the files travel with a saved schedule).
+       */
+      pages: Array<MediaItem>;
+    }
+  | {
+      type: "playlist";
+      /**
+       * The playlist's name.
+       */
+      name: string;
+      /**
+       * The tracks, in order (the files travel with a saved schedule).
+       */
+      tracks: Array<MediaItem>;
     };
 
 /**
@@ -597,12 +981,17 @@ export type MediaItem = {
    * When it was imported.
    */
   createdAt: number;
+  /**
+   * The presentation this is a page of, if any. Pages are kept out of
+   * the Media tab and shown in the Presentations tab instead.
+   */
+  collection: Id | null;
 };
 
 /**
  * What kind of file a media item is.
  */
-export type MediaKind = "image" | "video";
+export type MediaKind = "image" | "video" | "audio";
 
 /**
  * A pointer to a file in the media library.
@@ -657,6 +1046,10 @@ export type OutputState = {
    * one, the Logo button shows the background with no text.
    */
   logo: MediaRef | null;
+  /**
+   * An alert over the slides, if one is showing.
+   */
+  alert: Alert | null;
   /**
    * Increases by one every time the output changes. Lets renderers that
    * connect late, or miss an event, tell whether they are up to date.
@@ -735,6 +1128,9 @@ export type PresentationSource =
        */
       songId: Id;
     }
+  | { type: "countdown" }
+  | { type: "slides" }
+  | { type: "playlist" }
   | { type: "text" }
   | {
       type: "scripture";
@@ -768,6 +1164,10 @@ export type RenderFrame = {
    * A line shown with the slide, e.g. the reference "John 3:16–17 (KJV)".
    */
   caption: string | null;
+  /**
+   * A live countdown, when the slide is one.
+   */
+  countdown: CountdownFrame | null;
   /**
    * Small print under the text, if any.
    */
@@ -954,6 +1354,38 @@ export type Slide = {
    * `text` then holds a plain-text version of the first column.
    */
   scripture: ScriptureSlide | null;
+  /**
+   * A background for this slide only (each page of a presentation is
+   * its own picture).
+   */
+  background: Background | null;
+  /**
+   * For a countdown slide: what it counts down to.
+   */
+  countdown: CountdownSlide | null;
+};
+
+/**
+ * An imported presentation (a PDF, or a converted PowerPoint): a name and
+ * one picture per page.
+ */
+export type SlideDeck = {
+  /**
+   * Unique identifier (the pages' `collection`).
+   */
+  id: Id;
+  /**
+   * The presentation's name, usually the file name.
+   */
+  name: string;
+  /**
+   * The pages, in order.
+   */
+  pages: Array<MediaItem>;
+  /**
+   * When it was imported.
+   */
+  createdAt: number;
 };
 
 /**
@@ -1037,6 +1469,77 @@ export type SongSummary = {
    * first lyric line when listing.
    */
   excerpt: string;
+};
+
+/**
+ * One song's line in a usage report.
+ */
+export type SongUsage = {
+  /**
+   * Song title.
+   */
+  title: string;
+  /**
+   * Author(s).
+   */
+  author: string;
+  /**
+   * Copyright notice.
+   */
+  copyright: string;
+  /**
+   * CCLI song number (empty if unknown).
+   */
+  ccliNumber: string;
+  /**
+   * On how many days it was used in the period.
+   */
+  times: number;
+  /**
+   * The last day it was used, `YYYY-MM-DD`.
+   */
+  lastUsed: string;
+};
+
+/**
+ * Everything the stage display shows beyond the slides.
+ */
+export type StageState = {
+  /**
+   * The speaker's timer, if one is set.
+   */
+  timer: StageTimer | null;
+  /**
+   * A message for the people on stage, if any.
+   */
+  message: string | null;
+};
+
+/**
+ * A timer on the stage display. Like video, it is an anchor plus a clock:
+ * every screen works out the current value from `elapsed_at`.
+ */
+export type StageTimer = {
+  /**
+   * Up or down.
+   */
+  mode: TimerMode;
+  /**
+   * For a count-down, how long it runs, in milliseconds.
+   */
+  durationMs: number;
+  /**
+   * Time counted so far, at `anchor`.
+   */
+  elapsedMs: number;
+  /**
+   * When `elapsed_ms` was measured.
+   */
+  anchor: number;
+  /**
+   * Whether it is running.
+   */
+  running: boolean;
 };
 
 /**
@@ -1192,6 +1695,11 @@ export type ThemeRecord = {
    */
   builtin: boolean;
 };
+
+/**
+ * Which way a stage timer counts.
+ */
+export type TimerMode = "countUp" | "countDown";
 
 /**
  * How the output changes from one frame to the next.

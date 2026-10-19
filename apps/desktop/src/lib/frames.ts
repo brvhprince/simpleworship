@@ -7,11 +7,16 @@ import type { Presentation, RenderFrame } from "@simpleworship/protocol";
 export function frameAt(presentation: Presentation, index: number): RenderFrame | null {
   const slide = presentation.slides[index];
   if (!slide) return null;
+  const theme = slide.background
+    ? { ...presentation.theme, background: slide.background }
+    : presentation.theme;
   return {
     text: slide.text,
     scripture: slide.scripture,
     caption: slide.caption,
+    // Thumbnails show a countdown's message; only live screens tick.
+    countdown: null,
     footer: presentation.footer,
-    theme: presentation.theme,
+    theme,
   };
 }

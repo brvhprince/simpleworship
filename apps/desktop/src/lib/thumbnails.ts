@@ -63,6 +63,17 @@ export async function videoDetails(url: string): Promise<MediaDetails> {
   return details;
 }
 
+/** Measures a sound file's length. Audio has no thumbnail. */
+export async function audioDetails(url: string): Promise<{ durationMs: number | null }> {
+  const audio = new Audio();
+  audio.preload = "metadata";
+  audio.src = url;
+  await waitFor(audio, "loadedmetadata");
+  const durationMs = Number.isFinite(audio.duration) ? Math.round(audio.duration * 1000) : null;
+  audio.removeAttribute("src");
+  return { durationMs };
+}
+
 /** Resolves on `event`, rejects if the element reports an error first. */
 function waitFor(element: HTMLMediaElement, event: string): Promise<void> {
   return new Promise((resolve, reject) => {

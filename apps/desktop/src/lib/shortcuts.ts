@@ -8,6 +8,7 @@
  * | Enter                            | Send preview live                    |
  * | F6 / F7 / F8 / F9                | Black / Logo / Clear text / Clear bg |
  * | V P C B T I E, optionally a digit | Jump to a section (V2, C, B…)        |
+ * | A / Esc                          | Alert panel / clear the alert        |
  *
  * Section letters: Verse, Pre-chorus, Chorus, Bridge, Tag, Intro, Ending.
  *

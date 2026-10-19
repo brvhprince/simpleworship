@@ -36,14 +36,18 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use ts_rs::TS;
 
+use crate::alerts::Alert;
+use crate::audio::{AudioState, Fade};
 use crate::command::{Command, EngineEvent};
+use crate::countdown::{CountdownEnd, CountdownFrame};
 use crate::id::Id;
-use crate::media::MediaRef;
+use crate::media::{MediaItem, MediaKind, MediaRef};
 use crate::output::{DisplayFlags, OutputState, RenderFrame, Transition, VideoPlayback};
 use crate::presentation::{Presentation, PresentationSource};
-use crate::schedule::{Schedule, ScheduleItem};
+use crate::schedule::{ItemContent, Schedule, ScheduleItem};
 use crate::slides::SlideOptions;
 use crate::song::Song;
+use crate::stage::{StageState, StageTimer, TimerMode};
 use crate::theme::Background;
 use crate::themes::{ContentKind, ItemLook, ThemeLibrary};
 use crate::time::{self, Timestamp};
@@ -78,6 +82,10 @@ pub struct EngineSnapshot {
     pub live: Option<PaneState>,
     /// What the output screens draw.
     pub output: OutputState,
+    /// The stage display's timer and message.
+    pub stage: StageState,
+    /// The background audio.
+    pub audio: AudioState,
 }
 
 /// A command that could not be carried out.
@@ -116,7 +124,19 @@ pub struct Engine {
     logo: Option<MediaRef>,
     /// Playback of the live video background, if there is one.
     video: Option<VideoPlayback>,
-    /// Where the engine gets the time, for video timing.
+    /// The alert over the slides, if any.
+    alert: Option<Alert>,
+    /// The stage display's timer and message.
+    stage: StageState,
+    /// The background audio player.
+    audio: AudioState,
+    /// The church's CCLI licence number, added to song footers.
+    ccli_license: Option<String>,
+    /// This computer's time zone, in minutes ahead of UTC.
+    utc_offset_minutes: i32,
+    /// When the live countdown ends, and which presentation it belongs to.
+    countdown_end: Option<(Id, Timestamp)>,
+    /// Where the engine gets the time, for video, timers and countdowns.
     clock: fn() -> Timestamp,
     /// Set by any command that changes the schedule, so [`Engine::dispatch`]
     /// knows to announce it.
@@ -140,6 +160,7 @@ impl Default for OutputState {
             transition: Transition::default(),
             video: None,
             logo: None,
+            alert: None,
             revision: 0,
         }
     }
@@ -170,6 +191,12 @@ impl Engine {
             themes: ThemeLibrary::default(),
             logo: None,
             video: None,
+            alert: None,
+            stage: StageState::default(),
+            audio: AudioState::default(),
+            ccli_license: None,
+            utc_offset_minutes: 0,
+            countdown_end: None,
             clock,
             schedule_changed: false,
             output: OutputState::default(),
@@ -184,6 +211,8 @@ impl Engine {
             preview: self.preview.clone(),
             live: self.live.clone(),
             output: self.output.clone(),
+            stage: self.stage.clone(),
+            audio: self.audio.clone(),
         }
     }
 
@@ -204,6 +233,8 @@ impl Engine {
     pub fn dispatch(&mut self, command: Command) -> Result<Vec<EngineEvent>, EngineError> {
         let before_preview = self.preview.clone();
         let before_live = self.live.clone();
+        let before_stage = self.stage.clone();
+        let before_audio = self.audio.clone();
         let themes_changing = matches!(command, Command::SetThemes { .. });
         self.schedule_changed = false;
 
@@ -229,9 +260,20 @@ impl Engine {
             events.push(EngineEvent::LiveChanged {
                 live: self.live.clone(),
             });
+            events.extend(self.song_went_live(before_live.as_ref()));
         }
         if let Some(output) = self.refresh_output() {
             events.push(EngineEvent::OutputChanged { output });
+        }
+        if self.stage != before_stage {
+            events.push(EngineEvent::StageChanged {
+                stage: self.stage.clone(),
+            });
+        }
+        if self.audio != before_audio {
+            events.push(EngineEvent::AudioChanged {
+                audio: self.audio.clone(),
+            });
         }
         Ok(events)
     }
@@ -247,7 +289,7 @@ impl Engine {
             Command::PreviewSong { song } => {
                 let look = self.look(ContentKind::Song, song.theme_id);
                 let presentation = Presentation::from_song(&song, look, SlideOptions::default());
-                self.preview = Some(unscheduled(presentation));
+                self.preview = Some(unscheduled(self.finish(presentation)));
             }
             Command::PreviewText { title, text } => {
                 let look = self.look(ContentKind::Text, None);
@@ -314,6 +356,106 @@ impl Engine {
             }),
             Command::SetVideoLoop { on } => self.update_video(|video, _| video.looping = on),
             Command::SetVideoMuted { on } => self.update_video(|video, _| video.muted = on),
+
+            // ── Alerts and countdowns ─────────────────────────────────────
+            Command::ShowAlert { alert } => {
+                self.alert = Some(Alert {
+                    request: alert,
+                    started_at: (self.clock)(),
+                });
+            }
+            Command::ClearAlert => self.alert = None,
+            Command::CountdownFinished => self.finish_countdown()?,
+
+            // ── Stage display ─────────────────────────────────────────────
+            Command::StartStageTimer { mode, duration_ms } => {
+                self.stage.timer = Some(StageTimer {
+                    mode,
+                    duration_ms: if mode == TimerMode::CountDown {
+                        duration_ms
+                    } else {
+                        0
+                    },
+                    elapsed_ms: 0,
+                    anchor: (self.clock)(),
+                    running: true,
+                });
+            }
+            Command::PauseStageTimer => {
+                let now = (self.clock)();
+                if let Some(timer) = &mut self.stage.timer
+                    && timer.running
+                {
+                    timer.elapsed_ms = timer.elapsed_at(now);
+                    timer.anchor = now;
+                    timer.running = false;
+                }
+            }
+            Command::ResumeStageTimer => {
+                let now = (self.clock)();
+                if let Some(timer) = &mut self.stage.timer
+                    && !timer.running
+                {
+                    timer.anchor = now;
+                    timer.running = true;
+                }
+            }
+            Command::ClearStageTimer => self.stage.timer = None,
+            Command::SetStageMessage { message } => {
+                self.stage.message = message.filter(|text| !text.trim().is_empty());
+            }
+
+            // ── Background audio ──────────────────────────────────────────
+            Command::SetPlaylist { tracks, play } => self.set_playlist(tracks, play),
+            Command::PlayAudio => {
+                let now = (self.clock)();
+                if !self.audio.playing && self.audio.current().is_some() {
+                    self.audio.anchor = now;
+                    self.audio.playing = true;
+                    self.audio.fade = None;
+                }
+            }
+            Command::PauseAudio => {
+                let now = (self.clock)();
+                self.audio.position_ms = self.audio.position_at(now);
+                self.audio.anchor = now;
+                self.audio.playing = false;
+                self.audio.fade = None;
+            }
+            Command::PlayTrack { index } => {
+                if index < self.audio.playlist.len() {
+                    self.audio.start_track(index, (self.clock)());
+                }
+            }
+            Command::SkipTrack { forward } => self.skip_track(forward),
+            Command::TrackEnded => match self.audio.next_index() {
+                Some(next) => self.audio.start_track(next, (self.clock)()),
+                None => {
+                    self.audio.playing = false;
+                    self.audio.position_ms = 0;
+                    self.audio.fade = None;
+                }
+            },
+            Command::SeekAudio { position_ms } => {
+                self.audio.position_ms = position_ms;
+                self.audio.anchor = (self.clock)();
+            }
+            Command::SetVolume { volume } => self.audio.volume = volume.clamp(0.0, 1.0),
+            Command::SetAudioLoop { on } => self.audio.looping = on,
+            Command::FadeOutAudio { duration_ms } => {
+                if self.audio.playing {
+                    self.audio.fade = Some(Fade {
+                        started_at: (self.clock)(),
+                        duration_ms,
+                    });
+                }
+            }
+
+            // ── Settings ──────────────────────────────────────────────────
+            Command::SetCcliLicense { license } => {
+                self.ccli_license = license.filter(|number| !number.trim().is_empty());
+            }
+            Command::SetUtcOffset { minutes } => self.utc_offset_minutes = minutes,
 
             // ── Themes ────────────────────────────────────────────────────
             Command::SetThemes { library } => {
@@ -406,7 +548,7 @@ impl Engine {
         let Some(item) = self.schedule.get(id) else {
             return;
         };
-        let presentation = item.presentation(&self.themes);
+        let presentation = self.finish(item.presentation(&self.themes));
         for pane in [&mut self.preview, &mut self.live].into_iter().flatten() {
             if pane.schedule_item == Some(id) {
                 let last = presentation.slides.len().saturating_sub(1);
@@ -418,6 +560,9 @@ impl Engine {
 
     /// Makes `pane` live. If it came from the schedule, the following item
     /// is loaded into preview so the operator can see what is next.
+    ///
+    /// A playlist item does not change the screen: "going live" with it
+    /// starts the music, and what is on screen stays.
     fn go_live(&mut self, pane: PaneState) {
         let next = pane
             .schedule_item
@@ -426,7 +571,115 @@ impl Engine {
         if next.is_some() {
             self.preview = next;
         }
-        self.live = Some(pane);
+
+        let playlist = pane
+            .schedule_item
+            .and_then(|id| self.schedule.get(id))
+            .and_then(|item| match &item.content {
+                ItemContent::Playlist { tracks, .. } => Some(tracks.clone()),
+                _ => None,
+            });
+        match playlist {
+            Some(tracks) => self.set_playlist(tracks, true),
+            None => {
+                self.start_countdown(&pane);
+                self.live = Some(pane);
+            }
+        }
+    }
+
+    /// If `pane` shows a countdown, works out when it ends.
+    fn start_countdown(&mut self, pane: &PaneState) {
+        let countdown = pane
+            .presentation
+            .slides
+            .get(pane.selected)
+            .and_then(|slide| slide.countdown.as_ref());
+        self.countdown_end = countdown.map(|countdown| {
+            let ends_at = countdown
+                .target
+                .ends_at((self.clock)(), self.utc_offset_minutes);
+            (pane.presentation.id, ends_at)
+        });
+    }
+
+    /// A screen saw the live countdown reach zero. If it is set to move on,
+    /// the next schedule item goes live. Several screens may report the same
+    /// countdown, so this checks it is still live and really over.
+    fn finish_countdown(&mut self) -> Result<(), EngineError> {
+        let Some(pane) = &self.live else {
+            return Ok(());
+        };
+        let moves_on = pane
+            .presentation
+            .slides
+            .get(pane.selected)
+            .and_then(|slide| slide.countdown.as_ref())
+            .is_some_and(|countdown| countdown.at_end == CountdownEnd::NextItem);
+        let over = self
+            .countdown_end
+            .is_some_and(|(id, ends_at)| id == pane.presentation.id && ends_at <= (self.clock)());
+        if moves_on && over {
+            self.countdown_end = None;
+            self.next_slide()?;
+        }
+        Ok(())
+    }
+
+    /// Replaces the playlist with its audio tracks, optionally playing.
+    fn set_playlist(&mut self, tracks: Vec<MediaItem>, play: bool) {
+        self.audio.playlist = tracks
+            .into_iter()
+            .filter(|track| track.kind == MediaKind::Audio)
+            .collect();
+        self.audio.index = 0;
+        self.audio.position_ms = 0;
+        self.audio.playing = false;
+        self.audio.fade = None;
+        if play && !self.audio.playlist.is_empty() {
+            self.audio.start_track(0, (self.clock)());
+        }
+    }
+
+    /// Next track, or previous: back to the start of the current track if
+    /// it has played for a few seconds, otherwise the track before.
+    fn skip_track(&mut self, forward: bool) {
+        const RESTART_AFTER_MS: u64 = 3_000;
+        let now = (self.clock)();
+        if self.audio.playlist.is_empty() {
+            return;
+        }
+        let index = if forward {
+            match self.audio.next_index() {
+                Some(next) => next,
+                None => return,
+            }
+        } else if self.audio.position_at(now) > RESTART_AFTER_MS {
+            self.audio.index
+        } else {
+            self.audio.index.saturating_sub(1)
+        };
+        self.audio.start_track(index, now);
+    }
+
+    /// Adds the CCLI licence number to a song's footer, as the licence asks.
+    fn finish(&self, presentation: Presentation) -> Presentation {
+        license_footer(presentation, self.ccli_license.as_deref())
+    }
+
+    /// The "song went live" event, if a different song just went live.
+    fn song_went_live(&self, before: Option<&PaneState>) -> Option<EngineEvent> {
+        let live = self.live.as_ref()?;
+        let PresentationSource::Song { song_id } = live.presentation.source else {
+            return None;
+        };
+        let same_song = before.is_some_and(|pane| {
+            matches!(pane.presentation.source, PresentationSource::Song { song_id: id } if id == song_id)
+        });
+        (!same_song).then(|| EngineEvent::SongWentLive {
+            song_id,
+            title: live.presentation.title.clone(),
+        })
     }
 
     /// Advances one slide, continuing into the next schedule item at the end.
@@ -464,7 +717,7 @@ impl Engine {
 
     /// Builds a pane showing a schedule item.
     fn pane_for(&self, item: &ScheduleItem, start: StartAt) -> PaneState {
-        let presentation = item.presentation(&self.themes);
+        let presentation = self.finish(item.presentation(&self.themes));
         let selected = match start {
             StartAt::First => 0,
             StartAt::Last => presentation.slides.len().saturating_sub(1),
@@ -496,8 +749,10 @@ impl Engine {
                 PresentationSource::Song { song_id } if song_id == song.id
             );
             if shows_song && pane.schedule_item.is_none() {
-                pane.presentation =
-                    Presentation::from_song(song, look.clone(), SlideOptions::default());
+                pane.presentation = license_footer(
+                    Presentation::from_song(song, look.clone(), SlideOptions::default()),
+                    self.ccli_license.as_deref(),
+                );
                 let last = pane.presentation.slides.len().saturating_sub(1);
                 pane.selected = pane.selected.min(last);
             }
@@ -507,17 +762,19 @@ impl Engine {
     /// Recomputes the output state. Returns it (with a new revision) if it
     /// differs from what renderers last received.
     fn refresh_output(&mut self) -> Option<OutputState> {
-        let frame = self
-            .live
-            .as_ref()
-            .and_then(|pane| pane.presentation.frame(pane.selected));
+        let frame = self.live.as_ref().and_then(|pane| {
+            let mut frame = pane.presentation.frame(pane.selected)?;
+            frame.countdown = self.live_countdown(pane);
+            Some(frame)
+        });
         self.follow_live_video(frame.as_ref());
 
         let unchanged = frame == self.output.frame
             && self.flags == self.output.flags
             && self.transition == self.output.transition
             && self.video == self.output.video
-            && self.logo == self.output.logo;
+            && self.logo == self.output.logo
+            && self.alert == self.output.alert;
         if unchanged {
             return None;
         }
@@ -528,9 +785,25 @@ impl Engine {
             transition: self.transition,
             video: self.video,
             logo: self.logo.clone(),
+            alert: self.alert.clone(),
             revision: self.output.revision + 1,
         };
         Some(self.output.clone())
+    }
+
+    /// The countdown to draw for the live pane, if it shows one.
+    fn live_countdown(&self, pane: &PaneState) -> Option<CountdownFrame> {
+        let countdown = pane
+            .presentation
+            .slides
+            .get(pane.selected)?
+            .countdown
+            .as_ref()?;
+        let (id, ends_at) = self.countdown_end?;
+        (id == pane.presentation.id).then(|| CountdownFrame {
+            message: countdown.message.clone(),
+            ends_at,
+        })
     }
 
     /// Keeps playback in step with the live frame: a new video starts from
@@ -569,6 +842,21 @@ fn select(pane: &mut PaneState, index: usize) -> Result<(), EngineError> {
     }
     pane.selected = index;
     Ok(())
+}
+
+/// Adds "CCLI License # …" to a song's footer. Other presentations are
+/// returned unchanged. (A free function, for places that cannot borrow the
+/// whole engine.)
+fn license_footer(mut presentation: Presentation, license: Option<&str>) -> Presentation {
+    let is_song = matches!(presentation.source, PresentationSource::Song { .. });
+    if let (true, Some(license)) = (is_song, license) {
+        let notice = format!("CCLI License # {license}");
+        presentation.footer = Some(match presentation.footer.take() {
+            Some(footer) => format!("{footer} · {notice}"),
+            None => notice,
+        });
+    }
+    presentation
 }
 
 /// A pane for a presentation that did not come from the schedule.
@@ -936,6 +1224,7 @@ mod tests {
             duration_ms: Some(60_000),
             size_bytes: 1,
             created_at: 0,
+            collection: None,
         }
     }
 
@@ -1126,5 +1415,179 @@ mod tests {
 
         engine.dispatch(Command::ClearLive).unwrap();
         assert_eq!(engine.snapshot().output.video, None);
+    }
+
+    // ── Alerts, countdowns, stage, audio, CCLI ───────────────────────────
+
+    use crate::alerts::{AlertEnd, AlertPosition, AlertRequest, AlertStyle};
+    use crate::countdown::{CountdownSlide, CountdownTarget};
+
+    fn track(name: &str) -> MediaItem {
+        MediaItem {
+            kind: MediaKind::Audio,
+            ..video(name)
+        }
+    }
+
+    #[test]
+    fn alerts_show_and_clear() {
+        let mut engine = Engine::with_clock(fake_now);
+        engine
+            .dispatch(Command::ShowAlert {
+                alert: AlertRequest {
+                    text: "Parent of child #4".into(),
+                    style: AlertStyle::Ticker,
+                    position: AlertPosition::Bottom,
+                    end: AlertEnd::AfterPasses { passes: 3 },
+                },
+            })
+            .unwrap();
+        let alert = engine.snapshot().output.alert.unwrap();
+        assert_eq!(alert.request.text, "Parent of child #4");
+        assert_eq!(alert.started_at, fake_now());
+
+        engine.dispatch(Command::ClearAlert).unwrap();
+        assert_eq!(engine.snapshot().output.alert, None);
+    }
+
+    #[test]
+    fn a_countdown_ends_and_moves_on_when_asked() {
+        let countdown = ScheduleItem::new(ItemContent::Countdown {
+            title: "Countdown".into(),
+            countdown: CountdownSlide {
+                message: "Service starts in".into(),
+                target: CountdownTarget::Duration { seconds: 60 },
+                at_end: CountdownEnd::NextItem,
+            },
+        });
+        let song = text_item("First song", "line");
+        let id = countdown.id;
+        let mut engine = themed_engine(vec![countdown, song]);
+        engine.dispatch(Command::ShowScheduleItem { id }).unwrap();
+
+        let frame = engine.snapshot().output.frame.unwrap();
+        assert_eq!(frame.countdown.unwrap().ends_at, fake_now() + 60_000);
+
+        // Reported too early (a screen's clock is ahead): nothing happens.
+        engine.dispatch(Command::CountdownFinished).unwrap();
+        assert_eq!(live_text(&engine).as_deref(), Some("Service starts in"));
+
+        advance(60_000);
+        engine.dispatch(Command::CountdownFinished).unwrap();
+        assert_eq!(live_text(&engine).as_deref(), Some("line"));
+    }
+
+    #[test]
+    fn the_stage_timer_pauses_and_resumes() {
+        let mut engine = Engine::with_clock(fake_now);
+        engine
+            .dispatch(Command::StartStageTimer {
+                mode: TimerMode::CountDown,
+                duration_ms: 30 * 60_000,
+            })
+            .unwrap();
+        advance(10_000);
+        engine.dispatch(Command::PauseStageTimer).unwrap();
+        advance(50_000);
+        engine.dispatch(Command::ResumeStageTimer).unwrap();
+        advance(5_000);
+
+        let timer = engine.snapshot().stage.timer.unwrap();
+        assert_eq!(
+            timer.elapsed_at(fake_now()),
+            15_000,
+            "the pause does not count"
+        );
+
+        let events = engine
+            .dispatch(Command::SetStageMessage {
+                message: Some("Wrap up".into()),
+            })
+            .unwrap();
+        assert!(matches!(
+            events.as_slice(),
+            [EngineEvent::StageChanged { .. }]
+        ));
+    }
+
+    #[test]
+    fn audio_plays_skips_and_ends() {
+        let mut engine = Engine::with_clock(fake_now);
+        engine
+            .dispatch(Command::SetPlaylist {
+                tracks: vec![track("one"), video("not audio"), track("two")],
+                play: true,
+            })
+            .unwrap();
+        let audio = engine.snapshot().audio;
+        assert_eq!(audio.playlist.len(), 2, "only audio is kept");
+        assert!(audio.playing);
+
+        engine.dispatch(Command::TrackEnded).unwrap();
+        assert_eq!(engine.snapshot().audio.index, 1);
+
+        engine.dispatch(Command::TrackEnded).unwrap();
+        assert!(
+            !engine.snapshot().audio.playing,
+            "stops after the last track"
+        );
+
+        engine.dispatch(Command::SetAudioLoop { on: true }).unwrap();
+        engine.dispatch(Command::PlayTrack { index: 1 }).unwrap();
+        engine.dispatch(Command::TrackEnded).unwrap();
+        assert_eq!(engine.snapshot().audio.index, 0, "loops back to the start");
+    }
+
+    #[test]
+    fn a_playlist_item_plays_without_changing_the_screen() {
+        let words = text_item("Welcome", "Welcome!");
+        let playlist = ScheduleItem::new(ItemContent::Playlist {
+            name: "Before service".into(),
+            tracks: vec![track("one")],
+        });
+        let (words_id, playlist_id) = (words.id, playlist.id);
+        let mut engine = themed_engine(vec![words, playlist]);
+        engine
+            .dispatch(Command::ShowScheduleItem { id: words_id })
+            .unwrap();
+        engine
+            .dispatch(Command::ShowScheduleItem { id: playlist_id })
+            .unwrap();
+
+        assert_eq!(live_text(&engine).as_deref(), Some("Welcome!"));
+        assert!(engine.snapshot().audio.playing);
+    }
+
+    #[test]
+    fn songs_going_live_are_reported_once_and_carry_the_licence() {
+        let mut song = Song::new("Amazing Grace");
+        song.lyrics = "[V1]\none\n\ntwo".into();
+        let mut engine = themed_engine(Vec::new());
+        engine
+            .dispatch(Command::SetCcliLicense {
+                license: Some("12345".into()),
+            })
+            .unwrap();
+        engine
+            .dispatch(Command::PreviewSong {
+                song: Box::new(song.clone()),
+            })
+            .unwrap();
+
+        let events = engine.dispatch(Command::GoLive).unwrap();
+        assert!(
+            events
+                .iter()
+                .any(|e| matches!(e, EngineEvent::SongWentLive { .. }))
+        );
+        let footer = engine.snapshot().output.frame.unwrap().footer.unwrap();
+        assert!(footer.ends_with("CCLI License # 12345"), "{footer}");
+
+        let events = engine.dispatch(Command::NextSlide).unwrap();
+        assert!(
+            !events
+                .iter()
+                .any(|e| matches!(e, EngineEvent::SongWentLive { .. }))
+        );
     }
 }

@@ -18,6 +18,11 @@ export function itemTitle(item: ScheduleItem): string {
     }
     case "media":
       return item.content.media.name;
+    case "countdown":
+      return item.content.title;
+    case "slides":
+    case "playlist":
+      return item.content.name;
   }
 }
 
@@ -32,5 +37,11 @@ export function itemKind(item: ScheduleItem): string {
       return "Bible";
     case "media":
       return item.content.media.kind === "video" ? "Video" : "Image";
+    case "countdown":
+      return "Timer";
+    case "slides":
+      return "Slides";
+    case "playlist":
+      return "Music";
   }
 }

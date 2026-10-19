@@ -11,7 +11,7 @@ import type { MediaItem, MediaProgress, MediaRef } from "@simpleworship/protocol
 import { listen } from "@tauri-apps/api/event";
 import * as api from "./api.ts";
 import { engine } from "./engine.svelte.ts";
-import { imageDetails, videoDetails } from "./thumbnails.ts";
+import { audioDetails, imageDetails, videoDetails } from "./thumbnails.ts";
 
 /** Must match `MEDIA_EVENT` and `MEDIA_PROGRESS_EVENT` in `src-tauri/src/media.rs`. */
 const MEDIA_EVENT = "media://changed";
@@ -70,6 +70,12 @@ class MediaStore {
 
     try {
       const url = this.#urls.file({ id: item.id, file: item.file });
+      if (item.kind === "audio") {
+        // Sound has no picture; only its length is worth knowing.
+        const { durationMs } = await audioDetails(url);
+        await api.updateMediaDetails(item.id, { width: null, height: null, durationMs });
+        return;
+      }
       const details = item.kind === "video" ? await videoDetails(url) : await imageDetails(url);
       await api.saveMediaThumbnail(item.id, details.jpeg);
       await api.updateMediaDetails(item.id, {

@@ -331,6 +331,8 @@ fn scripture_slide(
             columns,
             verse_numbers: options.verse_numbers,
         }),
+        background: None,
+        countdown: None,
     }
 }
 

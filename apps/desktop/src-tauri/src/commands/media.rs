@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
-use sw_core::{Command, Id, ItemContent, MediaItem, ScheduleItem};
+use sw_core::{Command, Id, ItemContent, MediaItem, MediaKind, ScheduleItem};
 use tauri::{AppHandle, State};
 use ts_rs::TS;
 
@@ -139,7 +139,8 @@ pub fn media_show_in_preview(app: AppHandle, state: State<'_, AppState>, id: Id)
     )
 }
 
-/// Adds an image or video to the schedule at `index` (or at the end).
+/// Adds an image or video to the schedule at `index` (or at the end). A
+/// sound file becomes background music (a one-track playlist).
 #[tauri::command]
 pub fn schedule_add_media(
     app: AppHandle,
@@ -152,7 +153,15 @@ pub fn schedule_add_media(
         .media()
         .get(id)?
         .ok_or(AppError::MediaNotFound)?;
-    let item = ScheduleItem::new(ItemContent::Media { media });
+    let content = if media.kind == MediaKind::Audio {
+        ItemContent::Playlist {
+            name: media.name.clone(),
+            tracks: vec![media],
+        }
+    } else {
+        ItemContent::Media { media }
+    };
+    let item = ScheduleItem::new(content);
     dispatch(
         &app,
         &state,

@@ -18,10 +18,15 @@
 
   - `muted`: silence videos (the operator's live pane), so only the
     projector plays sound.
+  - `onalertend`, `oncountdownend`: an alert ran its course, a countdown
+    reached zero. The operator window passes these on to the engine.
+
+  Above the slides sits the alert (if any); Black covers everything.
 -->
 <script lang="ts">
   import type { OutputState, RenderFrame } from "@simpleworship/protocol";
   import { fade } from "svelte/transition";
+  import AlertLayer from "./AlertLayer.svelte";
   import BackgroundLayer from "./BackgroundLayer.svelte";
   import { getMediaUrls } from "./media.ts";
   import TextLayer from "./TextLayer.svelte";
@@ -29,9 +34,11 @@
   interface Props {
     output: OutputState;
     muted?: boolean;
+    onalertend?: () => void;
+    oncountdownend?: () => void;
   }
 
-  let { output, muted = false }: Props = $props();
+  let { output, muted = false, onalertend, oncountdownend }: Props = $props();
 
   const urls = getMediaUrls();
 
@@ -84,7 +91,7 @@
 
 {#each textLayers as layer (layer.key)}
   <div class="layer" transition:fade={{ duration }}>
-    <TextLayer frame={layer.frame} />
+    <TextLayer frame={layer.frame} {oncountdownend} />
   </div>
 {/each}
 
@@ -92,6 +99,14 @@
   <div class="layer logo" transition:fade={{ duration }}>
     <img src={urls.file(output.logo)} alt="">
   </div>
+{/if}
+
+{#if output.alert}
+  {#key output.alert.startedAt}
+    <div class="layer" transition:fade={{ duration: 300 }}>
+      <AlertLayer alert={output.alert} onend={onalertend} />
+    </div>
+  {/key}
 {/if}
 
 {#if flags.black}

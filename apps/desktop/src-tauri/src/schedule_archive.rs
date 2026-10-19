@@ -49,8 +49,13 @@ pub fn gather(
         if let Some(background) = &item.look.background {
             media_refs.extend(background.media().cloned());
         }
-        if let ItemContent::Media { media } = &item.content {
-            media_refs.push(media.as_ref());
+        match &item.content {
+            ItemContent::Media { media } => media_refs.push(media.as_ref()),
+            ItemContent::Slides { pages: files, .. }
+            | ItemContent::Playlist { tracks: files, .. } => {
+                media_refs.extend(files.iter().map(MediaItem::as_ref));
+            }
+            _ => {}
         }
     }
 

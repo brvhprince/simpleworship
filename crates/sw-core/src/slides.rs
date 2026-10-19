@@ -10,11 +10,13 @@
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
+use crate::countdown::CountdownSlide;
 use crate::lyrics::{Section, SectionLabel};
 use crate::scripture::ScriptureSlide;
+use crate::theme::Background;
 
 /// One slide: the text shown on screen at a time.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "bindings.ts")]
 pub struct Slide {
@@ -30,6 +32,28 @@ pub struct Slide {
     /// For scripture: the verses laid out in columns, one per translation.
     /// `text` then holds a plain-text version of the first column.
     pub scripture: Option<ScriptureSlide>,
+    /// A background for this slide only (each page of a presentation is
+    /// its own picture).
+    #[serde(default)]
+    pub background: Option<Background>,
+    /// For a countdown slide: what it counts down to.
+    #[serde(default)]
+    pub countdown: Option<CountdownSlide>,
+}
+
+impl Slide {
+    /// A slide with just text and nothing else.
+    pub fn text(text: impl Into<String>) -> Self {
+        Self {
+            text: text.into(),
+            section: None,
+            starts_section: false,
+            caption: None,
+            scripture: None,
+            background: None,
+            countdown: None,
+        }
+    }
 }
 
 /// Options that control how text is split into slides.
@@ -71,6 +95,8 @@ fn slides_for_section(section: &Section, options: SlideOptions) -> Vec<Slide> {
             starts_section: index == 0,
             caption: None,
             scripture: None,
+            background: None,
+            countdown: None,
         })
         .collect()
 }

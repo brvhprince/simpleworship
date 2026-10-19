@@ -5,10 +5,12 @@
  */
 
 import type {
+  AppSettings,
   AutosaveInfo,
   BibleChoice,
   BibleInfo,
   BookOutline,
+  CountdownSlide,
   FoundSource,
   ImportedSong,
   ImportPreview,
@@ -19,13 +21,16 @@ import type {
   OutputKind,
   OutputTarget,
   Passage,
+  PreparedPdf,
   Presentation,
   RecentSchedule,
   ReferenceFeedback,
   ScheduleFileStatus,
   ScriptureOptions,
+  SlideDeck,
   Song,
   SongSummary,
+  SongUsage,
   ThemeDefaults,
   ThemeRecord,
   Verse,
@@ -218,6 +223,74 @@ export const previewImport = (sources: FoundSource[]) =>
 /** Saves the chosen songs and imports the chosen Bibles. */
 export const commitImport = (songs: ImportedSong[], bibles: BibleChoice[]) =>
   invoke<ImportSummary>("import_commit", { songs, bibles });
+
+// ── Countdowns and background music ──────────────────────────────────────
+
+/** Adds a countdown to the schedule at `index`, or at the end. */
+export const addCountdownToSchedule = (
+  title: string,
+  countdown: CountdownSlide,
+  index: number | null = null,
+) => invoke<void>("schedule_add_countdown", { title, countdown, index });
+
+/** Adds background music (audio items, in order) to the schedule. */
+export const addPlaylistToSchedule = (
+  name: string,
+  trackIds: string[],
+  index: number | null = null,
+) => invoke<void>("schedule_add_playlist", { name, trackIds, index });
+
+// ── Presentations ────────────────────────────────────────────────────────
+
+/** Every imported presentation, newest first. */
+export const listPresentations = () => invoke<SlideDeck[]>("presentations_list");
+
+/** Whether PowerPoint/Keynote files can be imported (LibreOffice found). */
+export const canConvertPresentations = () => invoke<boolean>("presentation_can_convert");
+
+/** Puts a presentation, as PDF, where the webview can read it. */
+export const preparePresentation = (path: string) =>
+  invoke<PreparedPdf>("presentation_prepare", { path });
+
+/** Starts an empty presentation; resolves to its id. */
+export const createPresentation = (name: string) => invoke<string>("presentation_create", { name });
+
+/** Stores one rendered page. The image goes as raw bytes, not JSON. */
+export const addPresentationPage = (deck: string, page: number, jpeg: Uint8Array) =>
+  invoke<MediaItem>("presentation_add_page", jpeg, {
+    headers: { "x-deck": deck, "x-page": String(page) },
+  });
+
+/** Removes the temporary PDF; deletes `failedDeck` too if the import failed. */
+export const finishPresentation = (file: string, failedDeck: string | null = null) =>
+  invoke<void>("presentation_finish", { file, failedDeck });
+
+/** Deletes a presentation and its pages. */
+export const deletePresentation = (id: string) => invoke<void>("presentation_delete", { id });
+
+/** Shows a presentation in the preview pane. */
+export const showPresentationInPreview = (id: string) =>
+  invoke<void>("presentation_show_in_preview", { id });
+
+/** Adds a presentation to the schedule at `index`, or at the end. */
+export const addPresentationToSchedule = (id: string, index: number | null = null) =>
+  invoke<void>("schedule_add_presentation", { id, index });
+
+// ── Settings and reports ─────────────────────────────────────────────────
+
+/** The church's settings. */
+export const getSettings = () => invoke<AppSettings>("settings_get");
+
+/** Saves the church's settings. */
+export const saveSettings = (settings: AppSettings) => invoke<void>("settings_save", { settings });
+
+/** Songs used between two dates (`YYYY-MM-DD`, inclusive), most used first. */
+export const usageReport = (from: string, to: string) =>
+  invoke<SongUsage[]>("usage_report", { from, to });
+
+/** Writes the usage report as CSV to `path`. */
+export const exportUsageCsv = (from: string, to: string, path: string) =>
+  invoke<void>("usage_export_csv", { from, to, path });
 
 // ── Outputs ──────────────────────────────────────────────────────────────
 

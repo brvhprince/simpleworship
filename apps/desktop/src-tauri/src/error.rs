@@ -51,12 +51,22 @@ pub enum AppError {
     NoTranslation,
 
     /// A file that is not an image or video we can show.
-    #[error("only images (PNG, JPEG, GIF, WebP) and videos (MP4, MOV, WebM) can be imported")]
+    #[error(
+        "only images (PNG, JPEG, GIF, WebP), videos (MP4, MOV, WebM) and audio (MP3, M4A, WAV) can be imported"
+    )]
     UnsupportedMedia,
 
     /// A media id that is not in the library (any more).
     #[error("that media file is no longer in the library")]
     MediaNotFound,
+
+    /// A presentation could not be converted to PDF.
+    #[error("{0}")]
+    Conversion(String),
+
+    /// A presentation id that is not in the library (any more).
+    #[error("that presentation is no longer in the library")]
+    PresentationNotFound,
 
     /// A theme id that is not in the library (any more).
     #[error("that theme is no longer in the library")]

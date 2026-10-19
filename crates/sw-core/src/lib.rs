@@ -13,7 +13,10 @@
 //! TypeScript definitions are generated into `packages/protocol` (see
 //! `pnpm gen:bindings`).
 
+pub mod alerts;
+pub mod audio;
 pub mod command;
+pub mod countdown;
 pub mod engine;
 pub mod id;
 pub mod lyrics;
@@ -24,14 +27,16 @@ pub mod schedule;
 pub mod scripture;
 pub mod slides;
 pub mod song;
+pub mod stage;
 pub mod theme;
 pub mod themes;
 pub mod time;
+pub mod usage;
 
 pub use command::{Command, EngineEvent};
 pub use engine::{Engine, EngineError, EngineSnapshot, PaneState};
 pub use id::Id;
-pub use media::{MediaItem, MediaKind, MediaRef};
+pub use media::{MediaItem, MediaKind, MediaRef, SlideDeck};
 pub use output::{
     DisplayFlags, OutputState, RenderFrame, Transition, TransitionKind, VideoPlayback,
 };

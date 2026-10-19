@@ -1,11 +1,13 @@
 <!--
   @component
   The media library: images and videos for backgrounds, the logo, and
-  schedule items.
+  schedule items, and sound files for background music.
 
   - Import… copies files into the library (videos can take a moment).
   - Click to select, double-click to preview, drag onto the schedule.
   - "Set as Logo" makes the selected image the Logo button's picture.
+  - Sound plays in the music bar at the bottom of the window ("Play"), or
+    goes in the schedule as background music.
 -->
 <script lang="ts">
   import type { MediaItem } from "@simpleworship/protocol";
@@ -27,12 +29,16 @@
 
   const MEDIA_FILTERS = [
     {
-      name: "Images and videos",
-      extensions: ["png", "jpg", "jpeg", "gif", "webp", "bmp", "avif", "mp4", "m4v", "mov", "webm"],
+      name: "Images, videos and sound",
+      extensions: [
+        ...["png", "jpg", "jpeg", "gif", "webp", "bmp", "avif"],
+        ...["mp4", "m4v", "mov", "webm"],
+        ...["mp3", "m4a", "aac", "wav", "ogg", "oga", "flac"],
+      ],
     },
   ];
 
-  type Filter = "all" | "image" | "video";
+  type Filter = "all" | "image" | "video" | "audio";
 
   const urls = getMediaUrls();
   let filter: Filter = $state("all");
@@ -74,6 +80,24 @@
     return `${urls.thumbnail({ id: item.id, file: item.file })}?v=${media.thumbnailVersion}`;
   }
 
+  /** Plays sound in the music bar: the chosen file, then the rest of the sound shown. */
+  function play(item: MediaItem) {
+    const sounds = shown.filter((other) => other.kind === "audio");
+    const start = Math.max(0, sounds.indexOf(item));
+    const tracks = [...sounds.slice(start), ...sounds.slice(0, start)];
+    engine.dispatch({ type: "setPlaylist", tracks, play: true });
+  }
+
+  /** Double-click: preview a picture or video, play a sound. */
+  function activate(item: MediaItem) {
+    if (item.kind === "audio") play(item);
+    else showMediaInPreview(item.id).catch((error) => engine.showError(error));
+  }
+
+  function kindLabel(item: MediaItem): string {
+    return { image: "Image", video: "Video", audio: "Sound" }[item.kind];
+  }
+
   function startDrag(event: DragEvent, item: MediaItem) {
     event.dataTransfer?.setData(MEDIA_DRAG_TYPE, item.id);
     if (event.dataTransfer) event.dataTransfer.effectAllowed = "copy";
@@ -87,6 +111,7 @@
         ["all", "All"],
         ["image", "Images"],
         ["video", "Videos"],
+        ["audio", "Sound"],
       ] as [value, label] (value)}
         <label>
           <input type="radio" bind:group={filter} {value}>
@@ -124,13 +149,17 @@
     <Button disabled={!selected} onclick={() => onSelected((item) => addMediaToSchedule(item.id))}>
       Add to Schedule
     </Button>
-    <Button
-      variant="primary"
-      disabled={!selected}
-      onclick={() => onSelected((item) => showMediaInPreview(item.id))}
-    >
-      Show in Preview
-    </Button>
+    {#if selected?.kind === "audio"}
+      <Button variant="primary" onclick={() => selected && play(selected)}>Play</Button>
+    {:else}
+      <Button
+        variant="primary"
+        disabled={!selected}
+        onclick={() => onSelected((item) => showMediaInPreview(item.id))}
+      >
+        Show in Preview
+      </Button>
+    {/if}
   </div>
 
   <ul class="grid" aria-label="Media">
@@ -143,11 +172,15 @@
           draggable="true"
           ondragstart={(event) => startDrag(event, item)}
           onclick={() => (selectedId = item.id)}
-          ondblclick={() => showMediaInPreview(item.id).catch((error) => engine.showError(error))}
+          ondblclick={() => activate(item)}
         >
           <span class="picture">
-            <img src={thumbnailUrl(item)} alt="" onerror={() => media.prepare(item)}>
-            {#if item.kind === "video" && item.durationMs}
+            {#if item.kind === "audio"}
+              <span class="note" aria-hidden="true">♪</span>
+            {:else}
+              <img src={thumbnailUrl(item)} alt="" onerror={() => media.prepare(item)}>
+            {/if}
+            {#if item.kind !== "image" && item.durationMs}
               <span class="badge">{formatDuration(item.durationMs)}</span>
             {/if}
             {#if item.id === logoId}
@@ -157,7 +190,7 @@
           <span class="caption">
             <span class="title">{item.name}</span>
             <span class="meta">
-              {item.kind === "video" ? "Video" : "Image"}
+              {kindLabel(item)}
               {#if item.width && item.height}
                 · {item.width}×{item.height}
               {/if}
@@ -168,8 +201,8 @@
       </li>
     {:else}
       <li class="empty">
-        No {filter === "all" ? "media" : `${filter}s`} yet. Import images or videos to use as
-        backgrounds, logos, or schedule items. MP4 (H.264) videos play everywhere.
+        Nothing here yet. Import images or videos to use as backgrounds, logos, or schedule items,
+        and MP3 or M4A files for background music. MP4 (H.264) videos play everywhere.
       </li>
     {/each}
   </ul>
@@ -258,6 +291,16 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
+  }
+
+  .note {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    font-size: 48px;
+    color: var(--sw-text-faint);
+    background: var(--sw-surface);
   }
 
   .badge {

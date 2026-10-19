@@ -18,6 +18,10 @@
   import { onMount } from "svelte";
   import { closeOutput, listMonitors, openOutput } from "../lib/api.ts";
   import { engine } from "../lib/engine.svelte.ts";
+  import { panels } from "../lib/panels.svelte.ts";
+  import AlertsPanel from "./AlertsPanel.svelte";
+  import Popover from "./Popover.svelte";
+  import StagePanel from "./StagePanel.svelte";
 
   /** Value of the "Windowed" choice in the screen pickers. */
   const WINDOWED = "windowed";
@@ -153,6 +157,26 @@
       </Button>
     </fieldset>
   {/if}
+
+  <Popover
+    label="Alert"
+    shortcut="A"
+    open={panels.open === "alerts"}
+    active={engine.output?.alert != null}
+    ontoggle={() => panels.toggle("alerts")}
+    onclose={() => panels.close()}
+  >
+    <AlertsPanel />
+  </Popover>
+  <Popover
+    label="Stage"
+    open={panels.open === "stage"}
+    active={engine.stage.timer != null || engine.stage.message != null}
+    ontoggle={() => panels.toggle("stage")}
+    onclose={() => panels.close()}
+  >
+    <StagePanel />
+  </Popover>
 
   {#if transition}
     <fieldset class="group" aria-label="Transition">

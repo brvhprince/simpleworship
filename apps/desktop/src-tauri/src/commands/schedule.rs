@@ -6,6 +6,7 @@
 
 use std::path::PathBuf;
 
+use sw_core::countdown::CountdownSlide;
 use sw_core::{Command, Id, ItemContent, Schedule, ScheduleItem};
 use tauri::{AppHandle, Manager, State};
 
@@ -58,6 +59,42 @@ fn add_item(
     dispatch(app, state, Command::AddScheduleItem { item, index })
 }
 
+/// Adds a countdown at `index` (or at the end).
+#[tauri::command]
+pub fn schedule_add_countdown(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    title: String,
+    countdown: CountdownSlide,
+    index: Option<usize>,
+) -> AppResult<()> {
+    add_item(
+        &app,
+        &state,
+        ItemContent::Countdown { title, countdown },
+        index,
+    )
+}
+
+/// Adds background music: the audio files with `track_ids`, in that order.
+#[tauri::command]
+pub fn schedule_add_playlist(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    name: String,
+    track_ids: Vec<Id>,
+    index: Option<usize>,
+) -> AppResult<()> {
+    let tracks = {
+        let database = state.database();
+        track_ids
+            .into_iter()
+            .map(|id| database.media().get(id)?.ok_or(AppError::MediaNotFound))
+            .collect::<AppResult<Vec<_>>>()?
+    };
+    add_item(&app, &state, ItemContent::Playlist { name, tracks }, index)
+}
+
 // ── Songs that are not in this computer's library ────────────────────────
 
 /// The ids of songs in the schedule that are not in the library, e.g.
@@ -99,9 +136,7 @@ fn songs_in(schedule: &Schedule) -> impl Iterator<Item = &sw_core::Song> {
         .iter()
         .filter_map(|item| match &item.content {
             ItemContent::Song { song } => Some(song),
-            ItemContent::Text { .. }
-            | ItemContent::Scripture { .. }
-            | ItemContent::Media { .. } => None,
+            _ => None,
         })
 }
 

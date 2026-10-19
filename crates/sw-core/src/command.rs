@@ -15,6 +15,8 @@ use ts_rs::TS;
 
 use sw_bible::Passage;
 
+use crate::alerts::AlertRequest;
+use crate::audio::AudioState;
 use crate::engine::PaneState;
 use crate::id::Id;
 use crate::media::{MediaItem, MediaRef};
@@ -23,6 +25,7 @@ use crate::presentation::Presentation;
 use crate::schedule::{Schedule, ScheduleItem};
 use crate::scripture::{ScriptureOptions, TranslationText};
 use crate::song::Song;
+use crate::stage::{StageState, TimerMode};
 use crate::themes::{ItemLook, ThemeLibrary};
 
 /// A request to change the live state.
@@ -147,6 +150,101 @@ pub enum Command {
         on: bool,
     },
 
+    // ── Alerts ───────────────────────────────────────────────────────────
+    /// Show an alert over the slides, replacing any alert already showing.
+    ShowAlert {
+        /// What to show and how.
+        alert: AlertRequest,
+    },
+    /// Take the alert off the screen.
+    ClearAlert,
+
+    // ── Countdowns ───────────────────────────────────────────────────────
+    /// A live countdown reached zero (sent by a screen showing it). If the
+    /// countdown is set to continue, the next schedule item goes live.
+    CountdownFinished,
+
+    // ── Stage display ────────────────────────────────────────────────────
+    /// Start a new timer on the stage display.
+    StartStageTimer {
+        /// Up or down.
+        mode: TimerMode,
+        /// For a count-down, its length in milliseconds.
+        #[ts(type = "number")]
+        duration_ms: u64,
+    },
+    /// Pause the stage timer.
+    PauseStageTimer,
+    /// Continue the stage timer after a pause.
+    ResumeStageTimer,
+    /// Remove the stage timer.
+    ClearStageTimer,
+    /// Show (or, with `None`, remove) a message on the stage display.
+    SetStageMessage {
+        /// The message.
+        message: Option<String>,
+    },
+
+    // ── Background audio ─────────────────────────────────────────────────
+    /// Replace the playlist; optionally start playing its first track.
+    SetPlaylist {
+        /// The tracks.
+        tracks: Vec<MediaItem>,
+        /// Start playing straight away.
+        play: bool,
+    },
+    /// Play (or continue) the current track.
+    PlayAudio,
+    /// Pause the audio.
+    PauseAudio,
+    /// Play a track of the playlist from its start.
+    PlayTrack {
+        /// The track's position in the playlist.
+        index: usize,
+    },
+    /// Go to the next (`forward`) or previous track.
+    SkipTrack {
+        /// `true` for next, `false` for previous.
+        forward: bool,
+    },
+    /// The current track finished (sent by the player): go on to the next.
+    TrackEnded,
+    /// Move within the current track.
+    SeekAudio {
+        /// Position in milliseconds.
+        #[ts(type = "number")]
+        position_ms: u64,
+    },
+    /// Change the volume (0 silent, 1 full).
+    SetVolume {
+        /// The volume.
+        volume: f32,
+    },
+    /// Turn looping of the playlist on or off.
+    SetAudioLoop {
+        /// `true` to loop.
+        on: bool,
+    },
+    /// Fade the audio out over `duration_ms`, then stop.
+    FadeOutAudio {
+        /// How long the fade takes.
+        #[ts(type = "number")]
+        duration_ms: u64,
+    },
+
+    // ── Settings the engine needs ────────────────────────────────────────
+    /// The church's CCLI licence number, added to song footers (or `None`).
+    SetCcliLicense {
+        /// The licence number.
+        license: Option<String>,
+    },
+    /// This computer's time zone, as minutes ahead of UTC, for countdowns
+    /// to a time of day.
+    SetUtcOffset {
+        /// Minutes ahead of UTC (e.g. 60 for UTC+1).
+        minutes: i32,
+    },
+
     // ── Themes ───────────────────────────────────────────────────────────
     /// Replace the theme library and defaults. Panes whose theme changed
     /// are redrawn with the new version.
@@ -246,5 +344,22 @@ pub enum EngineEvent {
     ThemesChanged {
         /// The new library.
         themes: ThemeLibrary,
+    },
+    /// The stage display's timer or message changed.
+    StageChanged {
+        /// The new stage state.
+        stage: StageState,
+    },
+    /// The background audio changed.
+    AudioChanged {
+        /// The new audio state.
+        audio: AudioState,
+    },
+    /// A song went live, for the CCLI usage report.
+    SongWentLive {
+        /// The song.
+        song_id: Id,
+        /// Its title, in case the song is not in this computer's library.
+        title: String,
     },
 }

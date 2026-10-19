@@ -10,6 +10,7 @@ use ts_rs::TS;
 
 use sw_bible::Passage;
 
+use crate::countdown::CountdownSlide;
 use crate::id::Id;
 use crate::media::{MediaItem, MediaKind};
 use crate::output::RenderFrame;
@@ -33,6 +34,12 @@ pub enum PresentationSource {
         /// The song's id.
         song_id: Id,
     },
+    /// A countdown.
+    Countdown,
+    /// The pages of a presentation (an imported PDF or PowerPoint).
+    Slides,
+    /// A background-music playlist (it has no slides of its own to show).
+    Playlist,
     /// Free text typed by the operator.
     Text,
     /// A Bible passage.
@@ -99,35 +106,79 @@ impl Presentation {
     /// Builds a one-slide presentation that shows an image or video on its
     /// own, fitted to the screen with black bars rather than cropped.
     pub fn from_media(media: &MediaItem, look: impl Into<Look>) -> Self {
-        let background = match media.kind {
-            MediaKind::Image => Background::Image {
-                media: media.as_ref(),
-                fit: MediaFit::Contain,
-            },
-            MediaKind::Video => Background::Video {
-                media: media.as_ref(),
-                fit: MediaFit::Contain,
-                looping: false,
-                play_audio: true,
-            },
-        };
         let mut look: Look = look.into();
-        // Black around the picture, whatever the theme says.
-        look.background_override = Some(background.clone());
-        look.theme.background = background;
-
-        let slide = Slide {
-            text: String::new(),
-            section: None,
-            starts_section: false,
-            caption: None,
-            scripture: None,
-        };
+        if let Some(background) = shown_on_its_own(media) {
+            // Black around the picture, whatever the theme says.
+            look.background_override = Some(background.clone());
+            look.theme.background = background;
+        }
         Self::new(
             PresentationSource::Media { media_id: media.id },
             media.name.clone(),
-            vec![slide],
+            vec![Slide::text("")],
             look,
+            None,
+        )
+    }
+
+    /// Builds a one-slide countdown, e.g. "Service starts in 4:59".
+    pub fn from_countdown(
+        title: impl Into<String>,
+        countdown: CountdownSlide,
+        look: impl Into<Look>,
+    ) -> Self {
+        let slide = Slide {
+            countdown: Some(countdown.clone()),
+            ..Slide::text(countdown.message)
+        };
+        Self::new(
+            PresentationSource::Countdown,
+            title.into(),
+            vec![slide],
+            look.into(),
+            None,
+        )
+    }
+
+    /// Builds a presentation from imported pages, one picture per slide.
+    pub fn from_pages(name: impl Into<String>, pages: &[MediaItem], look: impl Into<Look>) -> Self {
+        let slides = pages
+            .iter()
+            .map(|page| Slide {
+                background: shown_on_its_own(page),
+                ..Slide::text("")
+            })
+            .collect();
+        Self::new(
+            PresentationSource::Slides,
+            name.into(),
+            slides,
+            look.into(),
+            None,
+        )
+    }
+
+    /// Builds the preview of a playlist: one slide naming its tracks. A
+    /// playlist does not change the screen; sending it live plays it.
+    pub fn from_playlist(
+        name: impl Into<String>,
+        tracks: &[MediaItem],
+        look: impl Into<Look>,
+    ) -> Self {
+        let list = tracks
+            .iter()
+            .map(|t| t.name.as_str())
+            .collect::<Vec<_>>()
+            .join("\n");
+        let slide = Slide {
+            caption: Some(format!("{} tracks", tracks.len())),
+            ..Slide::text(list)
+        };
+        Self::new(
+            PresentationSource::Playlist,
+            name.into(),
+            vec![slide],
+            look.into(),
             None,
         )
     }
@@ -196,12 +247,19 @@ impl Presentation {
     /// The fully resolved frame for the slide at `index`, if it exists.
     pub fn frame(&self, index: usize) -> Option<RenderFrame> {
         let slide = self.slides.get(index)?;
+        let mut theme = self.theme.clone();
+        if let Some(background) = &slide.background {
+            theme.background = background.clone();
+        }
         Some(RenderFrame {
             text: slide.text.clone(),
             scripture: slide.scripture.clone(),
             caption: slide.caption.clone(),
+            // The engine fills this in for a live countdown (it knows when
+            // the countdown started).
+            countdown: None,
             footer: self.footer.clone(),
-            theme: self.theme.clone(),
+            theme,
         })
     }
 
@@ -212,6 +270,24 @@ impl Presentation {
         self.slides.iter().position(|slide| {
             slide.starts_section && slide.section.as_ref().is_some_and(|l| l.matches(&wanted))
         })
+    }
+}
+
+/// How an image or video looks shown on its own: the whole picture, with
+/// black bars if needed. Sound files have no picture.
+fn shown_on_its_own(media: &MediaItem) -> Option<Background> {
+    match media.kind {
+        MediaKind::Image => Some(Background::Image {
+            media: media.as_ref(),
+            fit: MediaFit::Contain,
+        }),
+        MediaKind::Video => Some(Background::Video {
+            media: media.as_ref(),
+            fit: MediaFit::Contain,
+            looping: false,
+            play_audio: true,
+        }),
+        MediaKind::Audio => None,
     }
 }
 

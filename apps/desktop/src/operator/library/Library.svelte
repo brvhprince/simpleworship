@@ -6,6 +6,7 @@
 -->
 <script lang="ts">
   import MediaTab from "./MediaTab.svelte";
+  import PresentationsTab from "./PresentationsTab.svelte";
   import ScriptureTab from "./ScriptureTab.svelte";
   import SongsTab from "./SongsTab.svelte";
   import TextTab from "./TextTab.svelte";
@@ -22,7 +23,7 @@
     { id: "text", label: "Text", available: true },
     { id: "scripture", label: "Scripture", available: true },
     { id: "media", label: "Media", available: true },
-    { id: "presentations", label: "Presentations", available: false },
+    { id: "presentations", label: "Presentations", available: true },
     { id: "themes", label: "Themes", available: true },
   ];
 
@@ -54,6 +55,8 @@
       <TextTab />
     {:else if current === "media"}
       <MediaTab />
+    {:else if current === "presentations"}
+      <PresentationsTab />
     {:else if current === "themes"}
       <ThemesTab />
     {/if}

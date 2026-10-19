@@ -11,6 +11,7 @@ export function sampleLyrics(theme: Theme): RenderFrame {
     text: "Amazing grace, how sweet the sound\nThat saved a wretch like me",
     scripture: null,
     caption: null,
+    countdown: null,
     footer: "John Newton · Public Domain",
     theme,
   };
@@ -28,6 +29,7 @@ export function sampleScripture(theme: Theme): RenderFrame {
       verseNumbers: true,
     },
     caption: "John 3:16 (KJV)",
+    countdown: null,
     footer: null,
     theme,
   };

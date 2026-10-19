@@ -5,7 +5,8 @@ It puts lyrics, scripture and media on the projector, and anyone familiar
 with EasyWorship should feel at home.
 
 > **Status: early development.** The output engine, songs, schedules,
-> scripture, themes and media work today. See the [roadmap](#roadmap).
+> scripture, themes, media, presentations and alerts work today. See the
+> [roadmap](#roadmap).
 
 ## What works today
 
@@ -55,6 +56,25 @@ with EasyWorship should feel at home.
   Bibles from EasyWorship. On first launch SimpleWorship looks for these
   programs and offers to import. See
   [Moving from EasyWorship](docs/moving-from-easyworship.md).
+- **Alerts:** a nursery or car-park message over the slides, scrolling or
+  still, at the top or bottom. Saved templates take a number in one step
+  (“Parent of child 42…”). It clears itself after a few passes or seconds,
+  or when you press Esc.
+- **Countdowns:** “Service starts in 4:59”, to a time of day or for a number
+  of minutes. At zero it stays on 0:00, or moves on to the next item.
+- **Stage display:** the speaker's timer (counting up or down, red when over
+  time) and messages only the stage sees (“Wrap up”), plus clock, next slide
+  and text size options.
+- **Background music:** play sound files (MP3, M4A, WAV…) from the Media tab
+  or as a schedule item, with skip, seek, volume, loop and a fade-out. Music
+  plays on the operator computer and carries on while slides change.
+- **Presentations:** import PDF slides; each page becomes a slide. PowerPoint
+  and Keynote files are converted automatically when
+  [LibreOffice](https://www.libreoffice.org) is installed; otherwise save
+  them as PDF first.
+- **CCLI reporting:** every song shown live is logged once per day. The Song
+  Usage Report (File menu) lists them for any period and exports CSV. Put
+  your CCLI licence number in Settings and it appears in every song footer.
 
 ## Keyboard shortcuts
 
@@ -69,6 +89,9 @@ with EasyWorship should feel at home.
 | ↑ / ↓ and Delete (in the schedule)   | Preview the previous / next item, remove the item |
 | ⌘/Ctrl + N, O, S, Shift+S            | New, Open, Save, Save As schedule         |
 | V, C, B, P, T, I, E (+ a number)     | Jump to Verse 2, Chorus, Bridge, …        |
+| A                                    | Open the Alert panel                      |
+| Esc                                  | Clear the alert                           |
+| ⌘/Ctrl + ,                           | Settings                                  |
 
 ## Video formats
 
@@ -150,11 +173,20 @@ projector, the stage display and every thumbnail look the same.
 | M4        | Scripture: Bible import, reference entry ("jn 3:16-18"), versions  | ✅     |
 | M5        | Theme designer, image/video backgrounds, media library, per-item overrides | ✅     |
 | M6        | Importers: EasyWorship 6/7, OpenLP, OpenLyrics, ProPresenter, ChordPro, CCLI | ✅     |
-| M7        | Alerts, countdowns, background audio, presentations (PDF/PPTX), CCLI report |        |
+| M7        | Alerts, countdowns, background audio, presentations (PDF/PPTX), CCLI report | ✅     |
 | M8        | Installers, auto-update, translations                               |        |
 
 Later: remote control from a phone, NDI / stream output, multi-operator
 sync, and AI-assisted features.
+
+### Backlog
+
+Planned, in order, after everything above:
+
+1. Import the Bible Society of Ghana *Nkwa Asɛm* (NA-TWI) text files: one
+   inconsistent text file per book, so it needs a careful reader that checks
+   each chapter's verses and reports anything doubtful. (Twi already works
+   today through EasyWorship `.ewb` import.)
 
 ## License
 

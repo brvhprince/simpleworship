@@ -27,9 +27,11 @@ mod files;
 mod import_sources;
 mod media;
 mod menu;
+mod office;
 mod recent;
 mod schedule_archive;
 mod schedule_file;
+mod settings;
 mod state;
 mod windows;
 
@@ -56,6 +58,7 @@ pub fn run() {
             let state = app.state::<AppState>();
             commands::themes::sync_themes(app.handle(), &state)?;
             commands::themes::sync_logo(app.handle(), &state)?;
+            commands::themes::sync_settings(app.handle(), &state)?;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -107,6 +110,21 @@ pub fn run() {
             commands::import::import_first_launch,
             commands::import::import_preview,
             commands::import::import_commit,
+            commands::schedule::schedule_add_countdown,
+            commands::schedule::schedule_add_playlist,
+            commands::presentations::presentations_list,
+            commands::presentations::presentation_can_convert,
+            commands::presentations::presentation_prepare,
+            commands::presentations::presentation_create,
+            commands::presentations::presentation_add_page,
+            commands::presentations::presentation_finish,
+            commands::presentations::presentation_delete,
+            commands::presentations::presentation_show_in_preview,
+            commands::presentations::schedule_add_presentation,
+            commands::settings::settings_get,
+            commands::settings::settings_save,
+            commands::settings::usage_report,
+            commands::settings::usage_export_csv,
             commands::text::text_show_in_preview,
             commands::outputs::monitors_list,
             commands::outputs::output_open,

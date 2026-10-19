@@ -18,6 +18,7 @@ use ts_rs::TS;
 
 use sw_bible::Passage;
 
+use crate::countdown::CountdownSlide;
 use crate::id::Id;
 use crate::media::MediaItem;
 use crate::presentation::Presentation;
@@ -90,6 +91,27 @@ pub enum ItemContent {
         /// The media item (the file travels with a saved schedule).
         media: MediaItem,
     },
+    /// A countdown, e.g. to the start of the service.
+    Countdown {
+        /// Title in the schedule, e.g. "Countdown to 10:30".
+        title: String,
+        /// What it counts down to and what happens at zero.
+        countdown: CountdownSlide,
+    },
+    /// An imported presentation (PDF or PowerPoint): one picture per page.
+    Slides {
+        /// The presentation's name.
+        name: String,
+        /// Its pages, in order (the files travel with a saved schedule).
+        pages: Vec<MediaItem>,
+    },
+    /// Background music. Sending it live plays it; the screen stays as it is.
+    Playlist {
+        /// The playlist's name.
+        name: String,
+        /// The tracks, in order (the files travel with a saved schedule).
+        tracks: Vec<MediaItem>,
+    },
 }
 
 impl ScheduleItem {
@@ -114,6 +136,8 @@ impl ScheduleItem {
                 ..
             } => scripture::title(passage, translations),
             ItemContent::Media { media } => media.name.clone(),
+            ItemContent::Countdown { title, .. } => title.clone(),
+            ItemContent::Slides { name, .. } | ItemContent::Playlist { name, .. } => name.clone(),
         }
     }
 
@@ -143,6 +167,17 @@ impl ScheduleItem {
             ),
             ItemContent::Media { media } => {
                 Presentation::from_media(media, look(ContentKind::Text, None))
+            }
+            ItemContent::Countdown { title, countdown } => Presentation::from_countdown(
+                title.clone(),
+                countdown.clone(),
+                look(ContentKind::Text, None),
+            ),
+            ItemContent::Slides { name, pages } => {
+                Presentation::from_pages(name.clone(), pages, look(ContentKind::Text, None))
+            }
+            ItemContent::Playlist { name, tracks } => {
+                Presentation::from_playlist(name.clone(), tracks, look(ContentKind::Text, None))
             }
         }
     }

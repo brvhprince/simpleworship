@@ -35,12 +35,25 @@ pub fn dispatch(app: &AppHandle, state: &AppState, command: Command) -> AppResul
     // the same moment can never reach the windows out of order.
     let mut engine = state.engine();
     for event in engine.dispatch(command)? {
-        if let EngineEvent::ScheduleChanged { schedule } = &event {
-            schedule_changed(app, state, schedule);
+        match &event {
+            EngineEvent::ScheduleChanged { schedule } => schedule_changed(app, state, schedule),
+            EngineEvent::SongWentLive { song_id, title } => record_usage(state, *song_id, title),
+            _ => {}
         }
         app.emit(ENGINE_EVENT, &event)?;
     }
     Ok(())
+}
+
+/// Logs a song for the CCLI report, on this computer's local date. A
+/// failure is only reported: it must never stop a song going live.
+fn record_usage(state: &AppState, song_id: sw_core::Id, title: &str) {
+    let day = chrono::Local::now().format("%Y-%m-%d").to_string();
+    let database = state.database();
+    let song = database.songs().get(song_id).ok().flatten();
+    if let Err(error) = database.usage().record(song_id, title, song.as_ref(), &day) {
+        eprintln!("could not record song usage: {error}");
+    }
 }
 
 /// Marks the schedule as having unsaved changes and autosaves it.

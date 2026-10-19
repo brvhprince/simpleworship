@@ -26,9 +26,23 @@
     actions?: Snippet;
     /** Controls shown under the large view (the live pane's video controls). */
     below?: Snippet;
+    /** The live view's alert ran its course. */
+    onalertend?: () => void;
+    /** The live view's countdown reached zero. */
+    oncountdownend?: () => void;
   }
 
-  let { kind, pane, output = null, onselect, onactivate, actions, below }: Props = $props();
+  let {
+    kind,
+    pane,
+    output = null,
+    onselect,
+    onactivate,
+    actions,
+    below,
+    onalertend,
+    oncountdownend,
+  }: Props = $props();
 
   const selectedFrame = $derived(pane ? frameAt(pane.presentation, pane.selected) : null);
 
@@ -53,7 +67,7 @@
     <ScaledCanvas>
       {#if kind === "live" && output}
         <!-- Muted: only the projector plays sound. -->
-        <OutputView {output} muted />
+        <OutputView {output} muted {onalertend} {oncountdownend} />
       {:else if selectedFrame}
         <SlideView frame={selectedFrame} />
       {/if}

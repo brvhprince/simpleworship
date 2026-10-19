@@ -7,14 +7,17 @@
 <script lang="ts">
   import type { RenderFrame } from "@simpleworship/protocol";
   import { autofit } from "./autofit.ts";
+  import CountdownText from "./CountdownText.svelte";
   import ScriptureText from "./ScriptureText.svelte";
   import { captionStyle, footerStyle, textBoxStyle, textStyle } from "./styles.ts";
 
   interface Props {
     frame: RenderFrame;
+    /** Called when a live countdown on this slide reaches zero. */
+    oncountdownend?: () => void;
   }
 
-  let { frame }: Props = $props();
+  let { frame, oncountdownend }: Props = $props();
 
   const theme = $derived(frame.theme);
   const showFooter = $derived(theme.footer.visible && !!frame.footer);
@@ -26,10 +29,14 @@
   use:autofit={{
     enabled: theme.textBox.autoFit,
     maxSize: theme.text.fontSize,
-    content: [frame.text, frame.scripture, theme.text, theme.textBox],
+    content: [frame.text, frame.scripture, frame.countdown, theme.text, theme.textBox],
   }}
 >
-  {#if frame.scripture}
+  {#if frame.countdown}
+    <div class="text" style={textStyle(theme.text)}>
+      <CountdownText countdown={frame.countdown} onend={oncountdownend} />
+    </div>
+  {:else if frame.scripture}
     <div class="text columns" style={textStyle(theme.text)}>
       <ScriptureText scripture={frame.scripture} />
     </div>

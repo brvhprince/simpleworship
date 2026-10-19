@@ -43,6 +43,7 @@ pub struct MediaProgress {
 /// File extensions we import, and what they are.
 const IMAGE_EXTENSIONS: &[&str] = &["png", "jpg", "jpeg", "gif", "webp", "bmp", "avif"];
 const VIDEO_EXTENSIONS: &[&str] = &["mp4", "m4v", "mov", "webm"];
+const AUDIO_EXTENSIONS: &[&str] = &["mp3", "m4a", "aac", "wav", "ogg", "oga", "flac"];
 
 /// Copy in chunks this big, announcing progress after each one.
 const CHUNK: usize = 4 * 1024 * 1024;
@@ -54,6 +55,8 @@ pub fn kind_of(path: &Path) -> Option<MediaKind> {
         Some(MediaKind::Image)
     } else if VIDEO_EXTENSIONS.contains(&extension.as_str()) {
         Some(MediaKind::Video)
+    } else if AUDIO_EXTENSIONS.contains(&extension.as_str()) {
+        Some(MediaKind::Audio)
     } else {
         None
     }
@@ -85,8 +88,9 @@ pub fn import_file(app: &AppHandle, source: &Path) -> AppResult<MediaItem> {
     let size_bytes = copy_with_progress(app, source, &destination, &name)?;
 
     let (width, height) = match kind {
-        // Videos are measured by the webview later (see `media_update_details`).
-        MediaKind::Video => (None, None),
+        // Videos are measured by the webview later (see `media_update_details`);
+        // audio has no picture.
+        MediaKind::Video | MediaKind::Audio => (None, None),
         MediaKind::Image => imagesize::size(&destination)
             .map(|size| {
                 (
@@ -107,6 +111,7 @@ pub fn import_file(app: &AppHandle, source: &Path) -> AppResult<MediaItem> {
         duration_ms: None,
         size_bytes,
         created_at: time::now(),
+        collection: None,
     };
     state.database().media().save(&item)?;
     announce(app);
@@ -173,6 +178,7 @@ mod tests {
     fn recognises_media_by_extension() {
         assert_eq!(kind_of(Path::new("/a/Loop.MP4")), Some(MediaKind::Video));
         assert_eq!(kind_of(Path::new("logo.png")), Some(MediaKind::Image));
+        assert_eq!(kind_of(Path::new("Hymn.M4A")), Some(MediaKind::Audio));
         assert_eq!(kind_of(Path::new("notes.txt")), None);
         assert_eq!(kind_of(Path::new("no-extension")), None);
     }

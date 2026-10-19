@@ -17,9 +17,11 @@
   import { Button } from "@simpleworship/ui";
   import { onMount } from "svelte";
   import { bibles } from "../lib/bibles.svelte.ts";
+  import { dialogs } from "../lib/dialogs.svelte.ts";
   import { engine } from "../lib/engine.svelte.ts";
   import { importer } from "../lib/importer.svelte.ts";
   import { media } from "../lib/media.svelte.ts";
+  import { panels } from "../lib/panels.svelte.ts";
   import { scheduleFile } from "../lib/schedule-file.svelte.ts";
   import {
     commandForKey,
@@ -27,12 +29,15 @@
     isTypingTarget,
     SectionJumper,
   } from "../lib/shortcuts.ts";
+  import AudioPlayer from "./AudioPlayer.svelte";
   import ImportDialog from "./ImportDialog.svelte";
   import Library from "./library/Library.svelte";
   import PromptHost from "./PromptHost.svelte";
   import SchedulePanel from "./SchedulePanel.svelte";
+  import SettingsDialog from "./SettingsDialog.svelte";
   import SlidePane from "./SlidePane.svelte";
   import Toolbar from "./Toolbar.svelte";
+  import UsageDialog from "./UsageDialog.svelte";
   import VideoControls from "./VideoControls.svelte";
 
   const urls = getMediaUrls();
@@ -44,6 +49,7 @@
       bibles.connect(),
       media.connect(urls),
       importer.connect(),
+      dialogs.connect(),
     ];
     for (const connection of connections) {
       connection.catch((error) => engine.showError(error));
@@ -88,6 +94,18 @@
 
     if (event.defaultPrevented || isModified || isButtonActivation) return;
     if (isTypingTarget(event.target) || !engine.output) return;
+
+    // A opens the alert panel; Esc takes an alert off the screen.
+    if (event.key === "a" || event.key === "A") {
+      event.preventDefault();
+      panels.toggle("alerts");
+      return;
+    }
+    if (event.key === "Escape" && engine.output.alert && panels.open === null) {
+      event.preventDefault();
+      engine.dispatch({ type: "clearAlert" });
+      return;
+    }
 
     const command = commandForKey(event.key, engine.output.flags);
     if (command) {
@@ -135,6 +153,8 @@
     pane={engine.live}
     output={engine.output}
     onselect={(index) => engine.dispatch({ type: "selectLiveSlide", index })}
+    onalertend={() => engine.dispatch({ type: "clearAlert" })}
+    oncountdownend={() => engine.dispatch({ type: "countdownFinished" })}
   >
     {#snippet below()}
       <VideoControls />
@@ -148,6 +168,13 @@
 
   <Library />
 
+  <div class="player"><AudioPlayer /></div>
+
+  {#if dialogs.open === "settings"}
+    <SettingsDialog />
+  {:else if dialogs.open === "usage"}
+    <UsageDialog />
+  {/if}
   {#if importer.isOpen}
     <ImportDialog />
   {/if}
@@ -163,15 +190,20 @@
   .operator {
     display: grid;
     grid-template-columns: 240px 1fr 1fr;
-    grid-template-rows: auto minmax(0, 1fr) minmax(220px, 34vh);
+    grid-template-rows: auto minmax(0, 1fr) minmax(220px, 34vh) auto;
     grid-template-areas:
       "toolbar  toolbar toolbar"
       "schedule preview live"
-      "library  library library";
+      "library  library library"
+      "player   player  player";
     gap: 1px;
     height: 100vh;
     overflow: hidden;
     background: var(--sw-border);
+  }
+
+  .player {
+    grid-area: player;
   }
 
   .error {

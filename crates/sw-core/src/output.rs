@@ -8,6 +8,8 @@
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
+use crate::alerts::Alert;
+use crate::countdown::CountdownFrame;
 use crate::id::Id;
 use crate::media::MediaRef;
 use crate::scripture::ScriptureSlide;
@@ -26,6 +28,9 @@ pub struct RenderFrame {
     pub scripture: Option<ScriptureSlide>,
     /// A line shown with the slide, e.g. the reference "John 3:16–17 (KJV)".
     pub caption: Option<String>,
+    /// A live countdown, when the slide is one.
+    #[serde(default)]
+    pub countdown: Option<CountdownFrame>,
     /// Small print under the text, if any.
     pub footer: Option<String>,
     /// The theme to draw with.
@@ -96,6 +101,8 @@ pub struct OutputState {
     /// The church logo, shown when [`DisplayFlags::logo`] is on. Without
     /// one, the Logo button shows the background with no text.
     pub logo: Option<MediaRef>,
+    /// An alert over the slides, if one is showing.
+    pub alert: Option<Alert>,
     /// Increases by one every time the output changes. Lets renderers that
     /// connect late, or miss an event, tell whether they are up to date.
     #[ts(type = "number")]

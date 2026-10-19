@@ -6,12 +6,14 @@
  */
 
 import type {
+  AudioState,
   Command,
   EngineEvent,
   EngineSnapshot,
   OutputState,
   PaneState,
   Schedule,
+  StageState,
   ThemeLibrary,
   Transport,
 } from "@simpleworship/protocol";
@@ -34,6 +36,10 @@ export class EngineStore {
   live: PaneState | null = $state.raw(null);
   /** What the output screens draw. `null` until the first snapshot arrives. */
   output: OutputState | null = $state.raw(null);
+  /** The stage display's timer and message. */
+  stage: StageState = $state.raw({ timer: null, message: null });
+  /** The background audio player. */
+  audio: AudioState | null = $state.raw(null);
   /** The last error, shown to the operator for a few seconds. */
   error: string | null = $state(null);
 
@@ -85,12 +91,23 @@ export class EngineStore {
       case "themesChanged":
         this.themes = event.themes;
         break;
+      case "stageChanged":
+        this.stage = event.stage;
+        break;
+      case "audioChanged":
+        this.audio = event.audio;
+        break;
+      case "songWentLive":
+        // Recorded by the app for the CCLI report; nothing to show.
+        break;
     }
   }
 
   #applySnapshot(snapshot: EngineSnapshot): void {
     this.schedule = snapshot.schedule;
     this.themes = snapshot.themes;
+    this.stage = snapshot.stage;
+    this.audio = snapshot.audio;
     this.preview = snapshot.preview;
     this.live = snapshot.live;
     // An event may already have delivered a newer output than this snapshot.

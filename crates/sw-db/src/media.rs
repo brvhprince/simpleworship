@@ -5,25 +5,38 @@ use rusqlite::{Connection, OptionalExtension, Row, params};
 use sw_core::{Id, MediaItem, MediaKind};
 
 use crate::DbError;
-use crate::songs::read_id;
+use crate::songs::{read_id, read_optional_id};
 
 /// Access to media records. Get one from [`Database::media`](crate::Database::media).
 pub struct Media<'db> {
     conn: &'db Connection,
 }
 
-const COLUMNS: &str = "id, kind, name, file, width, height, duration_ms, size_bytes, created_at";
+const COLUMNS: &str =
+    "id, kind, name, file, width, height, duration_ms, size_bytes, created_at, collection";
 
 impl<'db> Media<'db> {
     pub(crate) fn new(conn: &'db Connection) -> Self {
         Self { conn }
     }
 
-    /// Every media item, newest first.
+    /// Every media item in the library, newest first. Presentation pages
+    /// are left out (see [`Media::pages`]).
     pub fn list(&self) -> Result<Vec<MediaItem>, DbError> {
-        let sql = format!("SELECT {COLUMNS} FROM media ORDER BY created_at DESC, seq DESC");
+        let sql = format!(
+            "SELECT {COLUMNS} FROM media WHERE collection IS NULL
+             ORDER BY created_at DESC, seq DESC"
+        );
         let mut statement = self.conn.prepare_cached(&sql)?;
         let rows = statement.query_map([], read_media)?;
+        Ok(rows.collect::<Result<_, _>>()?)
+    }
+
+    /// The pages of a presentation, in order.
+    pub fn pages(&self, collection: Id) -> Result<Vec<MediaItem>, DbError> {
+        let sql = format!("SELECT {COLUMNS} FROM media WHERE collection = ?1 ORDER BY name, seq");
+        let mut statement = self.conn.prepare_cached(&sql)?;
+        let rows = statement.query_map([collection.to_string()], read_media)?;
         Ok(rows.collect::<Result<_, _>>()?)
     }
 
@@ -41,8 +54,8 @@ impl<'db> Media<'db> {
         self.conn
             .prepare_cached(
                 "INSERT INTO media (id, kind, name, file, width, height, duration_ms,
-                                    size_bytes, created_at)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)
+                                    size_bytes, created_at, collection)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
                  ON CONFLICT (id) DO UPDATE SET
                      name = excluded.name,
                      width = excluded.width,
@@ -59,6 +72,7 @@ impl<'db> Media<'db> {
                 item.duration_ms.map(to_sql_integer),
                 to_sql_integer(item.size_bytes),
                 item.created_at,
+                item.collection.map(|id| id.to_string()),
             ])?;
         Ok(())
     }
@@ -90,6 +104,7 @@ fn kind_name(kind: MediaKind) -> &'static str {
     match kind {
         MediaKind::Image => "image",
         MediaKind::Video => "video",
+        MediaKind::Audio => "audio",
     }
 }
 
@@ -97,10 +112,10 @@ fn read_media(row: &Row<'_>) -> rusqlite::Result<MediaItem> {
     let kind: String = row.get(1)?;
     Ok(MediaItem {
         id: read_id(row, 0)?,
-        kind: if kind == "video" {
-            MediaKind::Video
-        } else {
-            MediaKind::Image
+        kind: match kind.as_str() {
+            "video" => MediaKind::Video,
+            "audio" => MediaKind::Audio,
+            _ => MediaKind::Image,
         },
         name: row.get(2)?,
         file: row.get(3)?,
@@ -109,6 +124,7 @@ fn read_media(row: &Row<'_>) -> rusqlite::Result<MediaItem> {
         duration_ms: row.get::<_, Option<i64>>(6)?.map(from_sql_integer),
         size_bytes: from_sql_integer(row.get(7)?),
         created_at: row.get(8)?,
+        collection: read_optional_id(row, 9)?,
     })
 }
 
@@ -128,6 +144,7 @@ mod tests {
             duration_ms: None,
             size_bytes: 123,
             created_at,
+            collection: None,
         }
     }
 

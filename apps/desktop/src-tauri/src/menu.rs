@@ -96,9 +96,12 @@ fn build(app: &AppHandle, recent: &Submenu<Wry>) -> tauri::Result<Menu<Wry>> {
             "CmdOrCtrl+Shift+S",
         )?)
         .separator()
-        .text("import", "Import from Other Software…");
+        .text("import", "Import from Other Software…")
+        .text("usage", "Song Usage Report…");
+    // Settings lives in the app menu on macOS, and in File elsewhere.
+    let settings = item("settings", "Settings…", "CmdOrCtrl+,")?;
     #[cfg(not(target_os = "macos"))]
-    let file = file.separator().item(&quit);
+    let file = file.separator().item(&settings).separator().item(&quit);
     let file = file.build()?;
 
     // Without an Edit menu, macOS does not deliver ⌘C / ⌘V / ⌘Z to text fields.
@@ -119,6 +122,8 @@ fn build(app: &AppHandle, recent: &Submenu<Wry>) -> tauri::Result<Menu<Wry>> {
     let menu = menu.item(
         &SubmenuBuilder::new(app, "SimpleWorship")
             .about(None)
+            .separator()
+            .item(&settings)
             .separator()
             .services()
             .separator()

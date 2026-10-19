@@ -105,6 +105,22 @@ pub fn sync_themes(app: &AppHandle, state: &AppState) -> AppResult<()> {
     )
 }
 
+/// Gives the engine the settings it needs: the CCLI licence number (from
+/// the Settings dialog) and this computer's time zone (for countdowns to a
+/// time of day). Called at startup.
+pub fn sync_settings(app: &AppHandle, state: &AppState) -> AppResult<()> {
+    let settings = crate::settings::load(&state.database())?;
+    dispatch(
+        app,
+        state,
+        Command::SetCcliLicense {
+            license: crate::settings::license(&settings),
+        },
+    )?;
+    let minutes = chrono::Local::now().offset().local_minus_utc() / 60;
+    dispatch(app, state, Command::SetUtcOffset { minutes })
+}
+
 /// Loads the saved logo into the engine. Called at startup.
 pub fn sync_logo(app: &AppHandle, state: &AppState) -> AppResult<()> {
     let logo: Option<MediaRef> = state.database().settings().get(LOGO_KEY)?.flatten();

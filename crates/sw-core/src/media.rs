@@ -21,6 +21,8 @@ pub enum MediaKind {
     Image,
     /// A video (MP4 with H.264 is the most widely playable).
     Video,
+    /// A sound file (MP3, M4A, WAV…), for background music.
+    Audio,
 }
 
 /// A pointer to a file in the media library.
@@ -58,6 +60,27 @@ pub struct MediaItem {
     /// File size in bytes.
     #[ts(type = "number")]
     pub size_bytes: u64,
+    /// When it was imported.
+    #[ts(type = "number")]
+    pub created_at: Timestamp,
+    /// The presentation this is a page of, if any. Pages are kept out of
+    /// the Media tab and shown in the Presentations tab instead.
+    #[serde(default)]
+    pub collection: Option<Id>,
+}
+
+/// An imported presentation (a PDF, or a converted PowerPoint): a name and
+/// one picture per page.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "bindings.ts")]
+pub struct SlideDeck {
+    /// Unique identifier (the pages' `collection`).
+    pub id: Id,
+    /// The presentation's name, usually the file name.
+    pub name: String,
+    /// The pages, in order.
+    pub pages: Vec<MediaItem>,
     /// When it was imported.
     #[ts(type = "number")]
     pub created_at: Timestamp,

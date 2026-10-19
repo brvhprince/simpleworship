@@ -18,3 +18,4 @@ export { getMediaUrls, type MediaUrls, setMediaUrls } from "./media.ts";
 export { default as OutputView } from "./OutputView.svelte";
 export { default as ScaledCanvas } from "./ScaledCanvas.svelte";
 export { default as SlideView } from "./SlideView.svelte";
+export { formatClock, remainingMs, stageTimerMs } from "./timing.ts";

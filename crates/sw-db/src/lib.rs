@@ -18,9 +18,11 @@ mod error;
 mod fts;
 mod media;
 mod migrations;
+mod presentations;
 mod settings;
 mod songs;
 mod themes;
+mod usage;
 
 use std::path::Path;
 
@@ -29,9 +31,11 @@ use rusqlite::Connection;
 pub use bibles::Bibles;
 pub use error::DbError;
 pub use media::Media;
+pub use presentations::Presentations;
 pub use settings::Settings;
 pub use songs::Songs;
 pub use themes::Themes;
+pub use usage::Usage;
 
 /// An open library database.
 pub struct Database {
@@ -82,6 +86,16 @@ impl Database {
     /// Access to the media library's records.
     pub fn media(&self) -> Media<'_> {
         Media::new(&self.conn)
+    }
+
+    /// Access to imported presentations.
+    pub fn presentations(&self) -> Presentations<'_> {
+        Presentations::new(&self.conn)
+    }
+
+    /// Access to the CCLI song usage log.
+    pub fn usage(&self) -> Usage<'_> {
+        Usage::new(&self.conn)
     }
 
     /// Access to application settings.
