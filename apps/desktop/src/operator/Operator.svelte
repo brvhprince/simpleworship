@@ -21,6 +21,7 @@
   import { engine } from "../lib/engine.svelte.ts";
   import { importer } from "../lib/importer.svelte.ts";
   import { media } from "../lib/media.svelte.ts";
+  import { connectEditMenu } from "../lib/menu.ts";
   import { panels } from "../lib/panels.svelte.ts";
   import { scheduleFile } from "../lib/schedule-file.svelte.ts";
   import {
@@ -75,6 +76,7 @@
       media.connect(urls),
       importer.connect(),
       dialogs.connect(),
+      connectEditMenu(),
     ];
     for (const connection of connections) {
       connection.catch((error) => engine.showError(error));

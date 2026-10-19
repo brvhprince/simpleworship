@@ -30,6 +30,7 @@ export function frameAt(presentation: Presentation, index: number): RenderFrame 
   return {
     text: slide.text,
     rich: slide.rich,
+    elements: slide.elements,
     scripture: slide.scripture,
     caption: firstOnly ? null : slide.caption,
     // Thumbnails show a countdown's message; only live screens tick.

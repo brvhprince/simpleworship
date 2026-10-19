@@ -40,3 +40,16 @@ export function onMenuClick(handle: (id: string) => void): Promise<() => void> {
     else handle(id);
   });
 }
+
+/**
+ * Edit › Undo and Redo: undo typing in the focused text field, unless an
+ * editor took them over with {@link overrideMenuItem}.
+ */
+export function connectEditMenu(): Promise<() => void> {
+  return onMenuClick((id) => {
+    // execCommand is old, but it is how a page asks the webview to undo
+    // typing in a text field, and every webview still supports it.
+    if (id === "undo") document.execCommand("undo");
+    if (id === "redo") document.execCommand("redo");
+  });
+}

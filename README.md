@@ -68,12 +68,20 @@ with EasyWorship should feel at home.
 - **Background music:** play sound files (MP3, M4A, WAV…) from the Media tab
   or as a schedule item, with skip, seek, volume, loop and a fade-out. Music
   plays on the operator computer and carries on while slides change.
-- **Presentations:** a built-in editor for announcements and sermon points:
-  text slides (with **bold**, *italic* and underline), pictures and videos,
-  in any order. A presentation has its own theme, and any slide can use a
-  different theme or background, text size, colour and alignment. Set it to
-  move on by itself every few seconds, looping, for announcements before the
-  service.
+- **Presentations:** a slide editor for announcements, prayer points and
+  sermon notes. Each slide is a canvas: add text boxes, shapes (rectangles,
+  ellipses, lines) and pictures or videos, and drag, resize and stack them
+  anywhere, with snap guides. Type straight on the slide and give any words
+  their own font, size, colour, bold, italic or underline. The Inspector
+  sets exact positions, fills, borders, opacity and text effects, and
+  **Apply to All Slides** copies a background, a restyled title box or a
+  logo onto every slide. New Slide reuses the current layout, so the next
+  prayer point is just typing. Insert Scripture types in a passage by its
+  reference. Undo, copy and paste, zoom, and auto-advance with looping.
+  Transparent pictures and videos (animated WebP or PNG, or video with an
+  alpha channel) show the slide through.
+- **Dim a background:** picture and video backgrounds have an opacity, so a
+  moving background can sit behind the words without drowning them.
 - **Import PDF slides;** each page becomes a slide you can reorder, remove,
   or put typed slides between. PowerPoint and Keynote files are converted
   automatically when [LibreOffice](https://www.libreoffice.org) is
@@ -191,7 +199,7 @@ projector, the stage display and every thumbnail look the same.
 | M5        | Theme designer, image/video backgrounds, media library, per-item overrides | ✅     |
 | M6        | Importers: EasyWorship 6/7, OpenLP, OpenLyrics, ProPresenter, ChordPro, CCLI | ✅     |
 | M7        | Alerts, countdowns, background audio, presentations (PDF/PPTX), CCLI report | ✅     |
-| M8        | Presentation editor, slideshows, scripture styling (verse numbers, reference box) |        |
+| M8        | Presentation editor, slideshows, scripture styling (verse numbers, reference box) | ✅     |
 | M9        | Installers, auto-update, translations                               |        |
 
 Later: remote control from a phone, NDI / stream output, multi-operator

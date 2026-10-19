@@ -50,7 +50,7 @@ describe("backgroundCss", () => {
       "linear-gradient(90deg, red, blue)",
     );
     expect(
-      backgroundCss({ type: "image", media: { id: "m", file: "a.png" }, fit: "cover" }),
+      backgroundCss({ type: "image", media: { id: "m", file: "a.png" }, fit: "cover", opacity: 1 }),
     ).toBeNull();
   });
 });

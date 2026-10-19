@@ -55,11 +55,13 @@
   function pick(media: MediaItem) {
     pendingType = null;
     const reference = { id: media.id, file: media.file };
+    // Keep the fade when swapping one picture or video for another.
+    const opacity = value.type === "image" || value.type === "video" ? value.opacity : 1;
     const fit: MediaFit = "cover";
     if (media.kind === "video") {
-      onchange({ type: "video", media: reference, fit, loop: true, playAudio: false });
+      onchange({ type: "video", media: reference, fit, loop: true, playAudio: false, opacity });
     } else {
-      onchange({ type: "image", media: reference, fit });
+      onchange({ type: "image", media: reference, fit, opacity });
     }
   }
 </script>
@@ -110,7 +112,20 @@
         >
           <option value="cover">Fill the screen (crop edges)</option>
           <option value="contain">Show it all (black bars)</option>
+          <option value="stretch">Stretch to the screen</option>
         </select>
+      </label>
+      <label class="inline" title="Lower values fade it into black, so text on top stands out">
+        Opacity
+        <input
+          type="range"
+          min="0.05"
+          max="1"
+          step="0.05"
+          value={value.opacity}
+          oninput={(e) => onchange({ ...value, opacity: e.currentTarget.valueAsNumber })}
+        >
+        <span class="value">{Math.round(value.opacity * 100)}%</span>
       </label>
     {/if}
     {#if value.type === "video"}
@@ -151,5 +166,10 @@
 
   input[type="number"] {
     width: 64px;
+  }
+
+  .value {
+    min-width: 3em;
+    font-variant-numeric: tabular-nums;
   }
 </style>

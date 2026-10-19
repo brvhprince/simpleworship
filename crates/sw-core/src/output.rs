@@ -10,6 +10,7 @@ use ts_rs::TS;
 
 use crate::alerts::Alert;
 use crate::countdown::CountdownFrame;
+use crate::deck::SlideElement;
 use crate::id::Id;
 use crate::markup::TextRun;
 use crate::media::MediaRef;
@@ -33,6 +34,10 @@ pub struct RenderFrame {
     /// Draw this instead of `text` when it is there.
     #[serde(default)]
     pub rich: Option<Vec<TextRun>>,
+    /// Text boxes, shapes and pictures, back to front, for a slide made in
+    /// the canvas editor. Draw these instead of the text and caption.
+    #[serde(default)]
+    pub elements: Option<Vec<SlideElement>>,
     /// A live countdown, when the slide is one.
     #[serde(default)]
     pub countdown: Option<CountdownFrame>,

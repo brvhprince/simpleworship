@@ -179,6 +179,17 @@ pub fn schedule_add_scripture(
     )
 }
 
+/// A passage's verses in one Bible, e.g. to type into a presentation slide.
+#[tauri::command]
+pub fn scripture_text(
+    state: State<'_, AppState>,
+    passage: Passage,
+    bible_id: Id,
+) -> AppResult<TranslationText> {
+    let mut found = translations(&state, &passage, &[bible_id])?;
+    Ok(found.remove(0))
+}
+
 /// Looks up a passage in each chosen Bible.
 fn translations(
     state: &AppState,

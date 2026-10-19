@@ -105,9 +105,11 @@ fn build(app: &AppHandle, recent: &Submenu<Wry>) -> tauri::Result<Menu<Wry>> {
     let file = file.build()?;
 
     // Without an Edit menu, macOS does not deliver ⌘C / ⌘V / ⌘Z to text fields.
+    // Undo and Redo go to the UI (not straight to the webview), so editors
+    // with their own undo, like the slide editor, can take them over.
     let edit = SubmenuBuilder::new(app, "Edit")
-        .undo()
-        .redo()
+        .item(&item("undo", "Undo", "CmdOrCtrl+Z")?)
+        .item(&item("redo", "Redo", "CmdOrCtrl+Shift+Z")?)
         .separator()
         .cut()
         .copy()

@@ -17,18 +17,37 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 /// A piece of text in one style. Line breaks stay in the text as `\n`.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+///
+/// Colour, size and font are only set where they differ from the text
+/// box's own style (`None` follows the box).
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "bindings.ts")]
 pub struct TextRun {
     /// The text.
     pub text: String,
     /// Bold.
+    #[serde(default)]
     pub bold: bool,
     /// Italic.
+    #[serde(default)]
     pub italic: bool,
     /// Underlined.
+    #[serde(default)]
     pub underline: bool,
+    /// CSS colour.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional = nullable)]
+    pub color: Option<String>,
+    /// Font size in reference pixels (scaled with the box when it shrinks
+    /// to fit).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional = nullable)]
+    pub font_size: Option<f32>,
+    /// CSS font family list.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional = nullable)]
+    pub font_family: Option<String>,
 }
 
 /// The markers, longest first so `**` is not read as two `*`.

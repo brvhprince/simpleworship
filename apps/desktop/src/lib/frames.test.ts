@@ -14,6 +14,7 @@ function slide(overrides: Partial<Slide>): Slide {
     rich: null,
     look: null,
     style: null,
+    elements: null,
     ...overrides,
   };
 }

@@ -20,6 +20,7 @@
     addPresentationToSchedule,
     canConvertPresentations,
     createPresentation,
+    deckForEditing,
     deckPresentation,
     deletePresentation,
     finishPresentation,
@@ -34,7 +35,7 @@
   import { frameAt } from "../../lib/frames.ts";
   import { renderPdfPages } from "../../lib/pdf.ts";
   import { prompts } from "../../lib/prompts.svelte.ts";
-  import DeckEditor from "./DeckEditor.svelte";
+  import SlideEditor from "../slides/SlideEditor.svelte";
 
   /** Must match `PRESENTATIONS_EVENT` in `src-tauri/src/commands/presentations.rs`. */
   const PRESENTATIONS_EVENT = "presentations://changed";
@@ -93,15 +94,8 @@
       id: uuidV7(),
       name: "",
       themeId: null,
-      slides: [
-        {
-          id: uuidV7(),
-          text: "",
-          background: null,
-          themeId: null,
-          style: { fontSize: null, color: null, align: null },
-        },
-      ],
+      // The editor adds a first slide with a text box in the theme's style.
+      slides: [],
       autoAdvance: null,
       createdAt: now,
       updatedAt: 0,
@@ -109,8 +103,10 @@
   }
 
   async function edit(deck: SlideDeck) {
-    // The latest version, in case it changed since the list was loaded.
-    editing = await getPresentation(deck.id).catch(() => deck);
+    // The latest version, in case it changed since the list was loaded,
+    // with slides from before the canvas editor turned into text boxes.
+    const latest = await getPresentation(deck.id).catch(() => deck);
+    editing = await deckForEditing(latest);
   }
 
   async function chooseAndImport() {
@@ -236,7 +232,7 @@
 </div>
 
 {#if editing}
-  <DeckEditor
+  <SlideEditor
     deck={editing}
     onsave={(saved) => {
       editing = null;

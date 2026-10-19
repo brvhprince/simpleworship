@@ -28,6 +28,7 @@
   import { fade } from "svelte/transition";
   import AlertLayer from "./AlertLayer.svelte";
   import BackgroundLayer from "./BackgroundLayer.svelte";
+  import ElementsLayer from "./ElementsLayer.svelte";
   import { getMediaUrls } from "./media.ts";
   import TextLayer from "./TextLayer.svelte";
 
@@ -62,8 +63,10 @@
 
   const showLogo = $derived(flags.logo && output.logo !== null);
 
+  // A canvas-editor slide keeps its shapes and pictures when the text is
+  // cleared, so its layer stays and only leaves its text out.
   const textLayers: Layer[] = $derived(
-    output.frame && !flags.hideText && !flags.logo
+    output.frame && !flags.logo && (output.frame.elements || !flags.hideText)
       ? [{ key: textKey(output.frame), frame: output.frame }]
       : [],
   );
@@ -71,6 +74,7 @@
   /** Everything that affects how the text layer looks. */
   function textKey(frame: RenderFrame): string {
     const { text, rich, scripture, caption, footer, theme } = frame;
+    if (frame.elements) return JSON.stringify([frame.elements, flags.hideText]);
     return JSON.stringify([
       text,
       rich,
@@ -94,7 +98,11 @@
 
 {#each textLayers as layer (layer.key)}
   <div class="layer" transition:fade={{ duration }}>
-    <TextLayer frame={layer.frame} {oncountdownend} />
+    {#if layer.frame.elements}
+      <ElementsLayer elements={layer.frame.elements} hideText={flags.hideText} {muted} />
+    {:else}
+      <TextLayer frame={layer.frame} {oncountdownend} />
+    {/if}
   </div>
 {/each}
 

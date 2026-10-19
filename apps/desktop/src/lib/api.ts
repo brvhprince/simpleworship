@@ -34,6 +34,7 @@ import type {
   SongUsage,
   ThemeDefaults,
   ThemeRecord,
+  TranslationText,
   Verse,
 } from "@simpleworship/protocol";
 import { invoke } from "@tauri-apps/api/core";
@@ -139,6 +140,10 @@ export const searchBible = (id: string, query: string) =>
 /** Parses a reference as it is typed ("jn 3:16" → John 3:16). */
 export const parseReference = (text: string) =>
   invoke<ReferenceFeedback>("scripture_parse", { text });
+
+/** A passage's verses in one Bible. */
+export const scriptureText = (passage: Passage, bibleId: string) =>
+  invoke<TranslationText>("scripture_text", { passage, bibleId });
 
 /** Loads a passage into the preview pane, in the given translations. */
 export const showScriptureInPreview = (
@@ -279,6 +284,9 @@ export const savePresentation = (deck: SlideDeck) =>
 /** The slides a deck makes, styled as shown (it need not be saved). */
 export const deckPresentation = (deck: SlideDeck) =>
   invoke<Presentation>("deck_presentation", { deck });
+
+/** A presentation ready for the canvas editor (old text slides become text boxes). */
+export const deckForEditing = (deck: SlideDeck) => invoke<SlideDeck>("deck_for_editing", { deck });
 
 /** Picture slides for media items, in order (sound is left out). */
 export const pictureSlides = (mediaIds: string[]) =>

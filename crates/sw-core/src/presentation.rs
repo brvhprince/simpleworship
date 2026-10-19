@@ -177,7 +177,10 @@ impl Presentation {
             .iter()
             .map(|slide| {
                 let runs = markup::parse(&slide.text);
+                let elements = (!slide.elements.is_empty()).then(|| slide.elements.clone());
                 Slide {
+                    text: slide.plain_text(),
+                    elements,
                     rich: markup::has_styling(&runs).then(|| runs.clone()),
                     background: slide.background.clone(),
                     look: slide.theme_id.and_then(|id| themes.get(id)).map(|record| {
@@ -188,7 +191,7 @@ impl Presentation {
                         })
                     }),
                     style: (!slide.style.is_empty()).then(|| slide.style.clone()),
-                    ..Slide::text(runs.into_iter().map(|run| run.text).collect::<String>())
+                    ..Slide::text("")
                 }
             })
             .collect();
@@ -339,6 +342,7 @@ impl Presentation {
             scripture: slide.scripture.clone(),
             caption,
             rich: slide.rich.clone(),
+            elements: slide.elements.clone(),
             // The engine fills this in for a live countdown (it knows when
             // the countdown started).
             countdown: None,
@@ -377,12 +381,14 @@ pub(crate) fn shown_on_its_own(media: &MediaItem) -> Option<Background> {
         MediaKind::Image => Some(Background::Image {
             media: media.as_ref(),
             fit: MediaFit::Contain,
+            opacity: 1.0,
         }),
         MediaKind::Video => Some(Background::Video {
             media: media.as_ref(),
             fit: MediaFit::Contain,
             looping: false,
             play_audio: true,
+            opacity: 1.0,
         }),
         MediaKind::Audio => None,
     }

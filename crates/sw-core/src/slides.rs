@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 use crate::countdown::CountdownSlide;
-use crate::deck::SlideStyle;
+use crate::deck::{SlideElement, SlideStyle};
 use crate::lyrics::{Section, SectionLabel};
 use crate::markup::TextRun;
 use crate::scripture::ScriptureSlide;
@@ -52,6 +52,11 @@ pub struct Slide {
     /// Adjustments to the theme's text for this slide only.
     #[serde(default)]
     pub style: Option<SlideStyle>,
+    /// For a presentation slide made in the canvas editor: what is on it,
+    /// back to front. Drawn instead of `text` (which then holds the plain
+    /// words, for the stage display).
+    #[serde(default)]
+    pub elements: Option<Vec<SlideElement>>,
 }
 
 impl Slide {
@@ -68,6 +73,7 @@ impl Slide {
             rich: None,
             look: None,
             style: None,
+            elements: None,
         }
     }
 }

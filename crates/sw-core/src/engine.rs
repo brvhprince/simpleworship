@@ -1333,6 +1333,7 @@ mod tests {
             fit: MediaFit::Cover,
             looping: true,
             play_audio: false,
+            opacity: 1.0,
         }
     }
 

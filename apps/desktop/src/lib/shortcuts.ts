@@ -132,14 +132,19 @@ export class SectionJumper {
   }
 }
 
-/** Whether a key press happened while the operator was typing text. */
+/**
+ * Whether a key press belongs to something other than the live output:
+ * text being typed, or any open dialog. (A click on part of a dialog that
+ * takes no focus, like the slide editor's canvas, leaves the focus on the
+ * page, so an open dialog counts even when the key's target is outside it.)
+ */
 export function isTypingTarget(target: EventTarget | null): boolean {
+  if (document.querySelector("dialog[open]") !== null) return true;
   if (!(target instanceof HTMLElement)) return false;
   return (
     target.isContentEditable ||
     target instanceof HTMLInputElement ||
     target instanceof HTMLTextAreaElement ||
-    target instanceof HTMLSelectElement ||
-    target.closest("dialog") !== null
+    target instanceof HTMLSelectElement
   );
 }

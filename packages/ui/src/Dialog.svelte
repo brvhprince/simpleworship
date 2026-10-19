@@ -11,15 +11,16 @@
   ```
   `onclose` runs when the operator presses Escape.
 
-  `size="small"` suits a short question with a few buttons.
+  `size="small"` suits a short question with a few buttons; `size="full"`
+  fills most of the window, for editors that need room (the slide editor).
 -->
 <script lang="ts">
   import type { Snippet } from "svelte";
 
   interface Props {
     title: string;
-    /** "large" (default) for editors, "small" for short questions. */
-    size?: "large" | "small";
+    /** "large" (default) for editors, "small" for short questions, "full" for big editors. */
+    size?: "large" | "small" | "full";
     onclose: () => void;
     children: Snippet;
     /** Buttons shown at the bottom right. */
@@ -73,6 +74,12 @@
     width: min(440px, 92vw);
   }
 
+  dialog.full {
+    width: 97vw;
+    height: 94vh;
+    max-height: 94vh;
+  }
+
   dialog::backdrop {
     background: rgba(0, 0, 0, 0.6);
   }
@@ -100,5 +107,12 @@
     gap: var(--sw-space-2);
     padding: var(--sw-space-3) var(--sw-space-4);
     border-top: 1px solid var(--sw-border);
+  }
+  /* A full-size editor lays out its own scrolling areas. */
+  dialog.full .body {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: var(--sw-space-3);
   }
 </style>

@@ -13,9 +13,22 @@
  * `import "@simpleworship/renderer/fonts.css";`.
  */
 
+export { autofit } from "./autofit.ts";
+export { default as BackgroundLayer } from "./BackgroundLayer.svelte";
 export { CANVAS_HEIGHT, CANVAS_WIDTH } from "./canvas.ts";
+export { default as ElementsLayer } from "./ElementsLayer.svelte";
+export {
+  frameStyle,
+  lineStyle,
+  objectFit,
+  runStyle,
+  shapeStyle,
+  textBoxStyle as elementBoxStyle,
+  verticalJustify,
+} from "./elements.ts";
 export { getMediaUrls, type MediaUrls, setMediaUrls } from "./media.ts";
 export { default as OutputView } from "./OutputView.svelte";
 export { default as ScaledCanvas } from "./ScaledCanvas.svelte";
 export { default as SlideView } from "./SlideView.svelte";
+export { textStyle } from "./styles.ts";
 export { formatClock, remainingMs, stageTimerMs } from "./timing.ts";

@@ -64,11 +64,11 @@ pub fn gather(
                 media_refs.extend(files.iter().map(MediaItem::as_ref));
             }
             ItemContent::Deck { deck } => {
-                let backgrounds = deck
-                    .slides
-                    .iter()
-                    .filter_map(|slide| slide.background.as_ref());
-                media_refs.extend(backgrounds.filter_map(|b| b.media().cloned()));
+                for slide in &deck.slides {
+                    let background = slide.background.as_ref().and_then(|b| b.media());
+                    let pictures = slide.elements.iter().filter_map(|element| element.media());
+                    media_refs.extend(background.into_iter().chain(pictures).cloned());
+                }
             }
             _ => {}
         }

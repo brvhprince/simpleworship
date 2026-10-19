@@ -23,21 +23,28 @@
   let { background, still = false, playback = null, muted = false }: Props = $props();
 
   const urls = getMediaUrls();
+
+  /** Pictures and videos can be faded into the black behind them. */
+  const opacity = $derived(
+    background.type === "image" || background.type === "video" ? background.opacity : 1,
+  );
 </script>
 
 <div class="background" style:background={backgroundCss(background)}>
-  {#if background.type === "image"}
-    <img src={urls.file(background.media)} class={background.fit} alt="">
-  {:else if background.type === "video" && still}
-    <img src={urls.thumbnail(background.media)} class={background.fit} alt="">
-  {:else if background.type === "video"}
-    <VideoLayer
-      media={background.media}
-      fit={background.fit}
-      {playback}
-      muted={muted || (playback === null && !background.playAudio)}
-    />
-  {/if}
+  <div class="media" style:opacity={opacity < 1 ? opacity : null}>
+    {#if background.type === "image"}
+      <img src={urls.file(background.media)} class={background.fit} alt="">
+    {:else if background.type === "video" && still}
+      <img src={urls.thumbnail(background.media)} class={background.fit} alt="">
+    {:else if background.type === "video"}
+      <VideoLayer
+        media={background.media}
+        fit={background.fit}
+        {playback}
+        muted={muted || (playback === null && !background.playAudio)}
+      />
+    {/if}
+  </div>
 </div>
 
 <style>
@@ -47,9 +54,18 @@
     background: #000;
   }
 
+  .media {
+    position: absolute;
+    inset: 0;
+  }
+
   img {
     width: 100%;
     height: 100%;
+  }
+
+  .stretch {
+    object-fit: fill;
   }
 
   .cover {

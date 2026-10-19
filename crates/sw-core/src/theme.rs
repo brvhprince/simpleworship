@@ -83,6 +83,10 @@ pub enum Background {
         /// How the image fills the screen.
         #[serde(default)]
         fit: MediaFit,
+        /// How see-through it is, from 0 (invisible) to 1 (solid). Lower
+        /// values fade it into black, so text on top stands out.
+        #[serde(default = "full_opacity")]
+        opacity: f32,
     },
     /// A video. Playback (play, pause, position) is controlled from the live
     /// pane and shared by every screen; see [`crate::output::VideoPlayback`].
@@ -97,7 +101,16 @@ pub enum Background {
         looping: bool,
         /// Play the video's audio track.
         play_audio: bool,
+        /// How see-through it is, from 0 (invisible) to 1 (solid). A
+        /// dimmed video behind the words keeps them easy to read.
+        #[serde(default = "full_opacity")]
+        opacity: f32,
     },
+}
+
+/// The default opacity: fully solid.
+pub(crate) fn full_opacity() -> f32 {
+    1.0
 }
 
 impl Background {
@@ -122,6 +135,8 @@ pub enum MediaFit {
     /// Show all of it, with black bars if needed. Best for photos and
     /// videos shown on their own.
     Contain,
+    /// Stretch it to the exact shape, distorting it if needed.
+    Stretch,
 }
 
 /// Font and decoration for slide text.

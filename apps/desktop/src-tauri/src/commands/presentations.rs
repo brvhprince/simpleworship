@@ -217,6 +217,28 @@ pub fn deck_presentation(state: State<'_, AppState>, deck: SlideDeck) -> Present
     Presentation::from_deck(&deck, look, engine.themes())
 }
 
+/// A presentation ready for the canvas editor: slides made before it had
+/// one get their text turned into a text box, styled by the theme they
+/// are shown with.
+#[tauri::command]
+pub fn deck_for_editing(state: State<'_, AppState>, mut deck: SlideDeck) -> SlideDeck {
+    let engine = state.engine();
+    let themes = engine.themes();
+    let deck_look = themes.resolve(
+        ContentKind::Presentation,
+        deck.theme_id,
+        &ItemLook::default(),
+    );
+    for slide in &mut deck.slides {
+        let theme = slide
+            .theme_id
+            .and_then(|id| themes.get(id))
+            .map_or(&deck_look.theme, |record| &record.theme);
+        slide.upgrade(theme);
+    }
+    deck
+}
+
 /// Picture slides for media items, in the order given (for the editor's
 /// "Add Pictures"). Sound files are left out.
 #[tauri::command]

@@ -195,6 +195,11 @@ export type Background =
        * How the image fills the screen.
        */
       fit: MediaFit;
+      /**
+       * How see-through it is, from 0 (invisible) to 1 (solid). Lower
+       * values fade it into black, so text on top stands out.
+       */
+      opacity: number;
     }
   | {
       type: "video";
@@ -214,6 +219,11 @@ export type Background =
        * Play the video's audio track.
        */
       playAudio: boolean;
+      /**
+       * How see-through it is, from 0 (invisible) to 1 (solid). A
+       * dimmed video behind the words keeps them easy to read.
+       */
+      opacity: number;
     };
 
 /**
@@ -734,10 +744,6 @@ export type DeckSlide = {
    */
   id: Id;
   /**
-   * The text, with markup for bold, italic and underline. May be empty.
-   */
-  text: string;
-  /**
    * A background for this slide only: a picture, video or colour.
    */
   background: Background | null;
@@ -746,7 +752,17 @@ export type DeckSlide = {
    */
   themeId: Id | null;
   /**
-   * Adjustments to the theme's text for this slide.
+   * What is on the slide, back to front.
+   */
+  elements: Array<SlideElement>;
+  /**
+   * Text of a slide made before the canvas editor, with markup for bold,
+   * italic and underline, drawn in the theme's text box. Empty for
+   * slides with elements.
+   */
+  text: string;
+  /**
+   * Adjustments to the theme's text for `text`.
    */
   style: SlideStyle;
 };
@@ -773,6 +789,84 @@ export type DisplayFlags = {
    */
   hideBackground: boolean;
 };
+
+/**
+ * What a slide element is.
+ */
+export type ElementContent =
+  | {
+      type: "text";
+      /**
+       * The text, in styled pieces. Line breaks are `\n` in the text.
+       */
+      runs: Array<TextRun>;
+      /**
+       * The box's own style; runs override parts of it.
+       */
+      style: TextStyle;
+      /**
+       * Where the text sits in the box, top to bottom.
+       */
+      verticalAlign: VerticalAlign;
+      /**
+       * Shrink the text (from `style.font_size`) until it fits the box.
+       */
+      autoFit: boolean;
+      /**
+       * Space between the box's edge and its text, in canvas pixels.
+       */
+      padding: number;
+      /**
+       * A colour behind the text, if any.
+       */
+      fill: string | null;
+      /**
+       * Rounded corners for the fill, in canvas pixels.
+       */
+      cornerRadius: number;
+    }
+  | {
+      type: "shape";
+      /**
+       * Which shape.
+       */
+      shape: ShapeKind;
+      /**
+       * The colour inside, if any.
+       */
+      fill: string | null;
+      /**
+       * The outline, if any.
+       */
+      stroke: Stroke | null;
+      /**
+       * Rounded corners for a rectangle, in canvas pixels.
+       */
+      cornerRadius: number;
+    }
+  | {
+      type: "media";
+      /**
+       * The file.
+       */
+      media: MediaRef;
+      /**
+       * Picture or video.
+       */
+      kind: MediaKind;
+      /**
+       * How it fills its box.
+       */
+      fit: MediaFit;
+      /**
+       * Rounded corners, in canvas pixels.
+       */
+      cornerRadius: number;
+      /**
+       * For a video: play its sound on the projector.
+       */
+      playAudio: boolean;
+    };
 
 /**
  * A notification that part of the live state changed.
@@ -932,6 +1026,28 @@ export type FooterStyle = {
 };
 
 /**
+ * A rectangle on the 1920×1080 canvas.
+ */
+export type Frame = {
+  /**
+   * Distance from the left edge.
+   */
+  x: number;
+  /**
+   * Distance from the top edge.
+   */
+  y: number;
+  /**
+   * Width.
+   */
+  width: number;
+  /**
+   * Height.
+   */
+  height: number;
+};
+
+/**
  * Horizontal text alignment.
  */
 export type HorizontalAlign = "left" | "center" | "right";
@@ -1077,7 +1193,7 @@ export type Look = {
 /**
  * How an image or video fills a screen of a different shape.
  */
-export type MediaFit = "cover" | "contain";
+export type MediaFit = "cover" | "contain" | "stretch";
 
 /**
  * An image or video in the media library.
@@ -1325,6 +1441,11 @@ export type RenderFrame = {
    */
   rich: Array<TextRun> | null;
   /**
+   * Text boxes, shapes and pictures, back to front, for a slide made in
+   * the canvas editor. Draw these instead of the text and caption.
+   */
+  elements: Array<SlideElement> | null;
+  /**
    * A live countdown, when the slide is one.
    */
   countdown: CountdownFrame | null;
@@ -1504,6 +1625,11 @@ export type Shadow = {
 };
 
 /**
+ * The shapes a slide can have.
+ */
+export type ShapeKind = "rectangle" | "ellipse" | "line";
+
+/**
  * One slide: the text shown on screen at a time.
  */
 export type Slide = {
@@ -1551,6 +1677,12 @@ export type Slide = {
    * Adjustments to the theme's text for this slide only.
    */
   style: SlideStyle | null;
+  /**
+   * For a presentation slide made in the canvas editor: what is on it,
+   * back to front. Drawn instead of `text` (which then holds the plain
+   * words, for the stage display).
+   */
+  elements: Array<SlideElement> | null;
 };
 
 /**
@@ -1587,6 +1719,38 @@ export type SlideDeck = {
    * When it was last changed.
    */
   updatedAt: number;
+};
+
+/**
+ * One thing on a slide: a text box, a shape or a picture.
+ */
+export type SlideElement = {
+  /**
+   * Identifies the element on its slide.
+   */
+  id: Id;
+  /**
+   * Shared by "the same" element on different slides (the title box,
+   * the logo), so a change can be applied to all slides. Copied when a
+   * slide's layout is reused.
+   */
+  role: Id;
+  /**
+   * Where it is, in canvas pixels.
+   */
+  frame: Frame;
+  /**
+   * How see-through it is, from 0 (invisible) to 1 (solid).
+   */
+  opacity: number;
+  /**
+   * Locked elements cannot be moved or resized by accident.
+   */
+  locked: boolean;
+  /**
+   * What it is.
+   */
+  content: ElementContent;
 };
 
 /**
@@ -1762,6 +1926,20 @@ export type StageTimer = {
 };
 
 /**
+ * The outline of a shape.
+ */
+export type Stroke = {
+  /**
+   * CSS colour.
+   */
+  color: string;
+  /**
+   * Width in canvas pixels.
+   */
+  width: number;
+};
+
+/**
  * The rectangle the slide text is laid out in.
  */
 export type TextBox = {
@@ -1793,6 +1971,9 @@ export type TextBox = {
 
 /**
  * A piece of text in one style. Line breaks stay in the text as `\n`.
+ *
+ * Colour, size and font are only set where they differ from the text
+ * box's own style (`None` follows the box).
  */
 export type TextRun = {
   /**
@@ -1811,6 +1992,19 @@ export type TextRun = {
    * Underlined.
    */
   underline: boolean;
+  /**
+   * CSS colour.
+   */
+  color?: string | null;
+  /**
+   * Font size in reference pixels (scaled with the box when it shrinks
+   * to fit).
+   */
+  fontSize?: number | null;
+  /**
+   * CSS font family list.
+   */
+  fontFamily?: string | null;
 };
 
 /**

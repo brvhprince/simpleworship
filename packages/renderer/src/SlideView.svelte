@@ -7,6 +7,7 @@
 <script lang="ts">
   import type { RenderFrame } from "@simpleworship/protocol";
   import BackgroundLayer from "./BackgroundLayer.svelte";
+  import ElementsLayer from "./ElementsLayer.svelte";
   import TextLayer from "./TextLayer.svelte";
 
   interface Props {
@@ -21,6 +22,8 @@
 {#if showBackground}
   <BackgroundLayer background={frame.theme.background} still />
 {/if}
-{#if showText}
+{#if frame.elements}
+  <ElementsLayer elements={frame.elements} hideText={!showText} still muted />
+{:else if showText}
   <TextLayer {frame} />
 {/if}
