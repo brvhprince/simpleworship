@@ -7,12 +7,13 @@ version = "0.1.0"
 edition = "2024"
 license = "GPL-3.0-or-later"
 repository = "https://github.com/simpleworship/simpleworship"
-rust-version = "1.85"
+rust-version = "1.88"
 
 [workspace.dependencies]
 # Internal crates
 sw-core = { path = "crates/sw-core" }
 sw-db = { path = "crates/sw-db" }
+sw-files = { path = "crates/sw-files" }
 
 # Shared third-party crates
 rusqlite = { version = "0.40", features = ["bundled"] }
@@ -22,6 +23,8 @@ serde_json = "1"
 thiserror = "2"
 ts-rs = { version = "12", features = ["uuid-impl", "serde-json-impl"] }
 uuid = { version = "1", features = ["v7", "serde"] }
+# Pure-Rust deflate only: no C compiler needed on any platform.
+zip = { version = "9", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

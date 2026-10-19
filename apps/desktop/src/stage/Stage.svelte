@@ -1,13 +1,15 @@
 <!--
   @component
   The stage display ("confidence monitor") for musicians and speakers:
-  the live slide in large type, the next slide underneath, and a clock.
+  the live slide in large type, the next slide underneath, the next
+  schedule item, and a clock.
   It shows text only, never backgrounds, so it is readable from a distance.
 -->
 <script lang="ts">
   import { onMount } from "svelte";
   import { engine } from "../lib/engine.svelte.ts";
   import { closeOnEscape } from "../lib/output-window.ts";
+  import { itemTitle } from "../lib/schedule.ts";
 
   let now = $state(new Date());
 
@@ -25,6 +27,13 @@
   const current = $derived(slides[index] ?? null);
   const next = $derived(slides[index + 1] ?? null);
   const flags = $derived(engine.output?.flags);
+
+  /** The schedule item after the live one, so the band knows what is coming. */
+  const nextItem = $derived.by(() => {
+    const items = engine.schedule.items;
+    const index = items.findIndex((item) => item.id === engine.live?.scheduleItem);
+    return index === -1 ? null : (items[index + 1] ?? null);
+  });
 
   /** A short status note when the audience is not seeing the slide text. */
   const status = $derived.by(() => {
@@ -44,6 +53,9 @@
     <span class="title">{engine.live?.presentation.title ?? ""}</span>
     {#if status}
       <span class="status">{status}</span>
+    {/if}
+    {#if nextItem}
+      <span class="next-item">Next: {itemTitle(nextItem)}</span>
     {/if}
     <span class="clock">{time}</span>
   </header>
@@ -91,6 +103,10 @@
     padding: 0.2em 0.6em;
     border-radius: 0.3em;
     background: var(--sw-live);
+  }
+
+  .next-item {
+    color: #f59f00;
   }
 
   .clock {

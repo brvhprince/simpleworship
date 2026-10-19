@@ -4,8 +4,8 @@ Free, open-source worship presentation software for macOS, Windows and Linux.
 It puts lyrics, scripture and media on the projector, and anyone familiar
 with EasyWorship should feel at home.
 
-> **Status: early development.** The output engine and the song library work
-> today; schedules, scripture, themes and media come next. See the
+> **Status: early development.** The output engine, the song library and
+> schedules work today; scripture, themes and media come next. See the
 > [roadmap](#roadmap).
 
 ## What works today
@@ -22,16 +22,27 @@ with EasyWorship should feel at home.
   accent-insensitive), an editor with a live slide preview, section tags and
   a custom arrangement order.
 - **Quick text:** type anything and show it.
+- **Schedules:** build the order of service by dragging songs in, reorder by
+  dragging, and add notes for the operator. Run the whole service with one
+  key: Next on the last slide of an item continues with the next item, and
+  the following item is always waiting in preview.
+- **Schedule files (`.sws`)** that carry their songs with them, so a schedule
+  made at home opens on the church computer. Songs that the library has are
+  taken from the library, so later corrections show up.
+- **Crash protection:** every change is autosaved, and after a crash the
+  schedule is offered back on the next start.
 
 ## Keyboard shortcuts
 
 | Key                                  | Action                                    |
 | ------------------------------------ | ----------------------------------------- |
-| → ↓ Space PageDown                   | Next slide                                |
-| ← ↑ PageUp                           | Previous slide                            |
+| → ↓ Space PageDown                   | Next slide (into the next item at the end) |
+| ← ↑ PageUp                           | Previous slide (into the previous item at the start) |
 | Enter                                | Send preview live                         |
 | F6 / F7 / F8 / F9                    | Black / Logo / Clear Text / Clear Background |
 | Esc (in an output window)            | Close that output                         |
+| ↑ / ↓ and Delete (in the schedule)   | Preview the previous / next item, remove the item |
+| ⌘/Ctrl + N, O, S, Shift+S            | New, Open, Save, Save As schedule         |
 | V, C, B, P, T, I, E (+ a number)     | Jump to Verse 2, Chorus, Bridge, …        |
 
 ## Getting started (development)
@@ -69,6 +80,7 @@ SimpleWorship is a [Tauri 2](https://tauri.app) app: a Rust core with a
 crates/
   sw-core/      Domain model and the presentation engine (pure Rust, no I/O)
   sw-db/        SQLite library storage with full-text search
+  sw-files/     SimpleWorship's own file formats (.sws schedules)
 apps/
   desktop/      The Tauri app: operator window, output and stage windows
 packages/
@@ -93,9 +105,9 @@ projector, the stage display and every thumbnail look the same.
 | M0        | Monorepo, tooling, CI                                               | ✅     |
 | M1        | Output engine, monitors, live controls, transitions                 | ✅     |
 | M2        | Song library, editor, search, preview → live                        | ✅     |
-| M3        | Schedules: build, save/open, run a service                          |        |
+| M3        | Schedules: build, save/open, run a service                          | ✅     |
 | M4        | Scripture: Bible import, reference entry ("jn 3:16-18"), versions  |        |
-| M5        | Theme designer, image/video backgrounds, media library              |        |
+| M5        | Theme designer, image/video backgrounds, media library, per-item overrides |        |
 | M6        | Importers: EasyWorship 6/7, OpenLyrics, ProPresenter, ChordPro, CCLI |        |
 | M7        | Alerts, countdowns, presentations (PDF/PPTX), CCLI usage report     |        |
 | M8        | Installers, auto-update, translations                               |        |

@@ -12,6 +12,7 @@
   import { untrack } from "svelte";
   import { saveSong, songPresentation } from "../../lib/api.ts";
   import { frameAt } from "../../lib/frames.ts";
+  import { overrideMenuItem } from "../../lib/menu.ts";
   import { withModifier } from "../../lib/platform.ts";
 
   interface Props {
@@ -72,15 +73,11 @@
     }
   }
 
-  function handleKeydown(event: KeyboardEvent) {
-    if (event.key === "s" && (event.metaKey || event.ctrlKey)) {
-      event.preventDefault();
-      save();
-    }
-  }
+  // ⌘/Ctrl+S is the File menu's "Save Schedule" shortcut, and the menu
+  // receives it before the page does. While the editor is open, the same
+  // shortcut saves the song instead.
+  $effect(() => overrideMenuItem("schedule-save", save));
 </script>
-
-<svelte:window onkeydown={handleKeydown} />
 
 <Dialog title={isNew ? "New Song" : `Edit “${draft.title}”`} onclose={oncancel}>
   <div class="editor">

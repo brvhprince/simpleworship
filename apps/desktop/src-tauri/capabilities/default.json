@@ -3,5 +3,10 @@
   "identifier": "default",
   "description": "Permissions for the operator window and the output windows.",
   "windows": ["main", "output", "stage"],
-  "permissions": ["core:default"]
+  "permissions": [
+    "core:default",
+    "core:window:allow-set-title",
+    "core:window:allow-destroy",
+    "dialog:default"
+  ]
 }

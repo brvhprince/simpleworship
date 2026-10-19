@@ -10,19 +10,23 @@
   {/if}
   ```
   `onclose` runs when the operator presses Escape.
+
+  `size="small"` suits a short question with a few buttons.
 -->
 <script lang="ts">
   import type { Snippet } from "svelte";
 
   interface Props {
     title: string;
+    /** "large" (default) for editors, "small" for short questions. */
+    size?: "large" | "small";
     onclose: () => void;
     children: Snippet;
     /** Buttons shown at the bottom right. */
     actions?: Snippet;
   }
 
-  let { title, onclose, children, actions }: Props = $props();
+  let { title, size = "large", onclose, children, actions }: Props = $props();
 
   let dialog: HTMLDialogElement;
 
@@ -39,7 +43,7 @@
   }
 </script>
 
-<dialog bind:this={dialog} oncancel={handleCancel} aria-label={title}>
+<dialog bind:this={dialog} class={size} oncancel={handleCancel} aria-label={title}>
   <header>{title}</header>
   <div class="body">
     {@render children()}
@@ -65,6 +69,10 @@
     flex-direction: column;
   }
 
+  dialog.small {
+    width: min(440px, 92vw);
+  }
+
   dialog::backdrop {
     background: rgba(0, 0, 0, 0.6);
   }
@@ -78,7 +86,12 @@
   .body {
     padding: var(--sw-space-4);
     overflow: auto;
-    flex: 1;
+    /* Start from the content's own height, and shrink (scrolling) only when
+       the window is too small. Plain `flex: 1` means "start from zero
+       height", which WebKit (the macOS and Linux webview) honours literally
+       inside an auto-height dialog, collapsing the body to nothing. */
+    flex: 1 1 auto;
+    min-height: 0;
   }
 
   footer {

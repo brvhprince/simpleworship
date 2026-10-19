@@ -1,8 +1,8 @@
 //! # sw-core
 //!
-//! The heart of SimpleWorship: the domain model (songs, themes, slides) and the
-//! [`Engine`](engine::Engine), the state machine that decides what is in preview,
-//! what is live, and what every output screen should draw.
+//! The heart of SimpleWorship: the domain model (songs, schedules, themes,
+//! slides) and the [`Engine`](engine::Engine), the state machine that decides
+//! what is in preview, what is live, and what every output screen should draw.
 //!
 //! This crate performs **no I/O**. Storage lives in `sw-db`, windows and IPC live
 //! in the desktop app. Keeping the core pure makes it easy to test and lets other
@@ -19,6 +19,7 @@ pub mod id;
 pub mod lyrics;
 pub mod output;
 pub mod presentation;
+pub mod schedule;
 pub mod slides;
 pub mod song;
 pub mod theme;
@@ -29,6 +30,7 @@ pub use engine::{Engine, EngineError, EngineSnapshot, PaneState};
 pub use id::Id;
 pub use output::{DisplayFlags, OutputState, RenderFrame, Transition, TransitionKind};
 pub use presentation::{Presentation, PresentationSource};
+pub use schedule::{ItemContent, Schedule, ScheduleItem};
 pub use slides::{Slide, SlideOptions};
 pub use song::{Song, SongSummary};
 pub use theme::Theme;

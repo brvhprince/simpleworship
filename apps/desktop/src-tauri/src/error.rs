@@ -21,6 +21,19 @@ pub enum AppError {
     #[error(transparent)]
     Tauri(#[from] tauri::Error),
 
+    /// A schedule file could not be read or written.
+    #[error(transparent)]
+    ScheduleFile(#[from] sw_files::ScheduleFileError),
+
+    /// The operating system refused a file operation.
+    #[error("could not read or write the file: {0}")]
+    Io(#[from] std::io::Error),
+
+    /// "Save" was asked for a schedule that has never been saved; the UI
+    /// should ask where to save it ("Save As") instead.
+    #[error("choose where to save the schedule first")]
+    NoSchedulePath,
+
     /// A song id that is not in the library.
     #[error("that song is no longer in the library")]
     SongNotFound,

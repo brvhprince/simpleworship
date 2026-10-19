@@ -22,7 +22,9 @@ serde.workspace = true
 serde_json.workspace = true
 sw-core.workspace = true
 sw-db.workspace = true
+sw-files.workspace = true
 tauri = { version = "2.12", features = [] }
+tauri-plugin-dialog = "2.8"
 thiserror.workspace = true
 ts-rs.workspace = true
 

@@ -23,10 +23,20 @@ pub fn song_get(state: State<'_, AppState>, id: Id) -> AppResult<Song> {
         .ok_or(AppError::SongNotFound)
 }
 
-/// Creates or updates a song and returns the saved copy.
+/// Creates or updates a song and returns the saved copy. Copies of the song
+/// in the schedule, preview and live panes are updated too, so a typo fixed
+/// mid-service is fixed on screen straight away.
 #[tauri::command]
-pub fn song_save(state: State<'_, AppState>, song: Song) -> AppResult<Song> {
-    Ok(state.database().songs().save(&song)?)
+pub fn song_save(app: AppHandle, state: State<'_, AppState>, song: Song) -> AppResult<Song> {
+    let saved = state.database().songs().save(&song)?;
+    dispatch(
+        &app,
+        &state,
+        Command::RefreshSong {
+            song: Box::new(saved.clone()),
+        },
+    )?;
+    Ok(saved)
 }
 
 /// Deletes a song. Returns `false` if it was already gone.

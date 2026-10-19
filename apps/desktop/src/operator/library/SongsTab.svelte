@@ -5,12 +5,22 @@
   - Type to search titles, authors and lyrics.
   - ↑/↓ move through the results; Enter or double-click sends the song to
     the preview pane.
+  - Drag a song onto the schedule, or use “Add to Schedule”.
 -->
 <script lang="ts">
   import type { Song, SongSummary } from "@simpleworship/protocol";
   import { Button } from "@simpleworship/ui";
-  import { deleteSong, getSong, newSong, searchSongs, showSongInPreview } from "../../lib/api.ts";
+  import {
+    addSongToSchedule,
+    deleteSong,
+    getSong,
+    newSong,
+    searchSongs,
+    showSongInPreview,
+  } from "../../lib/api.ts";
+  import { SONG_DRAG_TYPE } from "../../lib/drag.ts";
   import { engine } from "../../lib/engine.svelte.ts";
+  import { library } from "../../lib/library.svelte.ts";
   import SongEditor from "./SongEditor.svelte";
 
   /** Wait this long after the last keystroke before searching, in milliseconds. */
@@ -25,9 +35,10 @@
 
   const selected = $derived(results.find((song) => song.id === selectedId) ?? null);
 
-  // Search as the operator types.
+  // Search as the operator types, and again when the library changes elsewhere.
   $effect(() => {
     const currentQuery = query;
+    void library.version;
     const timer = setTimeout(() => refresh(currentQuery), SEARCH_DELAY_MS);
     return () => clearTimeout(timer);
   });
@@ -50,6 +61,20 @@
     } catch (error) {
       engine.showError(error);
     }
+  }
+
+  async function addToSchedule(id: string | null = selectedId) {
+    if (!id) return;
+    try {
+      await addSongToSchedule(id);
+    } catch (error) {
+      engine.showError(error);
+    }
+  }
+
+  function startDrag(event: DragEvent, id: string) {
+    event.dataTransfer?.setData(SONG_DRAG_TYPE, id);
+    if (event.dataTransfer) event.dataTransfer.effectAllowed = "copy";
   }
 
   async function edit(id: string | null = selectedId) {
@@ -129,6 +154,7 @@
       <Button disabled={!selected} onclick={() => (confirmingDelete = true)}>Delete</Button>
     {/if}
     <span class="spacer"></span>
+    <Button disabled={!selected} onclick={() => addToSchedule()}>Add to Schedule</Button>
     <Button variant="primary" disabled={!selected} onclick={() => preview()}>
       Show in Preview
     </Button>
@@ -155,6 +181,8 @@
         role="option"
         tabindex="-1"
         aria-selected={song.id === selectedId}
+        draggable="true"
+        ondragstart={(event) => startDrag(event, song.id)}
         onclick={() => (selectedId = song.id)}
         ondblclick={() => preview(song.id)}
       >

@@ -8,13 +8,15 @@
   │ library: songs · text · scripture · media · …    │
   └──────────────────────────────────────────────────┘
 
-  It also owns the keyboard shortcuts (see `lib/shortcuts.ts`).
+  It also owns the keyboard shortcuts (see `lib/shortcuts.ts`) and the
+  File menu flows (see `lib/schedule-file.svelte.ts`).
 -->
 <script lang="ts">
   import type { Command } from "@simpleworship/protocol";
   import { Button } from "@simpleworship/ui";
   import { onMount } from "svelte";
   import { engine } from "../lib/engine.svelte.ts";
+  import { scheduleFile } from "../lib/schedule-file.svelte.ts";
   import {
     commandForKey,
     hasNumberedSection,
@@ -22,14 +24,21 @@
     SectionJumper,
   } from "../lib/shortcuts.ts";
   import Library from "./library/Library.svelte";
+  import PromptHost from "./PromptHost.svelte";
   import SchedulePanel from "./SchedulePanel.svelte";
   import SlidePane from "./SlidePane.svelte";
   import Toolbar from "./Toolbar.svelte";
 
   onMount(() => {
-    const connection = engine.connect();
-    connection.catch((error) => engine.showError(error));
-    return () => void connection.then((disconnect) => disconnect());
+    const connections = [engine.connect(), scheduleFile.connect()];
+    for (const connection of connections) {
+      connection.catch((error) => engine.showError(error));
+    }
+    return () => {
+      for (const connection of connections) {
+        void connection.then((disconnect) => disconnect());
+      }
+    };
   });
 
   const sectionJumper = new SectionJumper(
@@ -116,6 +125,8 @@
   </SlidePane>
 
   <Library />
+
+  <PromptHost />
 
   {#if engine.error}
     <div class="error" role="alert">{engine.error}</div>

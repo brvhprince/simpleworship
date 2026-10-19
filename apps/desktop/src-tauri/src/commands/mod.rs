@@ -5,5 +5,6 @@
 
 pub mod engine;
 pub mod outputs;
+pub mod schedule;
 pub mod songs;
 pub mod text;

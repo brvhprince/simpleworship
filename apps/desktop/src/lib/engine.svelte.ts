@@ -1,7 +1,8 @@
 /**
  * The engine state as seen by this window, kept up to date from engine
- * events. Components read `engine.preview`, `engine.live` and
- * `engine.output` and re-render automatically when they change.
+ * events. Components read `engine.schedule`, `engine.preview`,
+ * `engine.live` and `engine.output` and re-render automatically when they
+ * change.
  */
 
 import type {
@@ -10,6 +11,7 @@ import type {
   EngineSnapshot,
   OutputState,
   PaneState,
+  Schedule,
   Transport,
 } from "@simpleworship/protocol";
 import { tauriTransport } from "./tauri-transport.ts";
@@ -18,6 +20,8 @@ import { tauriTransport } from "./tauri-transport.ts";
 const ERROR_TIMEOUT_MS = 6000;
 
 export class EngineStore {
+  /** The order of service. */
+  schedule: Schedule = $state.raw({ items: [] });
   /** The preview pane, or `null` if empty. */
   preview: PaneState | null = $state.raw(null);
   /** The live pane, or `null` if nothing is live. */
@@ -69,10 +73,14 @@ export class EngineStore {
       case "outputChanged":
         this.output = event.output;
         break;
+      case "scheduleChanged":
+        this.schedule = event.schedule;
+        break;
     }
   }
 
   #applySnapshot(snapshot: EngineSnapshot): void {
+    this.schedule = snapshot.schedule;
     this.preview = snapshot.preview;
     this.live = snapshot.live;
     // An event may already have delivered a newer output than this snapshot.

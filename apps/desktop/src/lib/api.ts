@@ -5,10 +5,13 @@
  */
 
 import type {
+  AutosaveInfo,
   MonitorInfo,
   OutputKind,
   OutputTarget,
   Presentation,
+  RecentSchedule,
+  ScheduleFileStatus,
   Song,
   SongSummary,
 } from "@simpleworship/protocol";
@@ -39,6 +42,48 @@ export const showSongInPreview = (id: string) => invoke<void>("song_show_in_prev
 /** Loads free text into the preview pane; blank lines separate slides. */
 export const showTextInPreview = (title: string, text: string) =>
   invoke<void>("text_show_in_preview", { title, text });
+
+// ── Schedule ─────────────────────────────────────────────────────────────
+// Moving, removing and previewing items are engine commands (see
+// `engine.dispatch`); these need the library or the disk.
+
+/** Adds a library song to the schedule at `index`, or at the end. */
+export const addSongToSchedule = (id: string, index: number | null = null) =>
+  invoke<void>("schedule_add_song", { id, index });
+
+/** Adds free text to the schedule at `index`, or at the end. */
+export const addTextToSchedule = (title: string, text: string, index: number | null = null) =>
+  invoke<void>("schedule_add_text", { title, text, index });
+
+/** Ids of songs in the schedule that are not in this computer's library. */
+export const missingScheduleSongs = () => invoke<string[]>("schedule_missing_songs");
+
+/** Adds the schedule's missing songs to the library; resolves to how many. */
+export const addMissingScheduleSongs = () => invoke<number>("schedule_add_missing_songs");
+
+/** The current schedule file name and unsaved-changes flag. */
+export const scheduleFileStatus = () => invoke<ScheduleFileStatus>("schedule_file_status");
+
+/** Starts a new, empty schedule (without asking about unsaved changes). */
+export const newSchedule = () => invoke<void>("schedule_new");
+
+/** Opens a `.sws` file (without asking about unsaved changes). */
+export const openSchedule = (path: string) => invoke<void>("schedule_open", { path });
+
+/** Saves to `path` ("Save As"), or to the current file when `path` is null. */
+export const saveSchedule = (path: string | null) => invoke<void>("schedule_save", { path });
+
+/** Recently used schedule files, most recent first. */
+export const recentSchedules = () => invoke<RecentSchedule[]>("schedule_recent");
+
+/** The schedule left behind by a run that did not close normally, if any. */
+export const autosaveLeftover = () => invoke<AutosaveInfo | null>("autosave_leftover");
+
+/** Brings back the autosaved schedule. */
+export const restoreAutosave = () => invoke<void>("autosave_restore");
+
+/** Throws the autosaved schedule away. */
+export const discardAutosave = () => invoke<void>("autosave_discard");
 
 // ── Outputs ──────────────────────────────────────────────────────────────
 
