@@ -15,6 +15,7 @@ import type {
   Schedule,
   StageState,
   ThemeLibrary,
+  TransitionSettings,
   Transport,
 } from "@simpleworship/protocol";
 import { tauriTransport } from "./tauri-transport.ts";
@@ -40,6 +41,13 @@ export class EngineStore {
   stage: StageState = $state.raw({ timer: null, message: null });
   /** The background audio player. */
   audio: AudioState | null = $state.raw(null);
+  /** The transition for each kind of content. */
+  transitions: TransitionSettings = $state.raw({
+    songs: { kind: "fade", durationMs: 400 },
+    scripture: { kind: "fade", durationMs: 400 },
+    presentations: { kind: "fade", durationMs: 400 },
+    other: { kind: "fade", durationMs: 400 },
+  });
   /** The last error, shown to the operator for a few seconds. */
   error: string | null = $state(null);
 
@@ -97,6 +105,9 @@ export class EngineStore {
       case "audioChanged":
         this.audio = event.audio;
         break;
+      case "transitionsChanged":
+        this.transitions = event.transitions;
+        break;
       case "songWentLive":
         // Recorded by the app for the CCLI report; nothing to show.
         break;
@@ -108,6 +119,7 @@ export class EngineStore {
     this.themes = snapshot.themes;
     this.stage = snapshot.stage;
     this.audio = snapshot.audio;
+    this.transitions = snapshot.transitions;
     this.preview = snapshot.preview;
     this.live = snapshot.live;
     // An event may already have delivered a newer output than this snapshot.

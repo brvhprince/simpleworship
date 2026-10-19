@@ -21,7 +21,7 @@ use crate::deck::{AutoAdvance, DeckSlide, SlideDeck};
 use crate::engine::PaneState;
 use crate::id::Id;
 use crate::media::{MediaItem, MediaRef};
-use crate::output::{OutputState, Transition};
+use crate::output::{OutputState, TransitionSettings};
 use crate::presentation::Presentation;
 use crate::schedule::{Schedule, ScheduleItem};
 use crate::scripture::{ScriptureOptions, TranslationText};
@@ -118,10 +118,10 @@ pub enum Command {
         /// `true` to hide the background.
         on: bool,
     },
-    /// Change the transition used for subsequent changes.
-    SetTransition {
-        /// The new transition.
-        transition: Transition,
+    /// Change the transitions used from now on, for each kind of content.
+    SetTransitions {
+        /// The new transitions.
+        transitions: TransitionSettings,
     },
     /// Set (or remove) the church logo shown by the Logo button.
     SetLogoImage {
@@ -405,6 +405,11 @@ pub enum EngineEvent {
     AudioChanged {
         /// The new audio state.
         audio: AudioState,
+    },
+    /// The transitions for each kind of content changed.
+    TransitionsChanged {
+        /// The new transitions.
+        transitions: TransitionSettings,
     },
     /// A song went live, for the CCLI usage report.
     SongWentLive {

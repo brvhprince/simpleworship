@@ -14,13 +14,22 @@ publish = false
 name = "simpleworship_desktop_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
+# The program's file name is what the system shows in some places (Force
+# Quit, Mission Control and the menu bar on a Mac, Task Manager on
+# Windows), so it is the app's name.
+[[bin]]
+name = "SimpleWorship"
+path = "src/main.rs"
+
 [build-dependencies]
 tauri-build = { version = "2.7", features = [] }
 
 [dependencies]
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
-fontdb = "0.24"
 imagesize = "0.15"
+local-ip-address = "0.6"
+mdns-sd = "0.21"
+qrcode = { version = "0.14", default-features = false, features = ["svg"] }
 serde.workspace = true
 serde_json.workspace = true
 sw-bible.workspace = true
@@ -28,6 +37,7 @@ sw-core.workspace = true
 sw-db.workspace = true
 sw-files.workspace = true
 sw-import.workspace = true
+sw-server.workspace = true
 # protocol-asset serves media files to the webview (with range requests,
 # so videos can seek).
 tauri = { version = "2.12", features = ["protocol-asset"] }
@@ -45,3 +55,12 @@ tauri-plugin-single-instance = "2.5"
 
 [lints]
 workspace = true
+
+# Windows: the font list comes from DirectWrite, as the output does (see
+# `commands::themes::fonts_list`).
+[target.'cfg(windows)'.dependencies]
+dwrote = "0.11"
+
+# Elsewhere, from the font folders.
+[target.'cfg(not(windows))'.dependencies]
+fontdb = "0.24"

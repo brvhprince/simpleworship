@@ -3,6 +3,7 @@
 use std::fmt::Write as _;
 
 use sw_core::Command;
+use sw_core::output::TransitionSettings;
 use sw_core::usage::SongUsage;
 use tauri::{AppHandle, Emitter, State};
 
@@ -36,6 +37,17 @@ pub fn settings_save(
             license: settings::license(&settings),
         },
     )
+}
+
+/// Changes and saves the transition for each kind of content.
+#[tauri::command]
+pub fn transitions_save(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    transitions: TransitionSettings,
+) -> AppResult<()> {
+    settings::save_transitions(&state.database(), &transitions)?;
+    dispatch(&app, &state, Command::SetTransitions { transitions })
 }
 
 /// Songs used from `from` to `to` (inclusive, `YYYY-MM-DD`), most used first.

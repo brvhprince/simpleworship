@@ -3,9 +3,9 @@
   "productName": "SimpleWorship",
   "identifier": "org.simpleworship.app",
   "build": {
-    "beforeDevCommand": "pnpm dev",
+    "beforeDevCommand": "pnpm --filter @simpleworship/remote build && pnpm dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "pnpm build",
+    "beforeBuildCommand": "pnpm --filter @simpleworship/remote build && pnpm build",
     "frontendDist": "../dist"
   },
   "app": {
@@ -51,7 +51,8 @@
     ],
     "resources": {
       "../../../resources/bibles/eng-kjv2006_usfm.zip": "bibles/eng-kjv2006_usfm.zip",
-      "../../../resources/bibles/engwebp_usfm.zip": "bibles/engwebp_usfm.zip"
+      "../../../resources/bibles/engwebp_usfm.zip": "bibles/engwebp_usfm.zip",
+      "../../remote/dist/": "remote/"
     },
     "publisher": "SimpleWorship contributors",
     "copyright": "\u00a9 SimpleWorship contributors. GPL-3.0-or-later.",

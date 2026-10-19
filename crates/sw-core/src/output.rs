@@ -84,6 +84,23 @@ impl Default for Transition {
     }
 }
 
+/// The transition for each kind of content, as in EasyWorship: a church
+/// might cut straight to scripture during preaching but fade between song
+/// slides. Saved by the host, so it is the same after a restart.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase", default)]
+#[ts(export, export_to = "bindings.ts")]
+pub struct TransitionSettings {
+    /// For songs.
+    pub songs: Transition,
+    /// For Bible passages.
+    pub scripture: Transition,
+    /// For presentations, imported PDFs and slideshows.
+    pub presentations: Transition,
+    /// For everything else: typed text, pictures, videos, countdowns.
+    pub other: Transition,
+}
+
 /// The available transitions.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]

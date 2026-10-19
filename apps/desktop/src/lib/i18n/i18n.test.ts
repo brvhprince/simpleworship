@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { translate } from "./i18n.svelte.ts";
+import { pick, translate } from "./i18n.svelte.ts";
 
 // Tests use keys that always exist in en.json.
 describe("translate", () => {
   it("falls back to English for lines not yet translated", () => {
-    expect(translate("tw", "common.cancel")).toBe(translate("en", "common.cancel"));
+    expect(pick("", "tw", "Cancel")).toEqual(["Cancel", "en"]);
+    expect(pick({ one: "", other: " " }, "tw", "Cancel")).toEqual(["Cancel", "en"]);
+    expect(pick("Gyae", "tw", "Cancel")).toEqual(["Gyae", "tw"]);
   });
 
   it("fills in values and picks the form for the number", () => {

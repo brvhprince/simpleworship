@@ -43,7 +43,9 @@ use crate::countdown::{CountdownEnd, CountdownFrame};
 use crate::deck::SlideDeck;
 use crate::id::Id;
 use crate::media::{MediaItem, MediaKind, MediaRef};
-use crate::output::{DisplayFlags, OutputState, RenderFrame, Transition, VideoPlayback};
+use crate::output::{
+    DisplayFlags, OutputState, RenderFrame, Transition, TransitionSettings, VideoPlayback,
+};
 use crate::presentation::{Presentation, PresentationSource};
 use crate::schedule::{ItemContent, Schedule, ScheduleItem};
 use crate::slides::SlideOptions;
@@ -87,6 +89,8 @@ pub struct EngineSnapshot {
     pub stage: StageState,
     /// The background audio.
     pub audio: AudioState,
+    /// The transition for each kind of content.
+    pub transitions: TransitionSettings,
 }
 
 /// A command that could not be carried out.
@@ -122,7 +126,8 @@ pub struct Engine {
     preview: Option<PaneState>,
     live: Option<PaneState>,
     flags: DisplayFlags,
-    transition: Transition,
+    /// The transition for each kind of content.
+    transitions: TransitionSettings,
     /// The themes and defaults everything is styled with.
     themes: ThemeLibrary,
     /// The church logo, if one is set.
@@ -192,7 +197,7 @@ impl Engine {
             preview: None,
             live: None,
             flags: DisplayFlags::default(),
-            transition: Transition::default(),
+            transitions: TransitionSettings::default(),
             themes: ThemeLibrary::default(),
             logo: None,
             video: None,
@@ -218,6 +223,7 @@ impl Engine {
             output: self.output.clone(),
             stage: self.stage.clone(),
             audio: self.audio.clone(),
+            transitions: self.transitions,
         }
     }
 
@@ -240,6 +246,7 @@ impl Engine {
         let before_live = self.live.clone();
         let before_stage = self.stage.clone();
         let before_audio = self.audio.clone();
+        let before_transitions = self.transitions;
         let themes_changing = matches!(command, Command::SetThemes { .. });
         self.schedule_changed = false;
 
@@ -278,6 +285,11 @@ impl Engine {
         if self.audio != before_audio {
             events.push(EngineEvent::AudioChanged {
                 audio: self.audio.clone(),
+            });
+        }
+        if self.transitions != before_transitions {
+            events.push(EngineEvent::TransitionsChanged {
+                transitions: self.transitions,
             });
         }
         Ok(events)
@@ -321,6 +333,7 @@ impl Engine {
             Command::GoLive => {
                 let pane = self.preview.clone().ok_or(EngineError::NothingInPreview)?;
                 self.go_live(pane);
+                self.reveal();
             }
             Command::SelectLiveSlide { index } => {
                 select(self.live_mut()?, index)?;
@@ -340,7 +353,7 @@ impl Engine {
             Command::SetLogo { on } => self.flags.logo = on,
             Command::SetHideText { on } => self.flags.hide_text = on,
             Command::SetHideBackground { on } => self.flags.hide_background = on,
-            Command::SetTransition { transition } => self.transition = transition,
+            Command::SetTransitions { transitions } => self.transitions = transitions,
             Command::SetLogoImage { logo } => self.logo = logo,
 
             // ── Video ─────────────────────────────────────────────────────
@@ -524,6 +537,7 @@ impl Engine {
                     .ok_or(EngineError::UnknownScheduleItem)?;
                 let pane = self.pane_for(item, StartAt::First);
                 self.go_live(pane);
+                self.reveal();
             }
             Command::RefreshSong { song } => self.refresh_song(&song),
             Command::RefreshDeck { deck } => self.refresh_deck(&deck),
@@ -866,10 +880,11 @@ impl Engine {
             Some(frame)
         });
         self.follow_live_video(frame.as_ref());
+        let transition = self.live_transition();
 
         let unchanged = frame == self.output.frame
             && self.flags == self.output.flags
-            && self.transition == self.output.transition
+            && transition == self.output.transition
             && self.video == self.output.video
             && self.logo == self.output.logo
             && self.alert == self.output.alert;
@@ -880,13 +895,35 @@ impl Engine {
         self.output = OutputState {
             frame,
             flags: self.flags,
-            transition: self.transition,
+            transition,
             video: self.video,
             logo: self.logo.clone(),
             alert: self.alert.clone(),
             revision: self.output.revision + 1,
         };
         Some(self.output.clone())
+    }
+
+    /// The operator sent something live on purpose, so it should be seen:
+    /// Logo and Clear Text come off. Black and Clear Background stay, as
+    /// they are deliberate choices (and Black is the safety net). Moving on
+    /// with Next does not do this, so a logo stays up between items.
+    fn reveal(&mut self) {
+        self.flags.logo = false;
+        self.flags.hide_text = false;
+    }
+
+    /// The transition for what is live: the one set for its kind of content.
+    fn live_transition(&self) -> Transition {
+        let settings = &self.transitions;
+        match self.live.as_ref().map(|pane| &pane.presentation.source) {
+            Some(PresentationSource::Song { .. }) => settings.songs,
+            Some(PresentationSource::Scripture { .. }) => settings.scripture,
+            Some(PresentationSource::Deck { .. } | PresentationSource::Slides) => {
+                settings.presentations
+            }
+            _ => settings.other,
+        }
     }
 
     /// The countdown to draw for the live pane, if it shows one.
@@ -1833,5 +1870,74 @@ mod tests {
             })
             .unwrap();
         assert_eq!(live_text(&engine).as_deref(), Some("new"));
+    }
+
+    #[test]
+    fn sending_something_live_takes_off_logo_and_clear_text_but_not_black() {
+        let mut engine = live_engine();
+        for command in [
+            Command::SetLogo { on: true },
+            Command::SetHideText { on: true },
+            Command::SetBlack { on: true },
+        ] {
+            engine.dispatch(command).unwrap();
+        }
+        engine
+            .dispatch(Command::ShowInPreview {
+                presentation: Box::new(three_slides()),
+            })
+            .unwrap();
+        engine.dispatch(Command::GoLive).unwrap();
+
+        let flags = engine.snapshot().output.flags;
+        assert!(!flags.logo && !flags.hide_text);
+        assert!(flags.black, "Black stays until the operator turns it off");
+    }
+
+    #[test]
+    fn next_into_the_following_item_keeps_the_logo() {
+        let (mut engine, [a, _, _]) = scheduled_engine();
+        engine
+            .dispatch(Command::ShowScheduleItem { id: a })
+            .unwrap();
+        engine.dispatch(Command::SetLogo { on: true }).unwrap();
+        for _ in 0..3 {
+            engine.dispatch(Command::NextSlide).unwrap();
+        }
+        assert!(engine.snapshot().output.flags.logo);
+    }
+
+    #[test]
+    fn each_kind_of_content_has_its_own_transition() {
+        let cut = Transition {
+            kind: crate::output::TransitionKind::Cut,
+            duration_ms: 0,
+        };
+        let deck = deck_item(&["Notices"]);
+        let deck_id = deck.id;
+        let mut engine = themed_engine(vec![deck]);
+        engine
+            .dispatch(Command::SetTransitions {
+                transitions: TransitionSettings {
+                    presentations: cut,
+                    ..TransitionSettings::default()
+                },
+            })
+            .unwrap();
+
+        // Typed text is "everything else": still a fade.
+        engine
+            .dispatch(Command::ShowInPreview {
+                presentation: Box::new(three_slides()),
+            })
+            .unwrap();
+        engine.dispatch(Command::GoLive).unwrap();
+        assert_eq!(engine.snapshot().output.transition, Transition::default());
+
+        // A presentation cuts straight in.
+        engine
+            .dispatch(Command::ShowScheduleItem { id: deck_id })
+            .unwrap();
+        assert_eq!(engine.snapshot().output.transition, cut);
     }
 }

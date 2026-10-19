@@ -3,6 +3,7 @@
 
 use serde::{Deserialize, Serialize};
 use sw_core::alerts::{AlertTemplate, starter_templates};
+use sw_core::output::TransitionSettings;
 use sw_db::Database;
 use ts_rs::TS;
 
@@ -72,6 +73,23 @@ pub fn load(database: &Database) -> AppResult<AppSettings> {
 /// Saves the settings.
 pub fn save(database: &Database, settings: &AppSettings) -> AppResult<()> {
     Ok(database.settings().set(SETTINGS_KEY, settings)?)
+}
+
+/// Settings key for the transitions (saved separately: the toolbar changes
+/// them, not the Settings dialog).
+const TRANSITIONS_KEY: &str = "transitions";
+
+/// The saved transitions, or the defaults.
+pub fn load_transitions(database: &Database) -> AppResult<TransitionSettings> {
+    Ok(database
+        .settings()
+        .get(TRANSITIONS_KEY)?
+        .unwrap_or_default())
+}
+
+/// Saves the transitions, so they are the same after a restart.
+pub fn save_transitions(database: &Database, transitions: &TransitionSettings) -> AppResult<()> {
+    Ok(database.settings().set(TRANSITIONS_KEY, transitions)?)
 }
 
 /// The licence number to put on slides, if one is set.

@@ -282,9 +282,14 @@
         {/if}
         {#if missing.length > 0}
           <div class="missing">
-            <span
-              >{t("import.mediaMissing", { missing: missing.length, total: media.length })}</span
-            >
+            <span>
+              {t("import.mediaMissing", { missing: missing.length, total: media.length })}
+              <span class="searched">
+                {missing[0]?.searched
+                  ? t("import.searchedIn", { folder: missing[0].searched })
+                  : t("import.noResources")}
+              </span>
+            </span>
             <Button disabled={busy !== null} onclick={locateMedia}
               >{t("import.lookElsewhere")}</Button
             >
@@ -480,6 +485,14 @@
 
   .done {
     font-size: 1.1em;
+  }
+
+  .searched {
+    display: block;
+    margin-top: 2px;
+    color: var(--sw-text-faint);
+    font-size: var(--sw-font-size-small);
+    word-break: break-all;
   }
 
   .missing {

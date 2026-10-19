@@ -33,5 +33,5 @@ translated. `pnpm i18n:check --sync` adds new English keys to every file
 (empty, ready to translate).
 
 **Adding a language:** copy `tw.json` to `<code>.json` (e.g. `ee.json` for
-Ewe), add it to `LANGUAGES` and `PLURAL_LOCALES` in `../i18n.svelte.ts`,
+Ewe), add it to `LANGUAGES` and `PLURAL_LOCALES` in `../i18n.svelte.ts` (in `packages/i18n`),
 and translate.

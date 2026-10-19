@@ -13,6 +13,7 @@
   import { dialogs } from "../lib/dialogs.svelte.ts";
   import { engine } from "../lib/engine.svelte.ts";
   import { i18n, LANGUAGES, type Language, t } from "../lib/i18n/i18n.svelte.ts";
+  import { ROLES, remote } from "../lib/remote.svelte.ts";
   import { updates } from "../lib/updates.svelte.ts";
 
   let settings: AppSettings | null = $state(null);
@@ -131,6 +132,66 @@
       </section>
 
       <section>
+        <h3>{t("settings.remote")}</h3>
+        {#if remote.status}
+          {@const status = remote.status}
+          <label class="option">
+            <input
+              type="checkbox"
+              checked={status.settings.enabled}
+              onchange={(e) => remote.setEnabled(e.currentTarget.checked, status.settings.port)}
+            >
+            {t("settings.remoteOn")}
+          </label>
+          <label class="field narrow">
+            {t("settings.remotePort")}
+            <input
+              type="number"
+              min="1024"
+              max="65535"
+              value={status.settings.port}
+              onchange={(e) =>
+                remote.setEnabled(status.settings.enabled, e.currentTarget.valueAsNumber || 7270)}
+            >
+          </label>
+          {#if status.running && status.addresses.length > 0}
+            <p class="hint">
+              {t("settings.remoteAddresses", { addresses: status.addresses.join("  ·  ") })}
+            </p>
+          {:else if status.error}
+            <p class="hint">{status.error}</p>
+          {/if}
+          <p class="hint">{t("settings.remoteHint")}</p>
+          {#each status.devices as device (device.id)}
+            <div class="template">
+              <span class="device-name">
+                {device.name}
+                {#if status.connected.includes(device.id)}
+                  <span class="connected">· {t("settings.remoteConnected")}</span>
+                {/if}
+              </span>
+              <select
+                value={device.role}
+                aria-label={t("settings.remoteRole", { name: device.name })}
+                onchange={(e) =>
+                  remote.setRole(
+                    device.id,
+                    e.currentTarget.value as (typeof ROLES)[number]["role"],
+                  )}
+              >
+                {#each ROLES as option (option.role)}
+                  <option value={option.role}>{t(option.name)}</option>
+                {/each}
+              </select>
+              <Button onclick={() => remote.remove(device.id)}>{t("settings.remove")}</Button>
+            </div>
+          {:else}
+            <p class="hint">{t("settings.remoteNoDevices")}</p>
+          {/each}
+        {/if}
+      </section>
+
+      <section>
         <h3>{t("settings.language")}</h3>
         <label class="field">
           <select bind:value={language} aria-label={t("settings.language")}>
@@ -191,6 +252,15 @@
     display: flex;
     gap: var(--sw-space-1);
     margin-bottom: var(--sw-space-2);
+  }
+
+  .device-name {
+    flex: 1;
+  }
+
+  .connected {
+    color: var(--sw-text-muted);
+    font-size: var(--sw-font-size-small);
   }
 
   .template-name {

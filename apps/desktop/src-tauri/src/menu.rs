@@ -242,9 +242,8 @@ fn build(
     let menu = MenuBuilder::new(app);
     #[cfg(target_os = "macos")]
     let menu = menu.item(
-        // The system's own About box and Hide item would use the program's
-        // file name ("simpleworship-desktop"), so they are labelled here, and
-        // About opens SimpleWorship's own About dialog.
+        // Labelled here (and translated), and About opens SimpleWorship's
+        // own About dialog rather than the system's.
         &SubmenuBuilder::new(app, "SimpleWorship")
             .item(&text("about", "menu.about", "About SimpleWorship")?)
             .separator()

@@ -41,6 +41,7 @@ pub fn dispatch(app: &AppHandle, state: &AppState, command: Command) -> AppResul
             _ => {}
         }
         app.emit(ENGINE_EVENT, &event)?;
+        crate::remote::publish(app, &event);
     }
     Ok(())
 }

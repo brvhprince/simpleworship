@@ -64,6 +64,14 @@ pub enum AppError {
     #[error("{0}")]
     Conversion(String),
 
+    /// The phone remote is turned off.
+    #[error("the phone remote is turned off; turn it on in Settings")]
+    RemoteOff,
+
+    /// The computer is not on a network phones can reach.
+    #[error("this computer is not connected to a network; connect it to the church Wi-Fi first")]
+    NoNetwork,
+
     /// A presentation id that is not in the library (any more).
     #[error("that presentation is no longer in the library")]
     PresentationNotFound,

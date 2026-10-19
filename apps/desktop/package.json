@@ -23,7 +23,8 @@
     "@tauri-apps/plugin-log": "^2.10.1",
     "@tauri-apps/plugin-process": "^2.4.0",
     "@tauri-apps/plugin-updater": "^2.14.0",
-    "pdfjs-dist": "^6.4.299"
+    "pdfjs-dist": "^6.4.299",
+    "@simpleworship/i18n": "workspace:*"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^7.3.1",

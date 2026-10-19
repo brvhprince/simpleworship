@@ -53,15 +53,7 @@ pub fn theme_set_defaults(
 /// fonts installed on this computer, alphabetically.
 #[tauri::command]
 pub async fn fonts_list() -> Vec<String> {
-    let mut database = fontdb::Database::new();
-    database.load_system_fonts();
-
-    let installed: BTreeSet<String> = database
-        .faces()
-        .flat_map(|face| face.families.iter().map(|(name, _)| name.clone()))
-        // Hidden system fonts on macOS start with a dot.
-        .filter(|name| !name.starts_with('.'))
-        .collect();
+    let installed = installed_fonts();
 
     BUNDLED_FONTS
         .iter()
@@ -71,6 +63,36 @@ pub async fn fonts_list() -> Vec<String> {
                 .into_iter()
                 .filter(|name| !BUNDLED_FONTS.contains(&name.as_str())),
         )
+        .collect()
+}
+
+/// The font families installed on Windows, by the names the output window
+/// knows them by.
+///
+/// The output (WebView2) finds fonts through DirectWrite, so the list comes
+/// from DirectWrite too. It includes fonts that installers and font managers
+/// put outside `C:\Windows\Fonts` (Windows keeps those in the registry),
+/// and fonts installed while SimpleWorship is open.
+#[cfg(windows)]
+fn installed_fonts() -> BTreeSet<String> {
+    dwrote::FontCollection::get_system(true)
+        .families_iter()
+        .filter_map(|family| family.family_name().ok())
+        .collect()
+}
+
+/// The font families installed on macOS and Linux: the system's and the
+/// user's font folders (and, on Linux, fontconfig's).
+#[cfg(not(windows))]
+fn installed_fonts() -> BTreeSet<String> {
+    let mut database = fontdb::Database::new();
+    database.load_system_fonts();
+
+    database
+        .faces()
+        .flat_map(|face| face.families.iter().map(|(name, _)| name.clone()))
+        // Hidden system fonts on macOS start with a dot.
+        .filter(|name| !name.starts_with('.'))
         .collect()
 }
 
@@ -118,7 +140,9 @@ pub fn sync_settings(app: &AppHandle, state: &AppState) -> AppResult<()> {
         },
     )?;
     let minutes = chrono::Local::now().offset().local_minus_utc() / 60;
-    dispatch(app, state, Command::SetUtcOffset { minutes })
+    dispatch(app, state, Command::SetUtcOffset { minutes })?;
+    let transitions = crate::settings::load_transitions(&state.database())?;
+    dispatch(app, state, Command::SetTransitions { transitions })
 }
 
 /// Loads the saved logo into the engine. Called at startup.

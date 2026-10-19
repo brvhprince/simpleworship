@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Checks the interface translations against English
- * (apps/desktop/src/lib/i18n/messages):
+ * (packages/i18n/src/messages):
  *
  * - lists keys missing from a language, and keys English no longer has;
  * - checks that `{placeholders}` match English;
@@ -16,10 +16,7 @@ import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const folder = join(
-  dirname(fileURLToPath(import.meta.url)),
-  "../apps/desktop/src/lib/i18n/messages",
-);
+const folder = join(dirname(fileURLToPath(import.meta.url)), "../packages/i18n/src/messages");
 const sync = process.argv.includes("--sync");
 const read = (file) => JSON.parse(readFileSync(join(folder, file), "utf8"));
 const english = read("en.json");

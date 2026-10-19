@@ -25,6 +25,7 @@
   import { media } from "../lib/media.svelte.ts";
   import { connectEditMenu } from "../lib/menu.ts";
   import { panels } from "../lib/panels.svelte.ts";
+  import { remote } from "../lib/remote.svelte.ts";
   import { scheduleFile } from "../lib/schedule-file.svelte.ts";
   import {
     commandForKey,
@@ -35,8 +36,10 @@
   import { updates } from "../lib/updates.svelte.ts";
   import AboutDialog from "./AboutDialog.svelte";
   import AudioPlayer from "./AudioPlayer.svelte";
+  import ConnectPhoneDialog from "./ConnectPhoneDialog.svelte";
   import ImportDialog from "./ImportDialog.svelte";
   import Library from "./library/Library.svelte";
+  import PairRequestDialog from "./PairRequestDialog.svelte";
   import PromptHost from "./PromptHost.svelte";
   import SchedulePanel from "./SchedulePanel.svelte";
   import SettingsDialog from "./SettingsDialog.svelte";
@@ -88,6 +91,7 @@
       dialogs.connect(),
       connectEditMenu(),
       updates.connect(),
+      remote.connect(),
     ];
     for (const connection of connections) {
       connection.catch((error) => engine.showError(error));
@@ -214,6 +218,14 @@
     <UsageDialog />
   {:else if dialogs.open === "about"}
     <AboutDialog />
+  {/if}
+  {#if remote.connecting}
+    <ConnectPhoneDialog />
+  {/if}
+  {#if remote.requests[0]}
+    {#key remote.requests[0].id}
+      <PairRequestDialog request={remote.requests[0]} />
+    {/key}
   {/if}
   {#if importer.isOpen}
     <ImportDialog />

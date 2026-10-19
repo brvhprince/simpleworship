@@ -1,0 +1,26 @@
+[package]
+name = "sw-server"
+description = "SimpleWorship's local network server: the phone remote and stage displays on other devices"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+axum = { version = "0.8", features = ["ws"] }
+futures-util = { version = "0.3", default-features = false, features = ["sink", "std"] }
+rand = "0.9"
+serde.workspace = true
+serde_json.workspace = true
+sha2 = "0.10"
+sw-core.workspace = true
+thiserror.workspace = true
+tokio = { version = "1", features = ["net", "sync", "time", "macros", "rt-multi-thread", "fs"] }
+ts-rs.workspace = true
+
+[dev-dependencies]
+tokio-tungstenite = "0.27"
+
+[lints]
+workspace = true

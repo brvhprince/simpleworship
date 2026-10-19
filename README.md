@@ -102,8 +102,25 @@ with EasyWorship should feel at home.
   Usage Report (File menu) lists them for any period and exports CSV. Put
   your CCLI licence number in Settings and it appears in every song footer.
 
-- **In your language:** English and French, with Twi on the way (see
-  [Translating SimpleWorship](apps/desktop/src/lib/i18n/messages/README.md)).
+- **Phone remote:** control SimpleWorship from phones and tablets on the
+  church Wi-Fi, in their web browser (nothing to install). Turn it on under
+  **Remote** in the toolbar, click **Connect a Phone**, and scan the QR code.
+  You choose what each phone may do:
+  - **Full control:** live controls, schedule, songs, Bible, alerts and stage;
+  - **Presenter:** next and previous slide, sections, Black (for the preacher);
+  - **Worship leader:** the songs in the schedule only;
+  - **Alerts:** show and clear alerts (for the nursery and ushers);
+  - **Stage view:** a stage display on a tablet.
+
+  Phones connect only over the local network, never the internet, and the
+  computer checks every tap against the phone's role. Remove a phone in
+  Settings › Phone Remote and it is disconnected at once. Video backgrounds
+  show as stills on phones.
+- **Per-content transitions:** a cut or a fade, with its own length, for
+  songs, scripture, presentations and everything else, remembered between
+  services.
+- **In your language:** English, French and Twi (see
+  [Translating SimpleWorship](packages/i18n/src/messages/README.md)).
   Choose it in Settings › Language.
 - **Safe updates:** SimpleWorship looks for new versions and downloads them
   quietly, but only installs when you click, and never while something is
@@ -124,6 +141,18 @@ Until the installers are signed, the system warns the first time: on a
 Mac, right-click SimpleWorship and choose **Open**; on Windows, click
 **More info › Run anyway**. Double-clicking a `.sws` schedule opens it in
 SimpleWorship.
+
+### If phones can't connect
+
+- The phone must be on the **same Wi-Fi** as the computer (not mobile data,
+  and not a guest network that keeps devices apart).
+- The first time the remote is turned on, **Windows asks whether to allow
+  SimpleWorship on the network**: allow it on private networks. If you
+  missed it, allow SimpleWorship in *Windows Security › Firewall & network
+  protection › Allow an app through firewall*. On a Mac, allow incoming
+  connections if asked.
+- The remote uses port **7270**. If something else uses it, change the port
+  in Settings › Phone Remote.
 
 ## Keyboard shortcuts
 
@@ -195,9 +224,12 @@ crates/
   sw-files/     SimpleWorship's own file formats (.sws schedules)
   sw-bible/     Bible books, reference parsing, and Bible file importers
   sw-import/    Song importers for other worship software
+  sw-server/    The phone remote's server: pairing, roles, WebSocket, media
 apps/
   desktop/      The Tauri app: operator window, output and stage windows
+  remote/       The phone remote: a web app the desktop serves on the network
 packages/
+  i18n/         Translations, shared by the desktop and the remote
   protocol/     TypeScript types generated from Rust, plus the Transport interface
   renderer/     Svelte components that draw slides (output, previews, thumbnails)
   ui/           Shared Svelte components and design tokens
@@ -205,9 +237,9 @@ packages/
 
 The **Rust core owns all state.** Windows never change anything themselves.
 They send a `Command` to the engine, and every window updates from the
-`EngineEvent`s that come back. The same design will let a phone remote, a
-second operator computer or an NDI output plug into the engine later,
-without changes to the core.
+`EngineEvent`s that come back. The phone remote is one more client of the
+same engine: its commands arrive over a WebSocket instead of from a window.
+A second operator computer or an NDI output will plug in the same way.
 
 Slides are laid out on a fixed 1920×1080 canvas and scaled to fit, so the
 projector, the stage display and every thumbnail look the same.
@@ -225,10 +257,10 @@ projector, the stage display and every thumbnail look the same.
 | M6        | Importers: EasyWorship 6/7, OpenLP, OpenLyrics, ProPresenter, ChordPro, CCLI | ✅     |
 | M7        | Alerts, countdowns, background audio, presentations (PDF/PPTX), CCLI report | ✅     |
 | M8        | Presentation editor, slideshows, scripture styling (verse numbers, reference box) | ✅     |
-| M9        | Installers, auto-update, translations (English, French; Twi in progress), EasyWorship media import | ✅     |
+| M9        | Installers, auto-update, translations (English, French, Twi), EasyWorship media import | ✅     |
+| M10       | Phone remote (roles, QR pairing, stage display on a tablet), per-content transitions | 🚧     |
 
-Later: remote control from a phone, NDI / stream output, multi-operator
-sync, and AI-assisted features.
+Later: NDI / stream output, multi-operator sync, and AI-assisted features.
 
 ### Backlog
 

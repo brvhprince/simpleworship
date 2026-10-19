@@ -26,6 +26,7 @@ export {
   textBoxStyle as elementBoxStyle,
   verticalJustify,
 } from "./elements.ts";
+export { frameAt } from "./frames.ts";
 export { getMediaUrls, type MediaUrls, setMediaUrls } from "./media.ts";
 export { default as OutputView } from "./OutputView.svelte";
 export { default as ScaledCanvas } from "./ScaledCanvas.svelte";

@@ -36,6 +36,7 @@ import type {
   SongUsage,
   ThemeDefaults,
   ThemeRecord,
+  TransitionSettings,
   TranslationText,
   Verse,
 } from "@simpleworship/protocol";
@@ -331,6 +332,10 @@ export const getSettings = () => invoke<AppSettings>("settings_get");
 
 /** Saves the church's settings. */
 export const saveSettings = (settings: AppSettings) => invoke<void>("settings_save", { settings });
+
+/** Saves the transition for each kind of content. */
+export const saveTransitions = (transitions: TransitionSettings) =>
+  invoke<void>("transitions_save", { transitions });
 
 /** Songs used between two dates (`YYYY-MM-DD`, inclusive), most used first. */
 export const usageReport = (from: string, to: string) =>

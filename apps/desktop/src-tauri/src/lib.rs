@@ -30,6 +30,7 @@ mod media;
 mod menu;
 mod office;
 mod recent;
+mod remote;
 mod schedule_archive;
 mod schedule_file;
 mod settings;
@@ -62,6 +63,7 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(launch::PendingOpen::default())
+        .manage(remote::RemoteState::default())
         .setup(|app| {
             log::info!("SimpleWorship {} starting", app.package_info().version);
             let state = AppState::load(app.handle())?;
@@ -78,6 +80,8 @@ pub fn run() {
             commands::themes::sync_themes(app.handle(), &state)?;
             commands::themes::sync_logo(app.handle(), &state)?;
             commands::themes::sync_settings(app.handle(), &state)?;
+
+            remote::start_if_enabled(app.handle());
 
             // Windows and Linux: started by double-clicking a schedule file.
             let args: Vec<String> = std::env::args().collect();
@@ -158,6 +162,7 @@ pub fn run() {
             commands::presentations::schedule_add_presentation,
             commands::settings::settings_get,
             commands::settings::settings_save,
+            commands::settings::transitions_save,
             commands::settings::usage_report,
             commands::settings::usage_export_csv,
             commands::text::text_show_in_preview,
@@ -168,6 +173,13 @@ pub fn run() {
             menu::open_logs_folder,
             menu::open_project_page,
             menu::menu_set_labels,
+            remote::remote_status,
+            remote::remote_set_enabled,
+            remote::remote_pairing_start,
+            remote::remote_pairing_cancel,
+            remote::remote_answer,
+            remote::remote_set_role,
+            remote::remote_remove,
         ])
         .on_window_event(windows::on_window_event)
         .build(tauri::generate_context!())

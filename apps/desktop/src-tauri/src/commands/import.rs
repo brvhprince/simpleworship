@@ -73,6 +73,9 @@ pub struct PreviewMedia {
     pub kind: Option<MediaKind>,
     /// The media library already has it (same title and size).
     pub duplicate: bool,
+    /// The `Resources` folder searched, or `None` if none was found near the
+    /// library (shown when files are missing, to see where it looked).
+    pub searched: Option<String>,
 }
 
 /// A media file to import, with the title to give it.
@@ -280,6 +283,13 @@ pub async fn import_locate_media(
 /// Media entries for a library's items, with the files found so far.
 fn preview_media(data: &Path, items: &[EasyWorshipMedia], extra: &[PathBuf]) -> Vec<PreviewMedia> {
     let found = easyworship_media::locate(data, items, extra);
+    let searched = easyworship_media::resources_folder(data).map(|path| path.display().to_string());
+    log::info!(
+        "EasyWorship media: {} of {} files found; Resources folder: {}",
+        found.iter().flatten().count(),
+        items.len(),
+        searched.as_deref().unwrap_or("not found"),
+    );
     items
         .iter()
         .zip(found)
@@ -291,6 +301,7 @@ fn preview_media(data: &Path, items: &[EasyWorshipMedia], extra: &[PathBuf]) -> 
             kind: media::kind_of(Path::new(&item.file_name)),
             path: path.map(|path| path.display().to_string()),
             duplicate: false,
+            searched: searched.clone(),
         })
         .collect()
 }

@@ -5,25 +5,24 @@
   - **Outputs**: choose which screen the projector output and the stage
     display appear on, and show or hide them.
   - **Display controls**: Black, Logo, Clear Text, Clear Background.
-  - **Transition**: cut or fade, and how long a fade takes.
+  - **Transitions**: cut or fade (and how long) for songs, scripture,
+    presentations and everything else, remembered between sessions.
 -->
 <script lang="ts">
-  import type {
-    MonitorInfo,
-    OutputKind,
-    OutputTarget,
-    TransitionKind,
-  } from "@simpleworship/protocol";
+  import type { MonitorInfo, OutputKind, OutputTarget } from "@simpleworship/protocol";
   import { Button } from "@simpleworship/ui";
   import { onMount } from "svelte";
   import { closeOutput, listMonitors, openOutput } from "../lib/api.ts";
   import { engine } from "../lib/engine.svelte.ts";
   import { t } from "../lib/i18n/i18n.svelte.ts";
   import { panels } from "../lib/panels.svelte.ts";
+  import { remote } from "../lib/remote.svelte.ts";
   import { updates } from "../lib/updates.svelte.ts";
   import AlertsPanel from "./AlertsPanel.svelte";
   import Popover from "./Popover.svelte";
+  import RemotePanel from "./RemotePanel.svelte";
   import StagePanel from "./StagePanel.svelte";
+  import TransitionsPanel from "./TransitionsPanel.svelte";
 
   /** Value of the "Windowed" choice in the screen pickers. */
   const WINDOWED = "windowed";
@@ -33,7 +32,6 @@
   let stageScreen = $state(WINDOWED);
 
   const flags = $derived(engine.output?.flags);
-  const transition = $derived(engine.output?.transition);
 
   onMount(async () => {
     await refreshMonitors();
@@ -75,17 +73,6 @@
     } catch (error) {
       engine.showError(error);
     }
-  }
-
-  function setTransitionKind(kind: TransitionKind) {
-    if (!transition) return;
-    engine.dispatch({ type: "setTransition", transition: { ...transition, kind } });
-  }
-
-  function setTransitionDuration(seconds: number) {
-    if (!transition || !Number.isFinite(seconds)) return;
-    const durationMs = Math.round(Math.min(Math.max(seconds, 0), 10) * 1000);
-    engine.dispatch({ type: "setTransition", transition: { ...transition, durationMs } });
   }
 </script>
 
@@ -196,31 +183,25 @@
     <StagePanel />
   </Popover>
 
-  {#if transition}
-    <fieldset class="group" aria-label={t("toolbar.transition")}>
-      <span class="label">{t("toolbar.transition")}</span>
-      <select
-        value={transition.kind}
-        onchange={(e) => setTransitionKind(e.currentTarget.value as TransitionKind)}
-      >
-        <option value="fade">{t("toolbar.fade")}</option>
-        <option value="cut">{t("toolbar.cut")}</option>
-      </select>
-      {#if transition.kind === "fade"}
-        <input
-          class="duration"
-          type="number"
-          min="0"
-          max="10"
-          step="0.1"
-          value={transition.durationMs / 1000}
-          aria-label={t("toolbar.fadeSeconds")}
-          onchange={(e) => setTransitionDuration(e.currentTarget.valueAsNumber)}
-        >
-        <span class="unit">{t("toolbar.secondsUnit")}</span>
-      {/if}
-    </fieldset>
-  {/if}
+  <Popover
+    label={remote.connectedCount > 0
+      ? t("toolbar.remoteConnected", { count: remote.connectedCount })
+      : t("toolbar.remote")}
+    open={panels.open === "remote"}
+    active={remote.connectedCount > 0}
+    ontoggle={() => panels.toggle("remote")}
+    onclose={() => panels.close()}
+  >
+    <RemotePanel />
+  </Popover>
+  <Popover
+    label={t("toolbar.transitions")}
+    open={panels.open === "transitions"}
+    ontoggle={() => panels.toggle("transitions")}
+    onclose={() => panels.close()}
+  >
+    <TransitionsPanel />
+  </Popover>
 </header>
 
 <style>
@@ -250,20 +231,11 @@
   }
 
   .label,
-  .unit {
-    color: var(--sw-text-muted);
-    margin-right: var(--sw-space-1);
-  }
-
   .spacer {
     flex: 1;
   }
 
   select {
     max-width: 220px;
-  }
-
-  .duration {
-    width: 64px;
   }
 </style>

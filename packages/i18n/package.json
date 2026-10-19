@@ -1,0 +1,23 @@
+{
+  "name": "@simpleworship/i18n",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SimpleWorship's interface translations, shared by the desktop app and the phone remote. Type-checked through the apps that use it.",
+  "license": "GPL-3.0-or-later",
+  "type": "module",
+  "svelte": "./src/i18n.svelte.ts",
+  "exports": {
+    ".": {
+      "svelte": "./src/i18n.svelte.ts",
+      "default": "./src/i18n.svelte.ts"
+    }
+  },
+  "peerDependencies": {
+    "svelte": "^5.57.2"
+  },
+  "devDependencies": {
+    "svelte": "^5.57.2",
+    "svelte-check": "^4.7.7",
+    "typescript": "^6.0.3"
+  }
+}

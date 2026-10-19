@@ -108,13 +108,37 @@ fn stem(file_name: &str) -> String {
         .unwrap_or_else(|| file_name.to_owned())
 }
 
-/// The profile's `Resources` folder, found by going up from `Data`.
+/// The profile's `Resources` folder, found by going up from `Data`: in one
+/// of its parent folders, or (for a layout that differs) in a folder next
+/// to one of them. The name is matched in any case.
 pub fn resources_folder(data_folder: &Path) -> Option<PathBuf> {
-    data_folder
-        .ancestors()
-        .take(PROFILE_LEVELS + 1)
-        .map(|folder| folder.join("Resources"))
-        .find(|resources| resources.is_dir())
+    let parents: Vec<&Path> = data_folder.ancestors().take(PROFILE_LEVELS + 1).collect();
+    parents
+        .iter()
+        .find_map(|folder| child_named(folder, "resources"))
+        .or_else(|| {
+            parents.iter().find_map(|folder| {
+                subfolders(folder).find_map(|sibling| child_named(&sibling, "resources"))
+            })
+        })
+}
+
+/// The subfolder of `folder` called `name` (in any case), if there is one.
+fn child_named(folder: &Path, name: &str) -> Option<PathBuf> {
+    subfolders(folder).find(|child| {
+        child
+            .file_name()
+            .is_some_and(|child_name| child_name.to_string_lossy().eq_ignore_ascii_case(name))
+    })
+}
+
+fn subfolders(folder: &Path) -> impl Iterator<Item = PathBuf> {
+    std::fs::read_dir(folder)
+        .into_iter()
+        .flatten()
+        .flatten()
+        .map(|entry| entry.path())
+        .filter(|path| path.is_dir())
 }
 
 /// Finds each item's file: in its `Resources` subfolder, in its own folder,
@@ -135,7 +159,8 @@ pub fn locate(
                 resources
                     .as_ref()
                     .zip(item.folder.as_ref())
-                    .map(|(resources, folder)| resources.join(folder).join(&item.file_name)),
+                    .and_then(|(resources, folder)| child_named(resources, folder))
+                    .map(|folder| folder.join(&item.file_name)),
                 item.absolute_folder
                     .as_ref()
                     .map(|folder| Path::new(folder).join(&item.file_name)),
@@ -240,6 +265,16 @@ mod tests {
             locate(&data, &media, &[elsewhere])[2].is_some(),
             "found by name, any case"
         );
+    }
+
+    #[test]
+    fn finds_resources_in_any_case() {
+        let root = tempfile::tempdir().unwrap();
+        let data = root.path().join("Profile/v6.1/Databases/Data");
+        std::fs::create_dir_all(&data).unwrap();
+        std::fs::create_dir_all(root.path().join("Profile/resources/videos")).unwrap();
+        let found = resources_folder(&data).unwrap();
+        assert!(found.ends_with("Profile/resources"));
     }
 
     #[test]

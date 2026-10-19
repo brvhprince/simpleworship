@@ -16,6 +16,7 @@ sw-core = { path = "crates/sw-core" }
 sw-db = { path = "crates/sw-db" }
 sw-files = { path = "crates/sw-files" }
 sw-import = { path = "crates/sw-import" }
+sw-server = { path = "crates/sw-server" }
 
 # Shared third-party crates
 flate2 = { version = "1", default-features = false, features = ["zlib-rs"] }

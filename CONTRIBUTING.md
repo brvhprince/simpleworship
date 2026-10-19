@@ -33,10 +33,10 @@ open any file and follow it.
 
 - **Interface text is translated.** Never write words the operator reads
   straight into a component: add them to
-  `apps/desktop/src/lib/i18n/messages/en.json` and use `t("key")`. Then run
+  `packages/i18n/src/messages/en.json` and use `t("key")`. Then run
   `pnpm i18n:check --sync`, which adds the new key (empty) to the other
   languages for translators. See
-  [Translating SimpleWorship](apps/desktop/src/lib/i18n/messages/README.md).
+  [Translating SimpleWorship](packages/i18n/src/messages/README.md).
 - Releases are described in [docs/releasing.md](docs/releasing.md).
 
 ## Before opening a pull request

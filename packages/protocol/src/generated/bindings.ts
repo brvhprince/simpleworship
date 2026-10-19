@@ -386,11 +386,11 @@ export type Command =
       on: boolean;
     }
   | {
-      type: "setTransition";
+      type: "setTransitions";
       /**
-       * The new transition.
+       * The new transitions.
        */
-      transition: Transition;
+      transitions: TransitionSettings;
     }
   | {
       type: "setLogoImage";
@@ -922,6 +922,13 @@ export type EngineEvent =
       audio: AudioState;
     }
   | {
+      type: "transitionsChanged";
+      /**
+       * The new transitions.
+       */
+      transitions: TransitionSettings;
+    }
+  | {
       type: "songWentLive";
       /**
        * The song.
@@ -966,6 +973,10 @@ export type EngineSnapshot = {
    * The background audio.
    */
   audio: AudioState;
+  /**
+   * The transition for each kind of content.
+   */
+  transitions: TransitionSettings;
 };
 
 /**
@@ -2167,6 +2178,30 @@ export type Transition = {
  * The available transitions.
  */
 export type TransitionKind = "cut" | "fade";
+
+/**
+ * The transition for each kind of content, as in EasyWorship: a church
+ * might cut straight to scripture during preaching but fade between song
+ * slides. Saved by the host, so it is the same after a restart.
+ */
+export type TransitionSettings = {
+  /**
+   * For songs.
+   */
+  songs: Transition;
+  /**
+   * For Bible passages.
+   */
+  scripture: Transition;
+  /**
+   * For presentations, imported PDFs and slideshows.
+   */
+  presentations: Transition;
+  /**
+   * For everything else: typed text, pictures, videos, countdowns.
+   */
+  other: Transition;
+};
 
 /**
  * The verses of a passage in one translation, with what is needed to label
