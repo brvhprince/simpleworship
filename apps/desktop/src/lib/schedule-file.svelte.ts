@@ -51,7 +51,13 @@ class ScheduleFileStore {
       void this.open(payload);
     });
 
-    this.#setStatus(await api.scheduleFileStatus());
+    try {
+      this.#setStatus(await api.scheduleFileStatus());
+    } catch (error) {
+      // A joined computer may not have reached the main computer yet: its
+      // schedule's name comes when it does.
+      if (!link.joined) throw error;
+    }
     // A joined computer runs the main computer's schedule, not its own.
     if (!link.joined) await this.#offerRestore();
 

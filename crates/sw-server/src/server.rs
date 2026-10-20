@@ -235,6 +235,18 @@ impl RemoteServer {
         }
     }
 
+    /// Tells every connected device that something outside the engine
+    /// changed (see [`ServerMessage::Notice`]).
+    pub fn notify(&self, name: &str, payload: serde_json::Value) {
+        let message = ServerMessage::Notice {
+            name: name.to_owned(),
+            payload,
+        };
+        if let Ok(json) = serde_json::to_string(&message) {
+            let _ = self.shared.signals.send(Signal::Event(json.into()));
+        }
+    }
+
     /// A new pairing code for "Connect a Phone".
     pub fn new_pairing_code(&self) -> String {
         lock(&self.shared.pairing).new_code()

@@ -188,6 +188,7 @@ pub fn run(app: &AppHandle, method: &str, params: Value) -> AppResult<Value> {
         )?),
         "fonts_list" => json(tauri::async_runtime::block_on(themes::fonts_list())),
         "settings_get" => json(settings::settings_get(state())?),
+        "schedule_file_status" => json(schedule::schedule_file_status(state())),
         "transitions_save" => json(settings::transitions_save(
             app.clone(),
             state(),

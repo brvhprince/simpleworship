@@ -6,7 +6,7 @@ use sw_core::Command;
 use sw_core::StreamSettings;
 use sw_core::output::TransitionSettings;
 use sw_core::usage::SongUsage;
-use tauri::{AppHandle, Emitter, State};
+use tauri::{AppHandle, State};
 
 use crate::commands::engine::dispatch;
 use crate::error::AppResult;
@@ -30,7 +30,7 @@ pub fn settings_save(
     settings: AppSettings,
 ) -> AppResult<()> {
     settings::save(&state.database(), &settings)?;
-    app.emit(SETTINGS_EVENT, &settings)?;
+    crate::remote::share(&app, SETTINGS_EVENT, &settings);
     dispatch(
         &app,
         &state,

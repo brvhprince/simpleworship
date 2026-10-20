@@ -55,6 +55,43 @@ pub const CHANGED_EVENT: &str = "link://changed";
 
 const SETTINGS_KEY: &str = "link";
 
+/// What the main computer announces that this one passes on to its own
+/// windows, so their lists (fetched from the main computer) reload and the
+/// schedule's name is the main computer's.
+const SHARED_NOTICES: [&str; 6] = [
+    crate::media::MEDIA_EVENT,
+    crate::commands::presentations::PRESENTATIONS_EVENT,
+    crate::bibles::BIBLES_EVENT,
+    crate::commands::songs::SONGS_EVENT,
+    crate::commands::settings::SETTINGS_EVENT,
+    crate::schedule_file::SCHEDULE_FILE_EVENT,
+];
+
+/// Connected (again): this computer's lists reload from the main computer,
+/// which may have changed while it was away, and the schedule's name is
+/// the main computer's.
+fn refresh_shared(app: &AppHandle) {
+    for event in [
+        crate::media::MEDIA_EVENT,
+        crate::commands::presentations::PRESENTATIONS_EVENT,
+        crate::bibles::BIBLES_EVENT,
+        crate::commands::songs::SONGS_EVENT,
+    ] {
+        let _ = app.emit(event, ());
+    }
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        let asked = request(&app, |id| ClientMessage::Call {
+            id,
+            method: "schedule_file_status".into(),
+            params: Value::Null,
+        });
+        if let Ok(status) = asked.await {
+            let _ = app.emit(crate::schedule_file::SCHEDULE_FILE_EVENT, status);
+        }
+    });
+}
+
 /// Label of the operator window.
 const MAIN_WINDOW: &str = "main";
 
@@ -355,6 +392,7 @@ fn receive(app: &AppHandle, message: ServerMessage) {
                 let _ = app.emit(ENGINE_EVENT, &event);
             }
             announce_status(app);
+            refresh_shared(app);
         }
         ServerMessage::Event { event } => {
             let event = {
@@ -399,6 +437,12 @@ fn receive(app: &AppHandle, message: ServerMessage) {
             let _ = save(app, None);
             announce_status(app);
             let _ = app.emit(CHANGED_EVENT, ());
+        }
+        // The main computer's library or schedule file changed.
+        ServerMessage::Notice { name, payload } => {
+            if SHARED_NOTICES.contains(&name.as_str()) {
+                let _ = app.emit(&name, payload);
+            }
         }
     }
 }

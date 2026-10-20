@@ -1,7 +1,8 @@
 //! A real WebSocket client against the server: it is welcomed with the
 //! engine's state, its role is enforced, events reach it, and removing the
-//! device disconnects it. The browser source can only watch, and phones can
-//! be switched off without losing their pairing.
+//! device disconnects it. The browser source can only watch, phones can be
+//! switched off without losing their pairing, and joined computers hear
+//! about library changes.
 
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -286,5 +287,45 @@ async fn a_phone_gets_its_own_preview() {
         .expect("the phone's preview");
     assert_eq!(mine.presentation.title, "Mine");
     drop(engine);
+    server.stop();
+}
+
+#[tokio::test]
+async fn a_joined_computer_hears_about_library_changes() {
+    let host = Arc::new(FakeHost::default());
+    let (device, token) = pairing::new_device("Pulpit desk", Role::Full);
+    let server = RemoteServer::start(
+        ServerConfig {
+            port: 0,
+            static_dir: PathBuf::from("does-not-exist"),
+            phones: true,
+            stream_key: None,
+            app_version: "0.0.0".into(),
+            computer_name: "Test".into(),
+            instance: "test".into(),
+        },
+        host,
+        vec![device],
+    )
+    .await
+    .unwrap();
+
+    let url = format!("ws://127.0.0.1:{}/ws?token={token}", server.port());
+    let (mut socket, _) = tokio_tungstenite::connect_async(url).await.unwrap();
+    assert_eq!(next_json(&mut socket).await["type"], "welcome");
+
+    // The media library changed on the main computer.
+    server.notify("media://changed", Value::Null);
+    let notice = next_json(&mut socket).await;
+    assert_eq!(notice["type"], "notice");
+    assert_eq!(notice["name"], "media://changed");
+
+    // The schedule file's status comes with its details.
+    server.notify(
+        "schedule-file://status",
+        json!({ "name": "Sunday", "dirty": false }),
+    );
+    let notice = next_json(&mut socket).await;
+    assert_eq!(notice["payload"]["name"], "Sunday");
     server.stop();
 }

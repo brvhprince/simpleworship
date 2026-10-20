@@ -138,6 +138,19 @@ pub fn publish(app: &AppHandle, event: &EngineEvent) {
     }
 }
 
+/// Tells this computer's windows that something outside the engine changed
+/// (`event`, e.g. the media library), and computers that joined this one
+/// too, so they refresh what they show (see `link::SHARED_NOTICES`).
+pub fn share(app: &AppHandle, event: &str, payload: impl serde::Serialize) {
+    let payload = serde_json::to_value(payload).unwrap_or(serde_json::Value::Null);
+    if let Err(error) = app.emit(event, &payload) {
+        log::warn!("could not announce {event}: {error}");
+    }
+    if let Some(server) = server(app) {
+        server.notify(event, payload);
+    }
+}
+
 // ── Starting and stopping ────────────────────────────────────────────────
 
 /// Starts the server if the phone remote or the browser source is on.

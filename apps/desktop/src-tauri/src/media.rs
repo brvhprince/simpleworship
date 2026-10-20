@@ -163,11 +163,9 @@ pub fn thumbnail_path(folders: &MediaFolders, id: Id) -> PathBuf {
     folders.thumbnails.join(format!("{id}.jpg"))
 }
 
-/// Tells every window that the media library changed.
+/// Tells every window (and joined computers) that the media library changed.
 pub fn announce(app: &AppHandle) {
-    if let Err(error) = app.emit(MEDIA_EVENT, ()) {
-        log::warn!("could not announce media changes: {error}");
-    }
+    crate::remote::share(app, MEDIA_EVENT, ());
 }
 
 #[cfg(test)]

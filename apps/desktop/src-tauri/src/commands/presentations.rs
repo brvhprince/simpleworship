@@ -23,7 +23,7 @@ use sw_core::{
     ScheduleItem, SlideDeck,
 };
 use tauri::ipc::{InvokeBody, Request};
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::{AppHandle, Manager, State};
 use ts_rs::TS;
 
 use crate::commands::engine::dispatch;
@@ -373,7 +373,5 @@ fn delete_deck(state: &AppState, id: Id) -> AppResult<()> {
 }
 
 fn announce(app: &AppHandle) {
-    if let Err(error) = app.emit(PRESENTATIONS_EVENT, ()) {
-        log::warn!("could not announce presentation changes: {error}");
-    }
+    crate::remote::share(app, PRESENTATIONS_EVENT, ());
 }

@@ -13,7 +13,7 @@ use sw_bible::import::{self, BibleData};
 use sw_core::BibleInfo;
 use sw_db::Database;
 use tauri::path::BaseDirectory;
-use tauri::{AppHandle, Emitter, Manager};
+use tauri::{AppHandle, Manager};
 
 use crate::error::AppResult;
 use crate::state::AppState;
@@ -108,9 +108,7 @@ pub fn read(path: &Path) -> AppResult<BibleData> {
     Ok(import::import_file(path)?)
 }
 
-/// Tells every window that the list of Bibles changed.
+/// Tells every window (and joined computers) that the list of Bibles changed.
 pub fn announce(app: &AppHandle) {
-    if let Err(error) = app.emit(BIBLES_EVENT, ()) {
-        log::warn!("could not announce Bible changes: {error}");
-    }
+    crate::remote::share(app, BIBLES_EVENT, ());
 }

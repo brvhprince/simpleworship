@@ -24,6 +24,10 @@ pub fn song_get(state: State<'_, AppState>, id: Id) -> AppResult<Song> {
         .ok_or(AppError::SongNotFound)
 }
 
+/// Sent when songs are added, changed or deleted, so song lists reload
+/// (in every window, and on computers that joined this one).
+pub const SONGS_EVENT: &str = "songs://changed";
+
 /// Creates or updates a song and returns the saved copy. Copies of the song
 /// in the schedule, preview and live panes are updated too, so a typo fixed
 /// mid-service is fixed on screen straight away.
@@ -37,13 +41,16 @@ pub fn song_save(app: AppHandle, state: State<'_, AppState>, song: Song) -> AppR
             song: Box::new(saved.clone()),
         },
     )?;
+    crate::remote::share(&app, SONGS_EVENT, ());
     Ok(saved)
 }
 
 /// Deletes a song. Returns `false` if it was already gone.
 #[tauri::command]
-pub fn song_delete(state: State<'_, AppState>, id: Id) -> AppResult<bool> {
-    Ok(state.database().songs().delete(id)?)
+pub fn song_delete(app: AppHandle, state: State<'_, AppState>, id: Id) -> AppResult<bool> {
+    let deleted = state.database().songs().delete(id)?;
+    crate::remote::share(&app, SONGS_EVENT, ());
+    Ok(deleted)
 }
 
 /// Builds the slides for a (possibly unsaved) song, so the editor can show

@@ -341,6 +341,9 @@ pub async fn import_commit(
         let state = app.state::<AppState>();
         let songs: Vec<_> = songs.into_iter().map(ImportedSong::into_song).collect();
         let saved = state.database().songs().save_all(&songs)?;
+        if saved > 0 {
+            crate::remote::share(&app, crate::commands::songs::SONGS_EVENT, ());
+        }
 
         let mut summary = ImportSummary {
             songs: saved as u32,

@@ -89,6 +89,7 @@ const ON_HOST = new Set([
   "theme_set_defaults",
   "fonts_list",
   "settings_get",
+  "schedule_file_status",
   "transitions_save",
   "stream_save",
 ]);

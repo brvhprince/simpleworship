@@ -79,4 +79,15 @@ pub enum ServerMessage {
     },
     /// The operator removed this device: forget the token.
     Removed,
+    /// Something outside the engine changed (the media library, songs,
+    /// Bibles, settings, the schedule file), for computers that joined this
+    /// one to refresh what they show. `name` is the desktop app's event for
+    /// it; phones ignore these.
+    Notice {
+        /// What changed: the desktop app's event name, e.g. "media://changed".
+        name: String,
+        /// The event's payload, if it has one.
+        #[ts(type = "unknown")]
+        payload: Value,
+    },
 }

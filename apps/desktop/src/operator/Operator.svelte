@@ -23,6 +23,7 @@
   import { engine } from "../lib/engine.svelte.ts";
   import { menuLabels, t } from "../lib/i18n/i18n.svelte.ts";
   import { importer } from "../lib/importer.svelte.ts";
+  import { library } from "../lib/library.svelte.ts";
   import { link } from "../lib/link.svelte.ts";
   import { listen } from "../lib/listen.svelte.ts";
   import { media } from "../lib/media.svelte.ts";
@@ -104,6 +105,7 @@
       outputs.connect(),
       ndi.connect(),
       listen.connect(),
+      library.connect(),
       // Whether to show the assistant's buttons (nothing to stop later).
       assistant.load().then(() => () => {}),
     ];

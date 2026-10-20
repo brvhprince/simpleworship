@@ -9,7 +9,7 @@
 use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
-use tauri::{AppHandle, Emitter};
+use tauri::AppHandle;
 use ts_rs::TS;
 
 /// The event channel file status updates are broadcast on.
@@ -77,9 +77,7 @@ pub fn with_schedule_extension(path: PathBuf) -> PathBuf {
 
 /// Tells every window about a new file status.
 pub fn announce(app: &AppHandle, status: &ScheduleFileStatus) {
-    if let Err(error) = app.emit(SCHEDULE_FILE_EVENT, status) {
-        log::warn!("could not announce the schedule file status: {error}");
-    }
+    crate::remote::share(app, SCHEDULE_FILE_EVENT, status);
 }
 
 #[cfg(test)]

@@ -133,4 +133,15 @@ export type ServerMessage =
        */
       role: Role;
     }
-  | { type: "removed" };
+  | { type: "removed" }
+  | {
+      type: "notice";
+      /**
+       * What changed: the desktop app's event name, e.g. "media://changed".
+       */
+      name: string;
+      /**
+       * The event's payload, if it has one.
+       */
+      payload: unknown;
+    };
