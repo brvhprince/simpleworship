@@ -21,6 +21,9 @@ import type {
 } from "@simpleworship/protocol";
 import { tauriTransport } from "./tauri-transport.ts";
 
+/** The engine's id for this computer's own operator window (`LOCAL_OPERATOR`). */
+const LOCAL_OPERATOR = "00000000-0000-0000-0000-000000000000";
+
 /** How long an error message stays visible, in milliseconds. */
 const ERROR_TIMEOUT_MS = 6000;
 
@@ -88,7 +91,9 @@ export class EngineStore {
   #apply(event: EngineEvent): void {
     switch (event.type) {
       case "previewChanged":
-        this.preview = event.preview;
+        // Each operator has their own preview; this window's is the
+        // computer's own (see LOCAL_OPERATOR in sw-core).
+        if (event.operator === LOCAL_OPERATOR) this.preview = event.preview;
         break;
       case "liveChanged":
         this.live = event.live;

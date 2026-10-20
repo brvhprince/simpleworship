@@ -106,6 +106,10 @@ pub struct ServerConfig {
     pub phones: bool,
     /// The key of the browser source link, if the browser source is on.
     pub stream_key: Option<String>,
+    /// SimpleWorship's version: another computer joining must match it.
+    pub app_version: String,
+    /// What other computers list this one as (the church or computer name).
+    pub computer_name: String,
 }
 
 /// State shared by every request.
@@ -124,6 +128,8 @@ struct Shared {
     stream_key: Mutex<Option<String>>,
     /// Stands for the browser source in signals (as a device id would).
     stream_id: Id,
+    app_version: String,
+    computer_name: String,
 }
 
 /// Locks a mutex, carrying on if a thread panicked while holding it (the
@@ -171,10 +177,13 @@ impl RemoteServer {
             phones: AtomicBool::new(config.phones),
             stream_key: Mutex::new(config.stream_key.as_deref().map(pairing::hash_token)),
             stream_id: Id::new(),
+            app_version: config.app_version,
+            computer_name: config.computer_name,
         });
 
         let router = Router::new()
             .route("/api/hello", get(hello))
+            .route("/api/time", get(server_time))
             .route("/api/pair", post(pair))
             .route("/api/check", get(check))
             .route("/ws", get(connect))
@@ -308,9 +317,22 @@ impl RemoteServer {
 
 // ── Routes ───────────────────────────────────────────────────────────────
 
-/// Lets a phone check it found SimpleWorship.
-async fn hello() -> Json<serde_json::Value> {
-    Json(serde_json::json!({ "app": "SimpleWorship", "protocol": crate::PROTOCOL_VERSION }))
+/// Lets a phone or computer check it found SimpleWorship, and which: its
+/// name, version and protocol (a joining computer must have the same
+/// version).
+async fn hello(State(shared): State<Arc<Shared>>) -> Json<serde_json::Value> {
+    Json(serde_json::json!({
+        "app": "SimpleWorship",
+        "protocol": crate::PROTOCOL_VERSION,
+        "version": shared.app_version,
+        "name": shared.computer_name,
+    }))
+}
+
+/// This computer's clock, in milliseconds since 1970: other computers work
+/// out the difference to their own, so videos and countdowns stay in step.
+async fn server_time() -> Json<serde_json::Value> {
+    Json(serde_json::json!({ "now": time::now() }))
 }
 
 #[derive(Deserialize)]
@@ -493,6 +515,10 @@ async fn run_connection(shared: Arc<Shared>, viewer: Viewer, socket: WebSocket) 
 
 /// The welcome message: who the device is and the whole state.
 fn welcome(shared: &Shared, viewer: Viewer) -> Option<String> {
+    let device = match viewer {
+        Viewer::Stream => shared.stream_id,
+        Viewer::Phone(device_id) => device_id,
+    };
     let (name, role) = match viewer {
         Viewer::Stream => ("Browser source".to_owned(), Role::Stage),
         Viewer::Phone(device_id) => {
@@ -503,9 +529,10 @@ fn welcome(shared: &Shared, viewer: Viewer) -> Option<String> {
         }
     };
     let message = ServerMessage::Welcome {
+        device,
         name,
         role,
-        snapshot: Box::new(shared.host.snapshot()),
+        snapshot: Box::new(shared.host.snapshot(device)),
     };
     serde_json::to_string(&message).ok()
 }
@@ -551,14 +578,17 @@ async fn handle(shared: &Arc<Shared>, viewer: Viewer, text: &str) -> String {
         return answer(0, Err("This device is not allowed.".into()));
     };
 
+    let Viewer::Phone(device_id) = viewer else {
+        return answer(0, Err("This device is not allowed.".into()));
+    };
     match serde_json::from_str::<ClientMessage>(text) {
         Ok(ClientMessage::Dispatch { id, command }) => {
             let host = shared.host.clone();
             let result = tokio::task::spawn_blocking(move || {
-                if !roles::may_dispatch(role, &command, &host.snapshot()) {
+                if !roles::may_dispatch(role, &command, &host.snapshot(device_id)) {
                     return Err("This device is not allowed to do that.".to_owned());
                 }
-                host.dispatch(command)
+                host.dispatch(device_id, command)
             })
             .await
             .unwrap_or_else(|error| Err(error.to_string()));
@@ -569,7 +599,7 @@ async fn handle(shared: &Arc<Shared>, viewer: Viewer, text: &str) -> String {
                 return answer(id, Err("This device is not allowed to do that.".into()));
             }
             let host = shared.host.clone();
-            let result = tokio::task::spawn_blocking(move || host.call(&method, params))
+            let result = tokio::task::spawn_blocking(move || host.call(device_id, &method, params))
                 .await
                 .unwrap_or_else(|error| Err(error.to_string()));
             answer(id, result)
@@ -625,8 +655,16 @@ async fn serve_media(
         Err(status) => return status.into_response(),
     };
     let kind = content_type(file);
-    let allowed =
-        kind.starts_with("image/") || (viewer == Viewer::Stream && kind.starts_with("video/"));
+    // Videos for the browser source and for computers and phones whose
+    // screens play them; the others show stills.
+    let plays_video = match viewer {
+        Viewer::Stream => true,
+        Viewer::Phone(device_id) => lock(&shared.devices)
+            .iter()
+            .find(|device| device.id == device_id)
+            .is_some_and(|device| roles::may_play_video(device.role)),
+    };
+    let allowed = kind.starts_with("image/") || (plays_video && kind.starts_with("video/"));
     if !allowed || !is_plain_name(file) {
         return StatusCode::NOT_FOUND.into_response();
     }

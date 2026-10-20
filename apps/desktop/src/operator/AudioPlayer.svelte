@@ -14,11 +14,12 @@
   it paused to load, which empties its buffer and makes it stutter.
 -->
 <script lang="ts">
-  import { getMediaUrls } from "@simpleworship/renderer";
+  import { getMediaUrls, now as serviceNow } from "@simpleworship/renderer";
   import { onMount } from "svelte";
   import { engine } from "../lib/engine.svelte.ts";
   import { formatDuration } from "../lib/format.ts";
   import { t } from "../lib/i18n/i18n.svelte.ts";
+  import { link } from "../lib/link.svelte.ts";
 
   /** How far off the operator's own changes (a seek) may land, in seconds. */
   const OPERATOR_SEEK_S = 0.25;
@@ -27,7 +28,7 @@
   let element: HTMLAudioElement;
   /** The fade already reported as finished, so the pause is sent once. */
   let finishedFade: number | null = null;
-  let now = $state(Date.now());
+  let now = $state(serviceNow());
   /** Where the element really is, in milliseconds, for the position display. */
   let playedMs: number | null = $state(null);
   /** The timeline last acted on, compared by value (see `follow`). */
@@ -44,7 +45,7 @@
 
   onMount(() => {
     const timer = setInterval(() => {
-      now = Date.now();
+      now = serviceNow();
       follow();
     }, 250);
     return () => clearInterval(timer);
@@ -58,6 +59,13 @@
 
   /** Brings the element in line with the engine's state. */
   function follow() {
+    // A joined computer shows the music's controls; the main computer
+    // plays it (and moves on to the next track).
+    if (link.joined) {
+      element?.pause();
+      playedMs = null;
+      return;
+    }
     if (!element || !audio || !track) {
       element?.pause();
       return;
@@ -75,7 +83,7 @@
       handled = timeline;
       const target =
         (audio.playing
-          ? audio.positionMs + Math.max(0, Date.now() - audio.anchor)
+          ? audio.positionMs + Math.max(0, serviceNow() - audio.anchor)
           : audio.positionMs) / 1000;
       if (Math.abs(element.currentTime - target) > OPERATOR_SEEK_S) element.currentTime = target;
     }
@@ -87,7 +95,11 @@
 
     // A fade-out ends in a pause.
     const fade = audio.fade;
-    if (fade && finishedFade !== fade.startedAt && Date.now() >= fade.startedAt + fade.durationMs) {
+    if (
+      fade &&
+      finishedFade !== fade.startedAt &&
+      serviceNow() >= fade.startedAt + fade.durationMs
+    ) {
       finishedFade = fade.startedAt;
       engine.dispatch({ type: "pauseAudio" });
     }
@@ -97,7 +109,7 @@
   function fadedVolume(): number {
     if (!audio) return 1;
     if (!audio.fade) return audio.volume;
-    const done = (Date.now() - audio.fade.startedAt) / audio.fade.durationMs;
+    const done = (serviceNow() - audio.fade.startedAt) / audio.fade.durationMs;
     return audio.volume * Math.max(0, 1 - done);
   }
 

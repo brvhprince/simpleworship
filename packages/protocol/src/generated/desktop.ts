@@ -2,7 +2,7 @@
 import type { Passage } from "./bible";
 import type { AlertTemplate, Id, MediaKind } from "./bindings";
 import type { ImportedSong, ImportProblem } from "./import";
-import type { Device } from "./remote";
+import type { Device, Role } from "./remote";
 
 /**
  * Everything in the Settings dialog.
@@ -62,6 +62,28 @@ export type BibleChoice = {
    * The short name to give it.
    */
   abbreviation: string;
+};
+
+/**
+ * A host found on the network.
+ */
+export type FoundHost = {
+  /**
+   * What it calls itself, e.g. "Winners Chapel (MAIN-PC)".
+   */
+  name: string;
+  /**
+   * Its address, e.g. `http://192.168.1.20:7270`.
+   */
+  address: string;
+  /**
+   * Its SimpleWorship version.
+   */
+  version: string;
+  /**
+   * It runs the same version as this computer (needed to join).
+   */
+  compatible: boolean;
 };
 
 /**
@@ -128,6 +150,44 @@ export type ImportSummary = {
    * Bibles and media that failed to import.
    */
   problems: Array<ImportProblem>;
+};
+
+/**
+ * Everything the windows show about the link.
+ */
+export type LinkStatus = {
+  /**
+   * This computer has joined a host.
+   */
+  joined: boolean;
+  /**
+   * The host's name.
+   */
+  hostName: string;
+  /**
+   * The host's address, for pictures and videos (`{address}/media/…`).
+   */
+  address: string;
+  /**
+   * This computer's token there, for those addresses.
+   */
+  token: string;
+  /**
+   * What this computer may do: an operator (full control) or a mirror.
+   */
+  role: Role | null;
+  /**
+   * Connected right now (otherwise reconnecting).
+   */
+  connected: boolean;
+  /**
+   * The host's clock minus this computer's, in milliseconds.
+   */
+  clockOffsetMs: number;
+  /**
+   * The host removed this computer.
+   */
+  removed: boolean;
 };
 
 /**

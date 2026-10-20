@@ -384,6 +384,9 @@ pub enum Command {
 pub enum EngineEvent {
     /// The preview pane changed: a new presentation or a different selected slide.
     PreviewChanged {
+        /// Whose preview pane it is: each operator has their own (see
+        /// [`crate::engine::LOCAL_OPERATOR`]). Show it only to them.
+        operator: Id,
         /// The new preview pane state.
         preview: Option<PaneState>,
     },

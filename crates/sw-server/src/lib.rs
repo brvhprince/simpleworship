@@ -28,7 +28,9 @@ pub use roles::Role;
 pub use server::{PairRequest, RemoteServer, ServerConfig, ServerError};
 
 /// Bumped when the messages change in a way old remotes cannot handle.
-pub const PROTOCOL_VERSION: u32 = 1;
+/// Version 2: each device has its own preview pane, the welcome says which
+/// device it is, and computers can join (see `Role::Mirror`).
+pub const PROTOCOL_VERSION: u32 = 2;
 
 /// The usual port. Changeable in the app's settings.
 pub const DEFAULT_PORT: u16 = 7270;
@@ -45,13 +47,17 @@ pub enum MediaFolder {
 /// What the server needs from the app around it. Called from background
 /// threads, so it must be shareable.
 pub trait Host: Send + Sync + 'static {
-    /// The whole engine state.
-    fn snapshot(&self) -> EngineSnapshot;
-    /// Carries out a command (already checked against the device's role),
-    /// exactly as if the operator had done it.
-    fn dispatch(&self, command: Command) -> Result<(), String>;
-    /// Answers a question from a remote, such as `"songs.search"`.
-    fn call(&self, method: &str, params: Value) -> Result<Value, String>;
+    /// The whole engine state, with `device`'s own preview pane (each
+    /// operator has one; see `sw_core::LOCAL_OPERATOR`).
+    fn snapshot(&self, device: Id) -> EngineSnapshot;
+    /// Carries out a command from `device` (already checked against its
+    /// role), exactly as if an operator had done it, using `device`'s own
+    /// preview pane.
+    fn dispatch(&self, device: Id, command: Command) -> Result<(), String>;
+    /// Answers a question from `device`, such as `"songs.search"`, or
+    /// carries out a request (anything it shows in a preview goes to
+    /// `device`'s own).
+    fn call(&self, device: Id, method: &str, params: Value) -> Result<Value, String>;
     /// Where a media file is, if it exists.
     fn media_path(&self, folder: MediaFolder, file: &str) -> Option<PathBuf>;
     /// A phone has the right code and asks to be allowed: ask the operator,

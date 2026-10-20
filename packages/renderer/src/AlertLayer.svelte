@@ -19,7 +19,7 @@
   import type { Alert } from "@simpleworship/protocol";
   import { onMount } from "svelte";
   import { CANVAS_WIDTH } from "./canvas.ts";
-  import { TICKER_SPEED } from "./timing.ts";
+  import { now as serviceNow, TICKER_SPEED } from "./timing.ts";
 
   /** How long one "pass" of a still banner lasts, in milliseconds. */
   const BANNER_PASS_MS = 10_000;
@@ -58,12 +58,12 @@
     void document.fonts.ready.then(() => {
       if (!text) return;
       textWidth = text.offsetWidth;
-      joinedAt = Date.now() - alert.startedAt;
+      joinedAt = serviceNow() - alert.startedAt;
     });
 
     const total = totalMs();
     if (total === null) return;
-    const timer = setTimeout(finish, Math.max(0, total - (Date.now() - alert.startedAt)));
+    const timer = setTimeout(finish, Math.max(0, total - (serviceNow() - alert.startedAt)));
     return () => clearTimeout(timer);
   });
 

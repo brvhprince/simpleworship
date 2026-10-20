@@ -7,6 +7,7 @@
 <script lang="ts">
   import { Button } from "@simpleworship/ui";
   import { t } from "../lib/i18n/i18n.svelte.ts";
+  import { link } from "../lib/link.svelte.ts";
   import { remote } from "../lib/remote.svelte.ts";
 
   const status = $derived(remote.status);
@@ -29,35 +30,39 @@
   }
 </script>
 
-<label class="option">
-  <input
-    type="checkbox"
-    checked={enabled}
-    onchange={(e) => remote.setBrowserSource(e.currentTarget.checked)}
-  >
-  {t("stream.browserSource")}
-</label>
+{#if link.joined}
+  <p class="hint">{t("link.browserSourceThere", { name: link.status.hostName })}</p>
+{:else}
+  <label class="option">
+    <input
+      type="checkbox"
+      checked={enabled}
+      onchange={(e) => remote.setBrowserSource(e.currentTarget.checked)}
+    >
+    {t("stream.browserSource")}
+  </label>
 
-{#if enabled}
-  {#if links.length > 0}
-    <p class="hint">{t("stream.browserSourceHint")}</p>
-    <ul class="links">
-      {#each links as link, index (link)}
-        <li>
-          <span class="where"
-            >{index === 0 ? t("stream.thisComputer") : t("stream.otherComputer")}</span
-          >
-          <code>{link}</code>
-          <Button onclick={() => copy(link)}>
-            {copied === link ? t("stream.copied") : t("stream.copy")}
-          </Button>
-        </li>
-      {/each}
-    </ul>
-    <Button onclick={() => remote.renewStreamLink()}>{t("stream.newLink")}</Button>
-    <p class="hint">{t("stream.newLinkHint")}</p>
-  {:else}
-    <p class="hint">{status?.error ?? t("remotePanel.starting")}</p>
+  {#if enabled}
+    {#if links.length > 0}
+      <p class="hint">{t("stream.browserSourceHint")}</p>
+      <ul class="links">
+        {#each links as link, index (link)}
+          <li>
+            <span class="where"
+              >{index === 0 ? t("stream.thisComputer") : t("stream.otherComputer")}</span
+            >
+            <code>{link}</code>
+            <Button onclick={() => copy(link)}>
+              {copied === link ? t("stream.copied") : t("stream.copy")}
+            </Button>
+          </li>
+        {/each}
+      </ul>
+      <Button onclick={() => remote.renewStreamLink()}>{t("stream.newLink")}</Button>
+      <p class="hint">{t("stream.newLinkHint")}</p>
+    {:else}
+      <p class="hint">{status?.error ?? t("remotePanel.starting")}</p>
+    {/if}
   {/if}
 {/if}
 

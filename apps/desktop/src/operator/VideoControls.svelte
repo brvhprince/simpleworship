@@ -5,6 +5,7 @@
   change the engine's shared playback clock.
 -->
 <script lang="ts">
+  import { now as serviceNow } from "@simpleworship/renderer";
   import { onMount } from "svelte";
   import { engine } from "../lib/engine.svelte.ts";
   import { formatDuration } from "../lib/format.ts";
@@ -17,9 +18,9 @@
   );
 
   /** Ticks every quarter second so the position display moves. */
-  let now = $state(Date.now());
+  let now = $state(serviceNow());
   onMount(() => {
-    const timer = setInterval(() => (now = Date.now()), 250);
+    const timer = setInterval(() => (now = serviceNow()), 250);
     return () => clearInterval(timer);
   });
 

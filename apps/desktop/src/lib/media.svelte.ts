@@ -11,6 +11,7 @@ import type { MediaItem, MediaProgress, MediaRef } from "@simpleworship/protocol
 import { listen } from "@tauri-apps/api/event";
 import * as api from "./api.ts";
 import { engine } from "./engine.svelte.ts";
+import { link } from "./link.svelte.ts";
 import { audioDetails, imageDetails, videoDetails } from "./thumbnails.ts";
 
 /** Must match `MEDIA_EVENT` and `MEDIA_PROGRESS_EVENT` in `src-tauri/src/media.rs`. */
@@ -65,6 +66,9 @@ class MediaStore {
    * play) are shown to the operator.
    */
   async prepare(item: MediaItem): Promise<void> {
+    // A joined computer shows the main computer's media, which makes its
+    // own thumbnails.
+    if (link.joined) return;
     if (!this.#urls || this.#preparing.has(item.id)) return;
     this.#preparing.add(item.id);
 

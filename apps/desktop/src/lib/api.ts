@@ -42,11 +42,65 @@ import type {
   TranslationText,
   Verse,
 } from "@simpleworship/protocol";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke as tauriInvoke } from "@tauri-apps/api/core";
+import { link } from "./link.svelte.ts";
 
 // ── Songs ────────────────────────────────────────────────────────────────
 
 /** Searches titles, authors and lyrics. An empty query lists every song. */
+
+/**
+ * Commands that, on a computer that joined another, run on that computer
+ * instead (its library, its schedule). Must match `host_calls.rs`.
+ */
+const ON_HOST = new Set([
+  "songs_search",
+  "song_get",
+  "song_save",
+  "song_presentation",
+  "song_show_in_preview",
+  "schedule_add_song",
+  "bibles_list",
+  "bible_outline",
+  "bible_chapter",
+  "bible_search",
+  "scripture_parse",
+  "scripture_text",
+  "scripture_show_in_preview",
+  "schedule_add_scripture",
+  "text_show_in_preview",
+  "schedule_add_text",
+  "schedule_add_countdown",
+  "media_list",
+  "media_show_in_preview",
+  "schedule_add_media",
+  "schedule_add_slideshow",
+  "schedule_add_playlist",
+  "schedule_append_media",
+  "logo_set",
+  "presentations_list",
+  "presentation_get",
+  "presentation_show_in_preview",
+  "schedule_add_presentation",
+  "schedule_append_presentation",
+  "deck_presentation",
+  "theme_save",
+  "theme_delete",
+  "theme_set_defaults",
+  "fonts_list",
+  "settings_get",
+  "transitions_save",
+  "stream_save",
+]);
+
+/** Runs `command` here, or on the computer this one joined (see {@link ON_HOST}). */
+function invoke<T>(command: string, args?: Record<string, unknown>): Promise<T> {
+  if (link.joined && ON_HOST.has(command)) {
+    return tauriInvoke<T>("link_call", { method: command, params: args ?? {} });
+  }
+  return tauriInvoke<T>(command, args);
+}
+
 export const searchSongs = (query: string) => invoke<SongSummary[]>("songs_search", { query });
 
 /** Loads a song for editing. */
@@ -279,7 +333,7 @@ export const createPresentation = (name: string) => invoke<string>("presentation
 
 /** Stores one rendered page. The image goes as raw bytes, not JSON. */
 export const addPresentationPage = (deck: string, page: number, jpeg: Uint8Array) =>
-  invoke<MediaItem>("presentation_add_page", jpeg, {
+  tauriInvoke<MediaItem>("presentation_add_page", jpeg, {
     headers: { "x-deck": deck, "x-page": String(page) },
   });
 

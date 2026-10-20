@@ -19,6 +19,7 @@
   import { Button } from "@simpleworship/ui";
   import { engine } from "../lib/engine.svelte.ts";
   import { t } from "../lib/i18n/i18n.svelte.ts";
+  import { link } from "../lib/link.svelte.ts";
   import { ndi } from "../lib/ndi.svelte.ts";
   import { outputs } from "../lib/outputs.svelte.ts";
   import { panels } from "../lib/panels.svelte.ts";
@@ -71,12 +72,14 @@
         <StreamPanel />
       </Popover>
       <Popover
-        label={remote.connectedCount > 0
-          ? t("toolbar.remoteConnected", { count: remote.connectedCount })
-          : t("toolbar.remote")}
+        label={link.joined
+          ? t("toolbar.joined")
+          : remote.connectedCount > 0
+            ? t("toolbar.remoteConnected", { count: remote.connectedCount })
+            : t("toolbar.remote")}
         align="start"
         open={panels.open === "remote"}
-        active={remote.connectedCount > 0}
+        active={link.joined ? link.status.connected : remote.connectedCount > 0}
         ontoggle={() => panels.toggle("remote")}
         onclose={() => panels.close()}
       >

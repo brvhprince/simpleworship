@@ -22,6 +22,7 @@
   import { engine } from "../lib/engine.svelte.ts";
   import { menuLabels, t } from "../lib/i18n/i18n.svelte.ts";
   import { importer } from "../lib/importer.svelte.ts";
+  import { link } from "../lib/link.svelte.ts";
   import { media } from "../lib/media.svelte.ts";
   import { connectEditMenu } from "../lib/menu.ts";
   import { ndi } from "../lib/ndi.svelte.ts";
@@ -40,7 +41,9 @@
   import AudioPlayer from "./AudioPlayer.svelte";
   import ConnectPhoneDialog from "./ConnectPhoneDialog.svelte";
   import ImportDialog from "./ImportDialog.svelte";
+  import JoinDialog from "./JoinDialog.svelte";
   import Library from "./library/Library.svelte";
+  import MirrorView from "./MirrorView.svelte";
   import PairRequestDialog from "./PairRequestDialog.svelte";
   import PromptHost from "./PromptHost.svelte";
   import SchedulePanel from "./SchedulePanel.svelte";
@@ -133,6 +136,8 @@
   }
 
   function handleKeydown(event: KeyboardEvent) {
+    // A mirror follows another computer and controls nothing.
+    if (link.mirror) return;
     const isModified = event.metaKey || event.ctrlKey || event.altKey;
     // Space and Enter on a focused button should press that button.
     const isButtonActivation =
@@ -168,81 +173,107 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-<div class="operator">
-  <Toolbar />
+{#if link.mirror}
+  <MirrorView />
+{:else}
+  <div class="operator">
+    <Toolbar />
 
-  <SchedulePanel />
+    <SchedulePanel />
 
-  <SlidePane
-    kind="preview"
-    pane={engine.preview}
-    onselect={(index) => engine.dispatch({ type: "selectPreviewSlide", index })}
-    onactivate={(index) => {
-      engine.dispatch({ type: "selectPreviewSlide", index });
-      engine.dispatch({ type: "goLive" });
-    }}
-  >
-    {#snippet actions()}
-      <Button
-        variant="primary"
-        shortcut="Enter"
-        disabled={!engine.preview}
-        onclick={() => engine.dispatch({ type: "goLive" })}
-      >
-        {t("pane.goLive")}
-      </Button>
-    {/snippet}
-  </SlidePane>
+    <SlidePane
+      kind="preview"
+      pane={engine.preview}
+      onselect={(index) => engine.dispatch({ type: "selectPreviewSlide", index })}
+      onactivate={(index) => {
+        engine.dispatch({ type: "selectPreviewSlide", index });
+        engine.dispatch({ type: "goLive" });
+      }}
+    >
+      {#snippet actions()}
+        <Button
+          variant="primary"
+          shortcut="Enter"
+          disabled={!engine.preview}
+          onclick={() => engine.dispatch({ type: "goLive" })}
+        >
+          {t("pane.goLive")}
+        </Button>
+      {/snippet}
+    </SlidePane>
 
-  <SlidePane
-    kind="live"
-    pane={engine.live}
-    output={engine.output}
-    onselect={(index) => engine.dispatch({ type: "selectLiveSlide", index })}
-    onalertend={() => engine.dispatch({ type: "clearAlert" })}
-    oncountdownend={() => engine.dispatch({ type: "countdownFinished" })}
-  >
-    {#snippet below()}
-      <VideoControls />
-    {/snippet}
-    {#snippet actions()}
-      <Button disabled={!engine.live} onclick={() => engine.dispatch({ type: "clearLive" })}>
-        {t("common.clear")}
-      </Button>
-    {/snippet}
-  </SlidePane>
+    <SlidePane
+      kind="live"
+      pane={engine.live}
+      output={engine.output}
+      onselect={(index) => engine.dispatch({ type: "selectLiveSlide", index })}
+      onalertend={() => engine.dispatch({ type: "clearAlert" })}
+      oncountdownend={() => engine.dispatch({ type: "countdownFinished" })}
+    >
+      {#snippet below()}
+        <VideoControls />
+      {/snippet}
+      {#snippet actions()}
+        <Button disabled={!engine.live} onclick={() => engine.dispatch({ type: "clearLive" })}>
+          {t("common.clear")}
+        </Button>
+      {/snippet}
+    </SlidePane>
 
-  <Library />
+    <Library />
 
-  <div class="player"><AudioPlayer /></div>
+    <div class="player"><AudioPlayer /></div>
 
-  {#if dialogs.open === "settings"}
-    <SettingsDialog />
-  {:else if dialogs.open === "usage"}
-    <UsageDialog />
-  {:else if dialogs.open === "about"}
-    <AboutDialog />
-  {/if}
-  {#if remote.connecting}
-    <ConnectPhoneDialog />
-  {/if}
-  {#if remote.requests[0]}
-    {#key remote.requests[0].id}
-      <PairRequestDialog request={remote.requests[0]} />
-    {/key}
-  {/if}
-  {#if importer.isOpen}
-    <ImportDialog />
-  {/if}
+    {#if dialogs.open === "settings"}
+      <SettingsDialog />
+    {:else if dialogs.open === "usage"}
+      <UsageDialog />
+    {:else if dialogs.open === "about"}
+      <AboutDialog />
+    {/if}
+    {#if remote.connecting}
+      <ConnectPhoneDialog />
+    {/if}
+    {#if remote.requests[0]}
+      {#key remote.requests[0].id}
+        <PairRequestDialog request={remote.requests[0]} />
+      {/key}
+    {/if}
+    {#if importer.isOpen}
+      <ImportDialog />
+    {/if}
+    {#if link.joining}
+      <JoinDialog />
+    {/if}
 
-  <PromptHost />
+    <PromptHost />
 
-  {#if engine.error}
-    <div class="error" role="alert">{engine.error}</div>
-  {/if}
-</div>
+    {#if engine.error}
+      <div class="error" role="alert">{engine.error}</div>
+    {/if}
+  </div>
+{/if}
+
+{#if link.joined && !link.status.connected}
+  <div class="offline" role="status">
+    {t("link.reconnectingTo", { name: link.status.hostName })}
+  </div>
+{/if}
 
 <style>
+  .offline {
+    position: fixed;
+    top: 56px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 50;
+    padding: var(--sw-space-1) var(--sw-space-3);
+    border-radius: var(--sw-radius);
+    background: var(--sw-warning, #f59f00);
+    color: #000;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  }
+
   .operator {
     display: grid;
     grid-template-columns: 240px 1fr 1fr;

@@ -1,8 +1,25 @@
 /**
  * Small time helpers shared by countdowns, alerts and timers.
+ *
+ * Times from the engine (video positions, countdown ends, alerts) are on
+ * the clock of the computer running the service. A computer that joined
+ * it sets the difference with {@link setClockOffset}; everything that
+ * reads the time uses {@link now}, so its screens stay in step.
  */
 
 import type { StageTimer } from "@simpleworship/protocol";
+
+let clockOffsetMs = 0;
+
+/** Sets how far the service's clock is ahead of this computer's. */
+export function setClockOffset(ms: number): void {
+  clockOffsetMs = ms;
+}
+
+/** The time on the service's clock, in milliseconds since 1970. */
+export function now(): number {
+  return Date.now() + clockOffsetMs;
+}
 
 /** `"4:59"`, `"1:02:05"`; negative values get a minus sign ("-0:12"). */
 export function formatClock(ms: number): string {

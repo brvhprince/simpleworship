@@ -7,11 +7,16 @@
 <script lang="ts">
   import { t } from "@simpleworship/i18n";
   import type { StageOptions } from "@simpleworship/protocol";
-  import { formatClock, remainingMs, stageTimerMs } from "@simpleworship/renderer";
+  import {
+    formatClock,
+    remainingMs,
+    now as serviceNow,
+    stageTimerMs,
+  } from "@simpleworship/renderer";
   import { onMount } from "svelte";
   import { remote } from "../lib/remote.svelte.ts";
 
-  let now = $state(Date.now());
+  let now = $state(serviceNow());
   let options: StageOptions = $state({ showClock: true, showNext: true, textScale: 100 });
 
   const live = $derived(remote.live);
@@ -35,7 +40,7 @@
   });
 
   onMount(() => {
-    const tick = setInterval(() => (now = Date.now()), 250);
+    const tick = setInterval(() => (now = serviceNow()), 250);
     remote
       .call<StageOptions>("stage.options")
       .then((saved) => (options = saved))

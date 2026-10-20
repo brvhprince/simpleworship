@@ -14,6 +14,7 @@ import { open, save } from "@tauri-apps/plugin-dialog";
 import * as api from "./api.ts";
 import { engine } from "./engine.svelte.ts";
 import { t } from "./i18n/i18n.svelte.ts";
+import { link } from "./link.svelte.ts";
 import { OPEN_RECENT_PREFIX, onMenuClick } from "./menu.ts";
 import { prompts } from "./prompts.svelte.ts";
 
@@ -51,11 +52,12 @@ class ScheduleFileStore {
     });
 
     this.#setStatus(await api.scheduleFileStatus());
-    await this.#offerRestore();
+    // A joined computer runs the main computer's schedule, not its own.
+    if (!link.joined) await this.#offerRestore();
 
     // The file SimpleWorship was started with, if any.
     const launchedWith = await api.launchReady();
-    if (launchedWith) await this.open(launchedWith);
+    if (launchedWith && !link.joined) await this.open(launchedWith);
 
     return () => {
       stopStatus();
@@ -103,6 +105,11 @@ class ScheduleFileStore {
 
   /** Quits the app, after asking about unsaved changes. */
   async quit(): Promise<void> {
+    // A joined computer runs another computer's schedule: nothing to save here.
+    if (link.joined) {
+      await getCurrentWindow().destroy();
+      return;
+    }
     const answer = await this.#askToSave();
     if (answer === "cancel") return;
     if (answer === "save" && !(await this.save())) return;
@@ -115,6 +122,12 @@ class ScheduleFileStore {
   // ── Internals ──────────────────────────────────────────────────────────
 
   #handleMenu(id: string): void {
+    // A joined computer runs the main computer's schedule, saved there.
+    const scheduleFiles = id.startsWith(OPEN_RECENT_PREFIX) || id.startsWith("schedule-");
+    if (link.joined && scheduleFiles) {
+      engine.showError(t("link.onMainComputer", { name: link.status.hostName }));
+      return;
+    }
     if (id.startsWith(OPEN_RECENT_PREFIX)) {
       void this.open(id.slice(OPEN_RECENT_PREFIX.length));
       return;

@@ -1461,6 +1461,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "gethostname"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1bd49230192a3797a9a4d6abe9b3eed6f7fa4c8a8a4947977c6f80025f92cbd8"
+dependencies = [
+ "rustix",
+ "windows-link",
+]
+
+[[package]]
 name = "getrandom"
 version = "0.2.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3918,11 +3928,14 @@ dependencies = [
  "chrono",
  "dwrote",
  "fontdb",
+ "futures-util",
+ "gethostname",
  "imagesize",
  "local-ip-address",
  "log",
  "mdns-sd",
  "qrcode",
+ "reqwest",
  "serde",
  "serde_json",
  "sw-bible",
@@ -3941,6 +3954,8 @@ dependencies = [
  "tauri-plugin-single-instance",
  "tauri-plugin-updater",
  "thiserror 2.0.21",
+ "tokio",
+ "tokio-tungstenite 0.29.0",
  "ts-rs",
 ]
 

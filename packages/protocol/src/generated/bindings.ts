@@ -924,6 +924,11 @@ export type EngineEvent =
   | {
       type: "previewChanged";
       /**
+       * Whose preview pane it is: each operator has their own (see
+       * [`crate::engine::LOCAL_OPERATOR`]). Show it only to them.
+       */
+      operator: Id;
+      /**
        * The new preview pane state.
        */
       preview: PaneState | null;

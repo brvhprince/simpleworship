@@ -6,7 +6,7 @@
 <script lang="ts">
   import type { CountdownFrame } from "@simpleworship/protocol";
   import { onMount } from "svelte";
-  import { formatClock, remainingMs } from "./timing.ts";
+  import { formatClock, remainingMs, now as serviceNow } from "./timing.ts";
 
   interface Props {
     countdown: CountdownFrame;
@@ -15,14 +15,14 @@
 
   let { countdown, onend }: Props = $props();
 
-  let now = $state(Date.now());
+  let now = $state(serviceNow());
   let ended = false;
 
   const left = $derived(remainingMs(countdown.endsAt, now));
 
   onMount(() => {
     const timer = setInterval(() => {
-      now = Date.now();
+      now = serviceNow();
       if (!ended && remainingMs(countdown.endsAt, now) === 0) {
         ended = true;
         onend?.();

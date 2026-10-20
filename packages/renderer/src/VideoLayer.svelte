@@ -9,6 +9,7 @@
   import type { MediaFit, MediaRef, VideoPlayback } from "@simpleworship/protocol";
   import { onMount } from "svelte";
   import { getMediaUrls } from "./media.ts";
+  import { now as serviceNow } from "./timing.ts";
   import { correctionFor, driftSeconds, isBuffering, targetSeconds } from "./video-sync.ts";
 
   interface Props {
@@ -52,7 +53,7 @@
    */
   function sync() {
     if (!video || !playback) return;
-    const now = Date.now();
+    const now = serviceNow();
     const target = targetSeconds(playback, now, video.duration);
     const drift = driftSeconds(video.currentTime, target, video.duration, playback.loop);
     const timeline = `${playback.positionMs}@${playback.anchor}:${playback.playing}`;

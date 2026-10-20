@@ -26,16 +26,20 @@ pub enum Role {
     Alerts,
     /// A tablet on the pulpit or for the band: the stage display, view only.
     Stage,
+    /// Another computer following the service, with its own screens (an
+    /// overflow room, the stream booth, a backup). It controls nothing.
+    Mirror,
 }
 
 impl Role {
     /// Every role, in the order the operator is offered them.
-    pub const ALL: [Role; 5] = [
+    pub const ALL: [Role; 6] = [
         Role::Full,
         Role::Presenter,
         Role::WorshipLeader,
         Role::Alerts,
         Role::Stage,
+        Role::Mirror,
     ];
 }
 
@@ -66,7 +70,7 @@ pub fn may_dispatch(role: Role, command: &Command, state: &EngineSnapshot) -> bo
             _ => false,
         },
         Role::Alerts => matches!(command, Command::ShowAlert { .. } | Command::ClearAlert),
-        Role::Stage => false,
+        Role::Stage | Role::Mirror => false,
     }
 }
 
@@ -77,6 +81,16 @@ fn live_is_song(state: &EngineSnapshot) -> bool {
         .is_some_and(|pane| matches!(pane.presentation.source, PresentationSource::Song { .. }))
 }
 
+/// What a mirror (a computer that follows, see [`Role::Mirror`]) may ask:
+/// only what it needs to draw the screens.
+const MIRROR_CALLS: &[&str] = &["stage.options", "media_folders", "fonts_list"];
+
+/// Whether a device with `role` may stream videos from the media library
+/// (the others show video backgrounds as a still).
+pub fn may_play_video(role: Role) -> bool {
+    matches!(role, Role::Full | Role::Mirror)
+}
+
 /// Questions a device may ask the host (see `Host::call`), by role.
 pub fn may_call(role: Role, method: &str) -> bool {
     match role {
@@ -84,6 +98,7 @@ pub fn may_call(role: Role, method: &str) -> bool {
         Role::Presenter | Role::WorshipLeader => method == "stage.options",
         Role::Alerts => method == "alerts.templates",
         Role::Stage => method == "stage.options",
+        Role::Mirror => MIRROR_CALLS.contains(&method),
     }
 }
 

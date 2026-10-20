@@ -34,6 +34,7 @@
   import { engine } from "../../lib/engine.svelte.ts";
   import { frameAt } from "../../lib/frames.ts";
   import { t } from "../../lib/i18n/i18n.svelte.ts";
+  import { link } from "../../lib/link.svelte.ts";
   import { renderPdfPages } from "../../lib/pdf.ts";
   import { prompts } from "../../lib/prompts.svelte.ts";
   import SlideEditor from "../slides/SlideEditor.svelte";
@@ -172,8 +173,10 @@
 
 <div class="presentations-tab">
   <div class="toolbar">
-    <Button onclick={newPresentation}>{t("decks.new")}</Button>
-    <Button disabled={progress !== null} onclick={chooseAndImport}>{t("common.import")}</Button>
+    {#if !link.joined}
+      <Button onclick={newPresentation}>{t("decks.new")}</Button>
+      <Button disabled={progress !== null} onclick={chooseAndImport}>{t("common.import")}</Button>
+    {/if}
     <input
       type="search"
       bind:value={query}
@@ -186,12 +189,14 @@
       <span class="hint">{t("decks.needsLibreOffice")}</span>
     {/if}
     <span class="spacer"></span>
-    <Button disabled={!selected} onclick={() => selected && remove(selected)}
-      >{t("common.delete")}</Button
-    >
-    <Button disabled={!selected} onclick={() => selected && edit(selected)}
-      >{t("common.edit")}</Button
-    >
+    {#if !link.joined}
+      <Button disabled={!selected} onclick={() => selected && remove(selected)}
+        >{t("common.delete")}</Button
+      >
+      <Button disabled={!selected} onclick={() => selected && edit(selected)}
+        >{t("common.edit")}</Button
+      >
+    {/if}
     <Button
       disabled={!selected}
       onclick={() => selected && attempt(() => addPresentationToSchedule(selected.id))}

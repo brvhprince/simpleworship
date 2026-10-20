@@ -10,6 +10,7 @@
   | Worship leader | Live, Songs (the songs in the schedule)            |
   | Alerts         | Alerts                                             |
   | Stage view     | the stage display, full screen                     |
+  | Mirror         | the stage display (mirrors are meant for computers) |
 -->
 <script lang="ts">
   import { i18n, type MessageKey, t } from "@simpleworship/i18n";
@@ -34,6 +35,7 @@
     worshipLeader: ["live", "songs"],
     alerts: ["alerts"],
     stage: [],
+    mirror: [],
   };
 
   const LABELS: Record<Screen, MessageKey> = {
@@ -83,7 +85,7 @@
       <div class="offline" role="status">{t("remote.reconnecting")}</div>
     {/if}
 
-    {#if remote.role === "stage"}
+    {#if remote.role === "stage" || remote.role === "mirror"}
       <StageDisplay />
     {:else}
       <div class="screen">

@@ -37,6 +37,14 @@ impl<'db> Settings<'db> {
             .execute(params![key, json])?;
         Ok(())
     }
+
+    /// Removes the value stored under `key`, if any.
+    pub fn delete(&self, key: &str) -> Result<(), DbError> {
+        self.conn
+            .prepare_cached("DELETE FROM settings WHERE key = ?1")?
+            .execute([key])?;
+        Ok(())
+    }
 }
 
 #[cfg(test)]

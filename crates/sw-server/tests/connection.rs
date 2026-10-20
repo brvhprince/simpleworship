@@ -22,19 +22,19 @@ struct FakeHost {
 }
 
 impl Host for FakeHost {
-    fn snapshot(&self) -> EngineSnapshot {
-        self.engine.lock().unwrap().snapshot()
+    fn snapshot(&self, device: Id) -> EngineSnapshot {
+        self.engine.lock().unwrap().snapshot_for(device)
     }
-    fn dispatch(&self, command: Command) -> Result<(), String> {
+    fn dispatch(&self, device: Id, command: Command) -> Result<(), String> {
         self.commands.lock().unwrap().push(format!("{command:?}"));
         self.engine
             .lock()
             .unwrap()
-            .dispatch(command)
+            .dispatch_as(device, command)
             .map(|_| ())
             .map_err(|e| e.to_string())
     }
-    fn call(&self, method: &str, _params: Value) -> Result<Value, String> {
+    fn call(&self, _device: Id, method: &str, _params: Value) -> Result<Value, String> {
         Ok(json!({ "method": method }))
     }
     fn media_path(&self, _folder: MediaFolder, _file: &str) -> Option<PathBuf> {
@@ -68,6 +68,8 @@ async fn a_presenter_phone_connects_and_is_kept_to_its_role() {
             static_dir: PathBuf::from("does-not-exist"),
             phones: true,
             stream_key: None,
+            app_version: "0.0.0".into(),
+            computer_name: "Test".into(),
         },
         host.clone(),
         vec![device],
@@ -136,6 +138,8 @@ async fn an_unknown_token_is_refused() {
             static_dir: PathBuf::from("does-not-exist"),
             phones: true,
             stream_key: None,
+            app_version: "0.0.0".into(),
+            computer_name: "Test".into(),
         },
         Arc::new(FakeHost::default()),
         Vec::new(),
@@ -171,6 +175,8 @@ async fn the_browser_source_watches_but_cannot_send_commands() {
             static_dir: PathBuf::from("does-not-exist"),
             phones: false,
             stream_key: Some("stream-key".into()),
+            app_version: "0.0.0".into(),
+            computer_name: "Test".into(),
         },
         host.clone(),
         Vec::new(),
@@ -210,6 +216,8 @@ async fn phones_switched_off_keep_their_pairing() {
             static_dir: PathBuf::from("does-not-exist"),
             phones: true,
             stream_key: None,
+            app_version: "0.0.0".into(),
+            computer_name: "Test".into(),
         },
         Arc::new(FakeHost::default()),
         vec![device],
@@ -228,5 +236,50 @@ async fn phones_switched_off_keep_their_pairing() {
 
     server.set_phones(true);
     assert_eq!(check(server.port(), &token).await, 204);
+    server.stop();
+}
+
+#[tokio::test]
+async fn a_phone_gets_its_own_preview() {
+    let host = Arc::new(FakeHost::default());
+    let (device, token) = pairing::new_device("Second operator", Role::Full);
+    let device_id = device.id;
+    let server = RemoteServer::start(
+        ServerConfig {
+            port: 0,
+            static_dir: PathBuf::from("does-not-exist"),
+            phones: true,
+            stream_key: None,
+            app_version: "0.0.0".into(),
+            computer_name: "Test".into(),
+        },
+        host.clone(),
+        vec![device],
+    )
+    .await
+    .unwrap();
+    let url = format!("ws://127.0.0.1:{}/ws?token={token}", server.port());
+    let (mut socket, _) = tokio_tungstenite::connect_async(url).await.unwrap();
+    let welcome = next_json(&mut socket).await;
+    assert_eq!(welcome["device"], device_id.to_string());
+
+    let text = json!({ "type": "dispatch", "id": 1, "command": { "type": "previewText", "title": "Mine", "text": "Mine" } });
+    socket
+        .send(Message::Text(text.to_string().into()))
+        .await
+        .unwrap();
+    assert_eq!(next_json(&mut socket).await["error"], Value::Null);
+
+    let engine = host.engine.lock().unwrap();
+    assert!(
+        engine.snapshot().preview.is_none(),
+        "the computer's own preview is untouched"
+    );
+    let mine = engine
+        .snapshot_for(device_id)
+        .preview
+        .expect("the phone's preview");
+    assert_eq!(mine.presentation.title, "Mine");
+    drop(engine);
     server.stop();
 }

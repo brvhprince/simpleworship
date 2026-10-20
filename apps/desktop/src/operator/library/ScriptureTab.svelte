@@ -29,6 +29,7 @@
   import { bibles } from "../../lib/bibles.svelte.ts";
   import { engine } from "../../lib/engine.svelte.ts";
   import { t } from "../../lib/i18n/i18n.svelte.ts";
+  import { link } from "../../lib/link.svelte.ts";
   import ManageBibles from "./ManageBibles.svelte";
 
   /** Wait this long after the last keystroke before looking things up. */
@@ -348,7 +349,9 @@
     </label>
 
     <span class="spacer"></span>
-    <Button onclick={() => (managing = true)}>{t("scripture.bibles")}</Button>
+    {#if !link.joined}
+      <Button onclick={() => (managing = true)}>{t("scripture.bibles")}</Button>
+    {/if}
     <Button disabled={!passage || bibleIds.length === 0} onclick={addToSchedule}>
       {t("common.addToSchedule")}
     </Button>

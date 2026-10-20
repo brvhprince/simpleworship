@@ -4,7 +4,7 @@
   people on stage see ("Wrap up", "5 minutes").
 -->
 <script lang="ts">
-  import { formatClock, stageTimerMs } from "@simpleworship/renderer";
+  import { formatClock, now as serviceNow, stageTimerMs } from "@simpleworship/renderer";
   import { Button } from "@simpleworship/ui";
   import { onMount } from "svelte";
   import { engine } from "../lib/engine.svelte.ts";
@@ -20,13 +20,13 @@
 
   let minutes = $state(30);
   let message = $state("");
-  let now = $state(Date.now());
+  let now = $state(serviceNow());
 
   const timer = $derived(engine.stage.timer);
   const shown = $derived(timer ? stageTimerMs(timer, now) : 0);
 
   onMount(() => {
-    const tick = setInterval(() => (now = Date.now()), 250);
+    const tick = setInterval(() => (now = serviceNow()), 250);
     return () => clearInterval(tick);
   });
 

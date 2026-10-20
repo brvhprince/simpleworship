@@ -7,6 +7,7 @@
   import { OutputView, ScaledCanvas } from "@simpleworship/renderer";
   import { onMount } from "svelte";
   import { engine } from "../lib/engine.svelte.ts";
+  import { link } from "../lib/link.svelte.ts";
   import { closeOnEscape } from "../lib/output-window.ts";
 
   onMount(() => {
@@ -20,7 +21,8 @@
 <main class="output">
   {#if engine.output}
     <ScaledCanvas fit="contain">
-      <OutputView output={engine.output} />
+      <!-- A joined computer's screens are silent: the main computer plays the sound. -->
+      <OutputView output={engine.output} muted={link.joined} />
     </ScaledCanvas>
   {/if}
 </main>

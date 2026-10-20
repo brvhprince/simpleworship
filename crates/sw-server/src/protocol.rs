@@ -4,7 +4,7 @@
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sw_core::{Command, EngineEvent, EngineSnapshot};
+use sw_core::{Command, EngineEvent, EngineSnapshot, Id};
 use ts_rs::TS;
 
 use crate::roles::Role;
@@ -48,6 +48,8 @@ pub enum ClientMessage {
 pub enum ServerMessage {
     /// Right after connecting: who the device is, and the whole state.
     Welcome {
+        /// The device's id: the operator its preview pane belongs to.
+        device: Id,
         /// The device's name.
         name: String,
         /// What it may do.

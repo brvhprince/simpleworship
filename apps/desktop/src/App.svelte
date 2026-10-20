@@ -10,6 +10,7 @@
   import { convertFileSrc } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
   import { i18n } from "./lib/i18n/i18n.svelte.ts";
+  import { link } from "./lib/link.svelte.ts";
   import NdiPage from "./ndi/NdiPage.svelte";
   import Operator from "./operator/Operator.svelte";
   import Output from "./output/Output.svelte";
@@ -26,23 +27,44 @@
   const view = new URLSearchParams(window.location.search).get("view") ?? "operator";
 
   // Media files are served by Tauri's asset protocol, limited to these
-  // folders (see `assetProtocol` in tauri.conf.json).
-  setMediaUrls({
-    file: (media: MediaRef) => convertFileSrc(`${folders.media}/${media.file}`),
-    thumbnail: (media: MediaRef) => convertFileSrc(`${folders.thumbnails}/${media.id}.jpg`),
-  });
+  // folders (see `assetProtocol` in tauri.conf.json). A computer that
+  // joined another shows that computer's, from its server.
+  const host = link.status;
+  setMediaUrls(
+    host.joined
+      ? {
+          file: (media: MediaRef) =>
+            `${host.address}/media/${encodeURIComponent(media.file)}?token=${host.token}`,
+          thumbnail: (media: MediaRef) =>
+            `${host.address}/thumbnails/${media.id}.jpg?token=${host.token}`,
+        }
+      : {
+          file: (media: MediaRef) => convertFileSrc(`${folders.media}/${media.file}`),
+          thumbnail: (media: MediaRef) => convertFileSrc(`${folders.thumbnails}/${media.id}.jpg`),
+        },
+  );
 
   // Cameras: live on the projector and the operator's panes (which also
   // say when one is missing); never opened by NDI's hidden windows, whose
   // pictures could not keep up with live video.
+  // A joined computer's cameras are not the service's: the main
+  // computer's cameras show there only.
   setCameraUse({
-    live: view !== "ndi" && view !== "stage",
+    live: view !== "ndi" && view !== "stage" && !host.joined,
     placeholder: view === "operator",
     explain: view === "operator",
   });
 
-  // A language chosen in Settings reaches every window (the stage display too).
-  onMount(() => i18n.listen());
+  // A language chosen in Settings reaches every window (the stage display
+  // too); joining or leaving another computer reloads every window.
+  onMount(() => {
+    const stopLanguage = i18n.listen();
+    const linked = link.connect();
+    return () => {
+      stopLanguage();
+      void linked.then((stop) => stop());
+    };
+  });
 </script>
 
 {#if view === "output"}

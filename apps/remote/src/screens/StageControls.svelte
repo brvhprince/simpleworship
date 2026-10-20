@@ -4,13 +4,13 @@
 -->
 <script lang="ts">
   import { t } from "@simpleworship/i18n";
-  import { formatClock, stageTimerMs } from "@simpleworship/renderer";
+  import { formatClock, now as serviceNow, stageTimerMs } from "@simpleworship/renderer";
   import { onMount } from "svelte";
   import { remote } from "../lib/remote.svelte.ts";
 
   let minutes = $state(30);
   let message = $state("");
-  let now = $state(Date.now());
+  let now = $state(serviceNow());
 
   const timer = $derived(remote.stage.timer);
   const shown = $derived(timer ? stageTimerMs(timer, now) : 0);
@@ -22,7 +22,7 @@
   ]);
 
   onMount(() => {
-    const tick = setInterval(() => (now = Date.now()), 250);
+    const tick = setInterval(() => (now = serviceNow()), 250);
     return () => clearInterval(tick);
   });
 

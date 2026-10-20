@@ -9,7 +9,13 @@
 -->
 <script lang="ts">
   import type { AppSettings, StageOptions } from "@simpleworship/protocol";
-  import { formatClock, getMediaUrls, remainingMs, stageTimerMs } from "@simpleworship/renderer";
+  import {
+    formatClock,
+    getMediaUrls,
+    remainingMs,
+    now as serviceNow,
+    stageTimerMs,
+  } from "@simpleworship/renderer";
   import { listen } from "@tauri-apps/api/event";
   import { onMount } from "svelte";
   import { getSettings } from "../lib/api.ts";
@@ -22,12 +28,12 @@
   const SETTINGS_EVENT = "settings://changed";
 
   const urls = getMediaUrls();
-  let now = $state(Date.now());
+  let now = $state(serviceNow());
   let options: StageOptions = $state({ showClock: true, showNext: true, textScale: 100 });
 
   onMount(() => {
     const connection = engine.connect();
-    const clock = setInterval(() => (now = Date.now()), 250);
+    const clock = setInterval(() => (now = serviceNow()), 250);
     getSettings()
       .then((settings) => (options = settings.stage))
       .catch(() => {});

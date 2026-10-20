@@ -23,7 +23,7 @@ use sw_server::{
 use tauri::{AppHandle, Emitter, Manager};
 use ts_rs::TS;
 
-use crate::commands::engine::dispatch;
+use crate::commands::engine::{as_operator, dispatch};
 use crate::error::{AppError, AppResult};
 use crate::state::AppState;
 
@@ -143,6 +143,11 @@ pub fn publish(app: &AppHandle, event: &EngineEvent) {
 /// Starts the server if the phone remote or the browser source is on.
 /// Called at startup.
 pub fn start_if_enabled(app: &AppHandle) {
+    // A joined computer runs another computer's service: its phones and
+    // browser sources join that one.
+    if crate::link::is_joined(app) {
+        return;
+    }
     let settings = load_settings(app);
     if settings.enabled || settings.browser_source {
         let app = app.clone();
@@ -182,6 +187,8 @@ async fn start(app: &AppHandle, settings: &RemoteSettings) {
         static_dir: static_dir(app),
         phones: settings.enabled,
         stream_key: settings.browser_source.then(|| settings.stream_key.clone()),
+        app_version: app.package_info().version.to_string(),
+        computer_name: computer_name(app),
     };
     let result = RemoteServer::start(config, host, devices).await;
     {
@@ -190,7 +197,7 @@ async fn start(app: &AppHandle, settings: &RemoteSettings) {
         match result {
             Ok(server) => {
                 log::info!("phone remote listening on port {}", server.port());
-                running.announcer = announce(server.port());
+                running.announcer = announce(app, server.port());
                 running.server = Some(Arc::new(server));
                 running.error = None;
             }
@@ -220,7 +227,7 @@ fn stop(app: &AppHandle) {
 /// Announces SimpleWorship on the network as `simpleworship.local`, for
 /// phones that can open addresses by name. Best effort: many networks and
 /// phones do not support it, and the QR code works without it.
-fn announce(port: u16) -> Option<mdns_sd::ServiceDaemon> {
+fn announce(app: &AppHandle, port: u16) -> Option<mdns_sd::ServiceDaemon> {
     let daemon = mdns_sd::ServiceDaemon::new().ok()?;
     let addresses: Vec<IpAddr> = local_addresses();
     let service = mdns_sd::ServiceInfo::new(
@@ -233,7 +240,47 @@ fn announce(port: u16) -> Option<mdns_sd::ServiceDaemon> {
     )
     .ok()?;
     daemon.register(service).ok()?;
+    // For other SimpleWorship computers looking for one to join (see
+    // `link.rs`): its name and version.
+    let name = computer_name(app);
+    let version = app.package_info().version.to_string();
+    let instance: String = name
+        .chars()
+        .filter(|c| c.is_alphanumeric() || *c == ' ' || *c == '-')
+        .take(60)
+        .collect();
+    if let Ok(joinable) = mdns_sd::ServiceInfo::new(
+        crate::link::SERVICE_TYPE,
+        if instance.trim().is_empty() {
+            "SimpleWorship"
+        } else {
+            instance.trim()
+        },
+        "simpleworship.local.",
+        &addresses[..],
+        port,
+        &[("name", name.as_str()), ("version", version.as_str())][..],
+    ) {
+        let _ = daemon.register(joinable);
+    }
     Some(daemon)
+}
+
+/// What other computers list this one as: the church's name (from
+/// Settings) and the computer's, e.g. "Winners Chapel (MAIN-PC)".
+pub fn computer_name(app: &AppHandle) -> String {
+    let computer = gethostname::gethostname()
+        .to_string_lossy()
+        .trim_end_matches(".local")
+        .to_owned();
+    let church = crate::settings::load(&app.state::<AppState>().database())
+        .map(|settings| settings.church_name.trim().to_owned())
+        .unwrap_or_default();
+    if church.is_empty() {
+        computer
+    } else {
+        format!("{church} ({computer})")
+    }
 }
 
 /// Where the built remote web app is: beside the program when installed,
@@ -249,6 +296,19 @@ fn static_dir(app: &AppHandle) -> PathBuf {
 }
 
 /// The computer's addresses on the local network (IPv4, private ranges).
+/// Stops this computer's server when it joins another (see `link.rs`); its
+/// settings are kept for when it leaves.
+pub fn stop_for_link(app: &AppHandle) {
+    stop(app);
+    announce_status(app);
+}
+
+/// This computer's own network addresses (to leave itself out when looking
+/// for other computers).
+pub fn own_addresses() -> Vec<IpAddr> {
+    local_addresses()
+}
+
 fn local_addresses() -> Vec<IpAddr> {
     let mut found: Vec<IpAddr> = local_ip_address::list_afinet_netifas()
         .unwrap_or_default()
@@ -271,18 +331,21 @@ struct DesktopHost {
 }
 
 impl Host for DesktopHost {
-    fn snapshot(&self) -> EngineSnapshot {
-        self.app.state::<AppState>().engine().snapshot()
+    fn snapshot(&self, device: Id) -> EngineSnapshot {
+        self.app.state::<AppState>().engine().snapshot_for(device)
     }
 
-    fn dispatch(&self, command: Command) -> Result<(), String> {
-        log::info!("from a phone: {command:?}");
-        dispatch(&self.app, &self.app.state::<AppState>(), command)
+    fn dispatch(&self, device: Id, command: Command) -> Result<(), String> {
+        log::info!("from a phone or computer: {command:?}");
+        as_operator(device, || {
+            dispatch(&self.app, &self.app.state::<AppState>(), command)
+        })
+        .map_err(|error| error.to_string())
+    }
+
+    fn call(&self, device: Id, method: &str, params: Value) -> Result<Value, String> {
+        as_operator(device, || answer_call(&self.app, device, method, params))
             .map_err(|error| error.to_string())
-    }
-
-    fn call(&self, method: &str, params: Value) -> Result<Value, String> {
-        answer_call(&self.app, method, params).map_err(|error| error.to_string())
     }
 
     fn media_path(&self, folder: MediaFolder, file: &str) -> Option<PathBuf> {
@@ -315,7 +378,7 @@ impl Host for DesktopHost {
 }
 
 /// Answers a question from a phone (its role was already checked).
-fn answer_call(app: &AppHandle, method: &str, params: Value) -> AppResult<Value> {
+fn answer_call(app: &AppHandle, device: Id, method: &str, params: Value) -> AppResult<Value> {
     use crate::commands::{scripture, settings as settings_commands, songs};
     let state = app.state::<AppState>();
     let text = |key: &str| {
@@ -357,7 +420,10 @@ fn answer_call(app: &AppHandle, method: &str, params: Value) -> AppResult<Value>
         }
         "alerts.templates" => json!(settings_commands::settings_get(state)?.alert_templates),
         "stage.options" => json!(settings_commands::settings_get(state)?.stage),
-        _ => return Err(AppError::Conversion(format!("unknown question {method}"))),
+        // A joined computer: the whole state, with its own preview.
+        "engine.snapshot" => json!(state.engine().snapshot_for(device)),
+        // A joined computer's operator window: one of its commands.
+        other => crate::host_calls::run(app, other, params)?,
     })
 }
 

@@ -1,7 +1,9 @@
 //! Driving the presentation engine.
 
-use sw_core::{Command, EngineEvent, EngineSnapshot, Schedule};
-use tauri::{AppHandle, Emitter, State};
+use std::cell::Cell;
+
+use sw_core::{Command, EngineEvent, EngineSnapshot, Id, LOCAL_OPERATOR, Schedule};
+use tauri::{AppHandle, Emitter, Manager};
 
 use crate::error::AppResult;
 use crate::schedule_file;
@@ -11,20 +13,41 @@ use crate::state::AppState;
 /// Keep in sync with `ENGINE_EVENT` in `packages/protocol`.
 pub const ENGINE_EVENT: &str = "engine://event";
 
-/// Sends a command to the engine and broadcasts the resulting events.
-#[tauri::command]
-pub fn engine_dispatch(
-    app: AppHandle,
-    state: State<'_, AppState>,
-    command: Command,
-) -> AppResult<()> {
-    dispatch(&app, &state, command)
+thread_local! {
+    /// Whose command this thread is carrying out: this computer's own
+    /// window, or a phone or joined computer (see [`as_operator`]).
+    static OPERATOR: Cell<Id> = const { Cell::new(LOCAL_OPERATOR) };
 }
 
-/// Returns the full engine state, for windows that have just opened.
+/// Runs `work` on behalf of `operator` (a phone or a joined computer):
+/// whatever it puts in a preview goes to that operator's own preview pane.
+pub fn as_operator<T>(operator: Id, work: impl FnOnce() -> T) -> T {
+    let before = OPERATOR.with(|current| current.replace(operator));
+    let result = work();
+    OPERATOR.with(|current| current.set(before));
+    result
+}
+
+/// Sends a command to the engine and broadcasts the resulting events. On a
+/// computer that joined another, it goes to that computer's engine (see
+/// `link.rs`). Async, so waiting for the other computer never holds up the
+/// window.
 #[tauri::command]
-pub fn engine_snapshot(state: State<'_, AppState>) -> EngineSnapshot {
-    state.engine().snapshot()
+pub async fn engine_dispatch(app: AppHandle, command: Command) -> AppResult<()> {
+    if crate::link::is_joined(&app) {
+        return crate::link::dispatch(&app, command).await;
+    }
+    dispatch(&app, &app.state::<AppState>(), command)
+}
+
+/// Returns the full engine state, for windows that have just opened: the
+/// joined computer's, on a computer that joined another.
+#[tauri::command]
+pub async fn engine_snapshot(app: AppHandle) -> AppResult<EngineSnapshot> {
+    if crate::link::is_joined(&app) {
+        return crate::link::snapshot(&app).await;
+    }
+    Ok(app.state::<AppState>().engine().snapshot())
 }
 
 /// Applies `command`, emits its events, and keeps the schedule file status
@@ -34,7 +57,14 @@ pub fn dispatch(app: &AppHandle, state: &AppState, command: Command) -> AppResul
     // Hold the lock while emitting so that events from two commands sent at
     // the same moment can never reach the windows out of order.
     let mut engine = state.engine();
-    for event in engine.dispatch(command)? {
+    let operator = OPERATOR.with(Cell::get);
+    let events = engine.dispatch_as(operator, command)?;
+    // A computer that joined another shows that one's service: its own
+    // engine still follows its library, but is not shown.
+    if crate::link::is_joined(app) {
+        return Ok(());
+    }
+    for event in events {
         match &event {
             EngineEvent::ScheduleChanged { schedule } => schedule_changed(app, state, schedule),
             EngineEvent::SongWentLive { song_id, title } => record_usage(state, *song_id, title),

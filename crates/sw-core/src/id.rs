@@ -24,6 +24,12 @@ impl Id {
     pub fn new() -> Self {
         Self(Uuid::now_v7())
     }
+
+    /// The all-zero identifier, for something there is exactly one of
+    /// (such as [`crate::engine::LOCAL_OPERATOR`]).
+    pub const fn nil() -> Self {
+        Self(Uuid::nil())
+    }
 }
 
 impl Default for Id {

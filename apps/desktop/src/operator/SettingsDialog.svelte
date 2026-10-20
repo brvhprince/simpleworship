@@ -14,6 +14,7 @@
   import { dialogs } from "../lib/dialogs.svelte.ts";
   import { engine } from "../lib/engine.svelte.ts";
   import { i18n, LANGUAGES, type Language, t } from "../lib/i18n/i18n.svelte.ts";
+  import { link } from "../lib/link.svelte.ts";
   import { ROLES, remote } from "../lib/remote.svelte.ts";
   import { updates } from "../lib/updates.svelte.ts";
   import StreamSettings from "./StreamSettings.svelte";
@@ -64,39 +65,48 @@
 <Dialog title={t("settings.title")} onclose={() => dialogs.close()}>
   {#if settings}
     <div class="settings">
-      <section>
-        <h3>{t("settings.church")}</h3>
-        <label class="field">
-          {t("common.name")}
-          <input bind:value={settings.churchName} placeholder={t("settings.churchPlaceholder")}>
-        </label>
-        <label class="field">
-          {t("settings.ccli")}
-          <input bind:value={settings.ccliLicense} placeholder={t("settings.ccliPlaceholder")}>
-          <span class="hint">{t("settings.ccliHint")}</span>
-        </label>
-      </section>
+      {#if link.joined}
+        <p class="hint">{t("link.settingsThere", { name: link.status.hostName })}</p>
+      {/if}
+      {#if !link.joined}
+        <section>
+          <h3>{t("settings.church")}</h3>
+          <label class="field">
+            {t("common.name")}
+            <input bind:value={settings.churchName} placeholder={t("settings.churchPlaceholder")}>
+          </label>
+          <label class="field">
+            {t("settings.ccli")}
+            <input bind:value={settings.ccliLicense} placeholder={t("settings.ccliPlaceholder")}>
+            <span class="hint">{t("settings.ccliHint")}</span>
+          </label>
+        </section>
 
-      <section>
-        <h3>{t("settings.alerts")}</h3>
-        <p class="hint">{t("settings.alertsHint")}</p>
-        {#each settings.alertTemplates as template, index (index)}
-          <div class="template">
-            <input class="template-name" bind:value={template.name} aria-label={t("common.name")}>
-            <input class="template-text" bind:value={template.text} aria-label={t("alert.message")}>
-            <select bind:value={template.style} aria-label={t("alert.style")}>
-              <option value="ticker">{t("alert.scrolling")}</option>
-              <option value="banner">{t("alert.still")}</option>
-            </select>
-            <select bind:value={template.position} aria-label={t("alert.position")}>
-              <option value="bottom">{t("alert.bottom")}</option>
-              <option value="top">{t("alert.top")}</option>
-            </select>
-            <Button onclick={() => removeTemplate(template)}>{t("settings.remove")}</Button>
-          </div>
-        {/each}
-        <Button onclick={addTemplate}>{t("settings.addTemplate")}</Button>
-      </section>
+        <section>
+          <h3>{t("settings.alerts")}</h3>
+          <p class="hint">{t("settings.alertsHint")}</p>
+          {#each settings.alertTemplates as template, index (index)}
+            <div class="template">
+              <input class="template-name" bind:value={template.name} aria-label={t("common.name")}>
+              <input
+                class="template-text"
+                bind:value={template.text}
+                aria-label={t("alert.message")}
+              >
+              <select bind:value={template.style} aria-label={t("alert.style")}>
+                <option value="ticker">{t("alert.scrolling")}</option>
+                <option value="banner">{t("alert.still")}</option>
+              </select>
+              <select bind:value={template.position} aria-label={t("alert.position")}>
+                <option value="bottom">{t("alert.bottom")}</option>
+                <option value="top">{t("alert.top")}</option>
+              </select>
+              <Button onclick={() => removeTemplate(template)}>{t("settings.remove")}</Button>
+            </div>
+          {/each}
+          <Button onclick={addTemplate}>{t("settings.addTemplate")}</Button>
+        </section>
+      {/if}
 
       <section>
         <h3>{t("settings.updates")}</h3>
@@ -112,91 +122,95 @@
         </div>
       </section>
 
-      <section>
-        <h3>{t("settings.stage")}</h3>
-        <label class="option">
-          <input type="checkbox" bind:checked={settings.stage.showClock}>
-          {t("settings.showClock")}
-        </label>
-        <label class="option">
-          <input type="checkbox" bind:checked={settings.stage.showNext}>
-          {t("settings.showNext")}
-        </label>
-        <label class="field narrow">
-          {t("settings.textSize")}
-          <select bind:value={settings.stage.textScale}>
-            <option value={80}>{t("settings.smaller")}</option>
-            <option value={100}>{t("settings.normal")}</option>
-            <option value={125}>{t("settings.larger")}</option>
-            <option value={150}>{t("settings.largest")}</option>
-          </select>
-        </label>
-      </section>
+      {#if !link.joined}
+        <section>
+          <h3>{t("settings.stage")}</h3>
+          <label class="option">
+            <input type="checkbox" bind:checked={settings.stage.showClock}>
+            {t("settings.showClock")}
+          </label>
+          <label class="option">
+            <input type="checkbox" bind:checked={settings.stage.showNext}>
+            {t("settings.showNext")}
+          </label>
+          <label class="field narrow">
+            {t("settings.textSize")}
+            <select bind:value={settings.stage.textScale}>
+              <option value={80}>{t("settings.smaller")}</option>
+              <option value={100}>{t("settings.normal")}</option>
+              <option value={125}>{t("settings.larger")}</option>
+              <option value={150}>{t("settings.largest")}</option>
+            </select>
+          </label>
+        </section>
+      {/if}
 
       <section>
         <h3>{t("settings.stream")}</h3>
         <StreamSettings />
       </section>
 
-      <section>
-        <h3>{t("settings.remote")}</h3>
-        {#if remote.status}
-          {@const status = remote.status}
-          <label class="option">
-            <input
-              type="checkbox"
-              checked={status.settings.enabled}
-              onchange={(e) => remote.setEnabled(e.currentTarget.checked, status.settings.port)}
-            >
-            {t("settings.remoteOn")}
-          </label>
-          <label class="field narrow">
-            {t("settings.remotePort")}
-            <input
-              type="number"
-              min="1024"
-              max="65535"
-              value={status.settings.port}
-              onchange={(e) =>
-                remote.setEnabled(status.settings.enabled, e.currentTarget.valueAsNumber || 7270)}
-            >
-          </label>
-          {#if status.running && status.addresses.length > 0}
-            <p class="hint">
-              {t("settings.remoteAddresses", { addresses: status.addresses.join("  ·  ") })}
-            </p>
-          {:else if status.error}
-            <p class="hint">{status.error}</p>
-          {/if}
-          <p class="hint">{t("settings.remoteHint")}</p>
-          {#each status.devices as device (device.id)}
-            <div class="template">
-              <span class="device-name">
-                {device.name}
-                {#if status.connected.includes(device.id)}
-                  <span class="connected">· {t("settings.remoteConnected")}</span>
-                {/if}
-              </span>
-              <select
-                value={device.role}
-                aria-label={t("settings.remoteRole", { name: device.name })}
-                onchange={(e) =>
-                  remote.setRole(
-                    device.id,
-                    e.currentTarget.value as (typeof ROLES)[number]["role"],
-                  )}
+      {#if !link.joined}
+        <section>
+          <h3>{t("settings.remote")}</h3>
+          {#if remote.status}
+            {@const status = remote.status}
+            <label class="option">
+              <input
+                type="checkbox"
+                checked={status.settings.enabled}
+                onchange={(e) => remote.setEnabled(e.currentTarget.checked, status.settings.port)}
               >
-                {#each ROLES as option (option.role)}
-                  <option value={option.role}>{t(option.name)}</option>
-                {/each}
-              </select>
-              <Button onclick={() => remote.remove(device.id)}>{t("settings.remove")}</Button>
-            </div>
-          {:else}
-            <p class="hint">{t("settings.remoteNoDevices")}</p>
-          {/each}
-        {/if}
-      </section>
+              {t("settings.remoteOn")}
+            </label>
+            <label class="field narrow">
+              {t("settings.remotePort")}
+              <input
+                type="number"
+                min="1024"
+                max="65535"
+                value={status.settings.port}
+                onchange={(e) =>
+                  remote.setEnabled(status.settings.enabled, e.currentTarget.valueAsNumber || 7270)}
+              >
+            </label>
+            {#if status.running && status.addresses.length > 0}
+              <p class="hint">
+                {t("settings.remoteAddresses", { addresses: status.addresses.join("  ·  ") })}
+              </p>
+            {:else if status.error}
+              <p class="hint">{status.error}</p>
+            {/if}
+            <p class="hint">{t("settings.remoteHint")}</p>
+            {#each status.devices as device (device.id)}
+              <div class="template">
+                <span class="device-name">
+                  {device.name}
+                  {#if status.connected.includes(device.id)}
+                    <span class="connected">· {t("settings.remoteConnected")}</span>
+                  {/if}
+                </span>
+                <select
+                  value={device.role}
+                  aria-label={t("settings.remoteRole", { name: device.name })}
+                  onchange={(e) =>
+                    remote.setRole(
+                      device.id,
+                      e.currentTarget.value as (typeof ROLES)[number]["role"],
+                    )}
+                >
+                  {#each ROLES as option (option.role)}
+                    <option value={option.role}>{t(option.name)}</option>
+                  {/each}
+                </select>
+                <Button onclick={() => remote.remove(device.id)}>{t("settings.remove")}</Button>
+              </div>
+            {:else}
+              <p class="hint">{t("settings.remoteNoDevices")}</p>
+            {/each}
+          {/if}
+        </section>
+      {/if}
 
       <section>
         <h3>{t("settings.language")}</h3>

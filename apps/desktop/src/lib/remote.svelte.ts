@@ -23,6 +23,7 @@ export const ROLES: { role: Role; name: MessageKey; description: MessageKey }[] 
   { role: "worshipLeader", name: "role.worshipLeader", description: "role.worshipLeaderHint" },
   { role: "alerts", name: "role.alerts", description: "role.alertsHint" },
   { role: "stage", name: "role.stage", description: "role.stageHint" },
+  { role: "mirror", name: "role.mirror", description: "role.mirrorHint" },
 ];
 
 class RemoteStore {

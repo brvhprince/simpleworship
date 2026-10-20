@@ -6,7 +6,9 @@
 
 import type { FoundSource } from "@simpleworship/protocol";
 import { firstLaunchImports } from "./api.ts";
+import { engine } from "./engine.svelte.ts";
 import { listOf, t } from "./i18n/i18n.svelte.ts";
+import { link } from "./link.svelte.ts";
 import { onMenuClick } from "./menu.ts";
 import { prompts } from "./prompts.svelte.ts";
 
@@ -29,7 +31,10 @@ class Importer {
   /** Listens for File › Import from Other Software…. */
   connect(): Promise<() => void> {
     return onMenuClick((id) => {
-      if (id === "import") this.open();
+      if (id !== "import") return;
+      // A joined computer uses the main computer's library.
+      if (link.joined) engine.showError(t("link.onMainComputer", { name: link.status.hostName }));
+      else this.open();
     });
   }
 
@@ -38,6 +43,7 @@ class Importer {
    * computer, offers to bring it across.
    */
   async offerOnFirstLaunch(): Promise<void> {
+    if (link.joined) return;
     const found = await firstLaunchImports();
     if (found.length === 0) return;
 

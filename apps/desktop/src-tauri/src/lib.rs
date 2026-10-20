@@ -24,8 +24,10 @@ mod bibles;
 mod commands;
 mod error;
 mod files;
+mod host_calls;
 mod import_sources;
 mod launch;
+mod link;
 mod media;
 mod menu;
 mod ndi;
@@ -74,12 +76,15 @@ pub fn run() {
         .manage(launch::PendingOpen::default())
         .manage(remote::RemoteState::default())
         .manage(ndi::NdiState::default())
+        .manage(link::LinkState::default())
         .setup(|app| {
             log::info!("SimpleWorship {} starting", app.package_info().version);
             let state = AppState::load(app.handle())?;
             let recent = state.recent().list();
             app.manage(state);
             app.manage(windows::OutputPlacements::default());
+            // First: a computer that joined another runs that one's service.
+            link::start_if_joined(app.handle());
 
             menu::install(app.handle())?;
             menu::update_recent(app.handle(), &recent)?;
@@ -199,6 +204,11 @@ pub fn run() {
             ndi::ndi_status,
             ndi::ndi_set,
             ndi::ndi_frame_ready,
+            link::link_status,
+            link::link_call,
+            link::link_discover,
+            link::link_join,
+            link::link_leave,
         ])
         .on_window_event(windows::on_window_event)
         .build(tauri::generate_context!())

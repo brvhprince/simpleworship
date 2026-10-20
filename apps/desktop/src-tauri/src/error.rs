@@ -64,6 +64,31 @@ pub enum AppError {
     #[error("{0}")]
     Conversion(String),
 
+    /// The host computer this one joined cannot be reached right now.
+    #[error(
+        "the main SimpleWorship computer cannot be reached; check it is on and on the same network"
+    )]
+    HostUnreachable,
+
+    /// The host computer refused or could not carry out a request.
+    #[error("{0}")]
+    FromHost(String),
+
+    /// The host computer runs another version of SimpleWorship.
+    #[error(
+        "that computer runs SimpleWorship {host}, this one {ours}: update both to the same version first"
+    )]
+    HostVersion {
+        /// The host's version.
+        host: String,
+        /// This computer's version.
+        ours: String,
+    },
+
+    /// Looking on the network failed.
+    #[error("could not look on the network: {0}")]
+    Network(String),
+
     /// A command only NDI's hidden windows may use came from elsewhere.
     #[error("only an NDI output window can do that")]
     NotAnNdiWindow,

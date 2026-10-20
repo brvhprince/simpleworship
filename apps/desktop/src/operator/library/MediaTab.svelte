@@ -31,6 +31,7 @@
   import { engine } from "../../lib/engine.svelte.ts";
   import { formatBytes, formatDuration } from "../../lib/format.ts";
   import { t } from "../../lib/i18n/i18n.svelte.ts";
+  import { link } from "../../lib/link.svelte.ts";
   import { media } from "../../lib/media.svelte.ts";
   import { prompts } from "../../lib/prompts.svelte.ts";
   import CamerasStrip from "./CamerasStrip.svelte";
@@ -177,7 +178,7 @@
         ["image", t("media.filterImages")],
         ["video", t("media.filterVideos")],
         ["audio", t("media.filterSound")],
-        ["camera", t("media.filterCameras")],
+        ...(link.joined ? [] : [["camera", t("media.filterCameras")]]),
       ] as [value, label] (value)}
         <label>
           <input type="radio" bind:group={filter} {value}>
@@ -186,9 +187,11 @@
       {/each}
     </div>
 
-    <Button onclick={chooseAndImport} disabled={media.progress !== null}
-      >{t("common.import")}</Button
-    >
+    {#if !link.joined}
+      <Button onclick={chooseAndImport} disabled={media.progress !== null}
+        >{t("common.import")}</Button
+      >
+    {/if}
     {#if media.progress}
       <span class="progress">
         {t("media.copying", { name: media.progress.name })}
@@ -200,14 +203,16 @@
 
     {#if pickedItems.length > 1}
       <span class="progress">{t("media.selected", { count: pickedItems.length })}</span>
-      <Button onclick={removePicked}>{t("common.delete")}</Button>
+      {#if !link.joined}
+        <Button onclick={removePicked}>{t("common.delete")}</Button>
+      {/if}
       <Button variant="primary" onclick={addPicked}>
         {pickedItems.every((item) => item.kind === "audio")
           ? t("media.addAsMusic")
           : t("media.addAsSlideshow")}
       </Button>
     {:else}
-      {#if selected}
+      {#if selected && !link.joined}
         <input
           class="name"
           value={selected.name}
@@ -224,7 +229,11 @@
           >
         {/if}
       {/if}
-      <Button disabled={!selected} onclick={() => onSelected(remove)}>{t("common.delete")}</Button>
+      {#if !link.joined}
+        <Button disabled={!selected} onclick={() => onSelected(remove)}
+          >{t("common.delete")}</Button
+        >
+      {/if}
       <Button
         disabled={!selected}
         onclick={() => onSelected((item) => addMediaToSchedule(item.id))}

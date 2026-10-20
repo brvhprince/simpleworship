@@ -45,6 +45,8 @@ class Remote {
   status: Status = $state(storedToken() ? "connecting" : "pairing");
   /** The name the operator knows this device by. */
   name = $state("");
+  /** This device's id: its own preview pane on the computer. */
+  device: string | null = null;
   /** What this device may do. */
   role: Role | null = $state(null);
   /** The last error, for a few seconds. */
@@ -198,6 +200,7 @@ class Remote {
   #receive(message: ServerMessage): void {
     switch (message.type) {
       case "welcome":
+        this.device = message.device;
         this.name = message.name;
         this.role = message.role;
         this.#applySnapshot(message.snapshot);
@@ -228,7 +231,8 @@ class Remote {
   #apply(event: EngineEvent): void {
     switch (event.type) {
       case "previewChanged":
-        this.preview = event.preview;
+        // Each phone has its own preview pane.
+        if (event.operator === this.device) this.preview = event.preview;
         break;
       case "liveChanged":
         this.live = event.live;

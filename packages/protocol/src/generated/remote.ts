@@ -79,7 +79,7 @@ export type PairRequest = {
 /**
  * What a connected device is for.
  */
-export type Role = "full" | "presenter" | "worshipLeader" | "alerts" | "stage";
+export type Role = "full" | "presenter" | "worshipLeader" | "alerts" | "stage" | "mirror";
 
 /**
  * Sent by the server.
@@ -87,6 +87,10 @@ export type Role = "full" | "presenter" | "worshipLeader" | "alerts" | "stage";
 export type ServerMessage =
   | {
       type: "welcome";
+      /**
+       * The device's id: the operator its preview pane belongs to.
+       */
+      device: Id;
       /**
        * The device's name.
        */

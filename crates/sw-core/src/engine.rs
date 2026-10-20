@@ -32,6 +32,8 @@
 //! the resulting [`EngineEvent`]s to every window. Its only contact with the
 //! outside world is the clock it reads for video timing, which tests replace.
 
+use std::collections::{BTreeMap, BTreeSet};
+
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use ts_rs::TS;
@@ -69,6 +71,11 @@ pub struct PaneState {
     /// The schedule item the presentation came from, if any.
     pub schedule_item: Option<Id>,
 }
+
+/// This computer's own operator window. Phones and other computers that
+/// control SimpleWorship are operators too, each with their own preview
+/// pane, identified by their device id (see [`Engine::dispatch_as`]).
+pub const LOCAL_OPERATOR: Id = Id::nil();
 
 /// A full copy of the engine state, sent to a window when it opens so it can
 /// draw immediately without waiting for the next event.
@@ -126,7 +133,10 @@ pub enum EngineError {
 #[derive(Debug)]
 pub struct Engine {
     schedule: Schedule,
-    preview: Option<PaneState>,
+    /// Each operator's preview pane (see [`LOCAL_OPERATOR`]).
+    previews: BTreeMap<Id, PaneState>,
+    /// Who sent the command being carried out.
+    operator: Id,
     live: Option<PaneState>,
     flags: DisplayFlags,
     /// The transition for each kind of content.
@@ -200,7 +210,8 @@ impl Engine {
     pub fn with_clock(clock: fn() -> Timestamp) -> Self {
         Self {
             schedule: Schedule::default(),
-            preview: None,
+            previews: BTreeMap::new(),
+            operator: LOCAL_OPERATOR,
             live: None,
             flags: DisplayFlags::default(),
             transitions: TransitionSettings::default(),
@@ -220,12 +231,17 @@ impl Engine {
         }
     }
 
-    /// A full copy of the current state.
+    /// A full copy of the current state, with this computer's own preview.
     pub fn snapshot(&self) -> EngineSnapshot {
+        self.snapshot_for(LOCAL_OPERATOR)
+    }
+
+    /// A full copy of the current state, with `operator`'s preview.
+    pub fn snapshot_for(&self, operator: Id) -> EngineSnapshot {
         EngineSnapshot {
             schedule: self.schedule.clone(),
             themes: self.themes.clone(),
-            preview: self.preview.clone(),
+            preview: self.previews.get(&operator).cloned(),
             live: self.live.clone(),
             output: self.output.clone(),
             stage: self.stage.clone(),
@@ -245,12 +261,31 @@ impl Engine {
         &self.themes
     }
 
-    /// Applies a command and returns the events describing what changed.
+    /// Applies a command from this computer's own operator window (see
+    /// [`Engine::dispatch_as`]).
+    pub fn dispatch(&mut self, command: Command) -> Result<Vec<EngineEvent>, EngineError> {
+        self.dispatch_as(LOCAL_OPERATOR, command)
+    }
+
+    /// Applies a command from `operator` and returns the events describing
+    /// what changed. The preview pane a command uses is that operator's
+    /// own; everything else (the schedule, what is live) is shared.
     ///
     /// Commands that change nothing (pressing "next" on the last slide,
     /// turning black on when it is already on) return no events.
-    pub fn dispatch(&mut self, command: Command) -> Result<Vec<EngineEvent>, EngineError> {
-        let before_preview = self.preview.clone();
+    pub fn dispatch_as(
+        &mut self,
+        operator: Id,
+        command: Command,
+    ) -> Result<Vec<EngineEvent>, EngineError> {
+        self.operator = operator;
+        let result = self.dispatch_now(command);
+        self.operator = LOCAL_OPERATOR;
+        result
+    }
+
+    fn dispatch_now(&mut self, command: Command) -> Result<Vec<EngineEvent>, EngineError> {
+        let before_previews = self.previews.clone();
         let before_live = self.live.clone();
         let before_stage = self.stage.clone();
         let before_audio = self.audio.clone();
@@ -272,10 +307,21 @@ impl Engine {
                 schedule: self.schedule.clone(),
             });
         }
-        if self.preview != before_preview {
-            events.push(EngineEvent::PreviewChanged {
-                preview: self.preview.clone(),
-            });
+        // Each operator whose preview changed (a theme edit can change
+        // several).
+        let operators: BTreeSet<Id> = before_previews
+            .keys()
+            .chain(self.previews.keys())
+            .copied()
+            .collect();
+        for operator in operators {
+            let preview = self.previews.get(&operator);
+            if preview != before_previews.get(&operator) {
+                events.push(EngineEvent::PreviewChanged {
+                    operator,
+                    preview: preview.cloned(),
+                });
+            }
         }
         if self.live != before_live {
             events.push(EngineEvent::LiveChanged {
@@ -317,16 +363,16 @@ impl Engine {
         match command {
             // ── Preview and live ──────────────────────────────────────────
             Command::ShowInPreview { presentation } => {
-                self.preview = Some(unscheduled(*presentation));
+                self.set_preview(unscheduled(*presentation));
             }
             Command::PreviewSong { song } => {
                 let look = self.look(ContentKind::Song, song.theme_id);
                 let presentation = Presentation::from_song(&song, look, SlideOptions::default());
-                self.preview = Some(unscheduled(self.finish(presentation)));
+                self.set_preview(unscheduled(self.finish(presentation)));
             }
             Command::PreviewText { title, text } => {
                 let look = self.look(ContentKind::Text, None);
-                self.preview = Some(unscheduled(Presentation::from_text(title, &text, look)));
+                self.set_preview(unscheduled(Presentation::from_text(title, &text, look)));
             }
             Command::PreviewScripture {
                 passage,
@@ -336,22 +382,28 @@ impl Engine {
                 let look = self.look(ContentKind::Scripture, None);
                 let presentation =
                     Presentation::from_scripture(&passage, &translations, options, look);
-                self.preview = Some(unscheduled(presentation));
+                self.set_preview(unscheduled(presentation));
             }
             Command::PreviewMedia { media } => {
                 let look = self.look(ContentKind::Text, None);
-                self.preview = Some(unscheduled(Presentation::from_media(&media, look)));
+                self.set_preview(unscheduled(Presentation::from_media(&media, look)));
             }
             Command::PreviewCamera { camera } => {
                 let look = self.look(ContentKind::Text, None);
-                self.preview = Some(unscheduled(Presentation::from_camera(&camera, look)));
+                self.set_preview(unscheduled(Presentation::from_camera(&camera, look)));
             }
             Command::SelectPreviewSlide { index } => {
-                let pane = self.preview.as_mut().ok_or(EngineError::NothingInPreview)?;
+                let pane = self
+                    .previews
+                    .get_mut(&self.operator)
+                    .ok_or(EngineError::NothingInPreview)?;
                 select(pane, index)?;
             }
             Command::GoLive => {
-                let pane = self.preview.clone().ok_or(EngineError::NothingInPreview)?;
+                let pane = self
+                    .preview()
+                    .cloned()
+                    .ok_or(EngineError::NothingInPreview)?;
                 self.go_live(pane);
                 self.reveal();
             }
@@ -499,7 +551,7 @@ impl Engine {
             // ── Themes ────────────────────────────────────────────────────
             Command::SetThemes { library } => {
                 self.themes = *library;
-                for pane in [&mut self.preview, &mut self.live].into_iter().flatten() {
+                for pane in self.previews.values_mut().chain(self.live.as_mut()) {
                     pane.presentation.restyle(&self.themes);
                 }
             }
@@ -549,7 +601,7 @@ impl Engine {
                     .schedule
                     .get(id)
                     .ok_or(EngineError::UnknownScheduleItem)?;
-                self.preview = Some(self.pane_for(item, StartAt::First));
+                self.set_preview(self.pane_for(item, StartAt::First));
             }
             Command::ShowScheduleItem { id } => {
                 let item = self
@@ -645,7 +697,7 @@ impl Engine {
 
         let look = self.look(ContentKind::Presentation, deck.theme_id);
         let presentation = Presentation::from_deck(deck, look, &self.themes);
-        for pane in [&mut self.preview, &mut self.live].into_iter().flatten() {
+        for pane in self.previews.values_mut().chain(self.live.as_mut()) {
             let shows_deck = matches!(
                 pane.presentation.source,
                 PresentationSource::Deck { deck_id } if deck_id == deck.id
@@ -656,6 +708,16 @@ impl Engine {
                 pane.selected = pane.selected.min(last);
             }
         }
+    }
+
+    /// The preview pane of the operator whose command this is.
+    fn preview(&self) -> Option<&PaneState> {
+        self.previews.get(&self.operator)
+    }
+
+    /// Puts `pane` in the preview of the operator whose command this is.
+    fn set_preview(&mut self, pane: PaneState) {
+        self.previews.insert(self.operator, pane);
     }
 
     fn live_mut(&mut self) -> Result<&mut PaneState, EngineError> {
@@ -682,7 +744,7 @@ impl Engine {
             return;
         };
         let presentation = self.finish(item.presentation(&self.themes));
-        for pane in [&mut self.preview, &mut self.live].into_iter().flatten() {
+        for pane in self.previews.values_mut().chain(self.live.as_mut()) {
             if pane.schedule_item == Some(id) {
                 let last = presentation.slides.len().saturating_sub(1);
                 pane.presentation = presentation.clone();
@@ -701,8 +763,8 @@ impl Engine {
             .schedule_item
             .and_then(|id| self.schedule.after(id))
             .map(|item| self.pane_for(item, StartAt::First));
-        if next.is_some() {
-            self.preview = next;
+        if let Some(next) = next {
+            self.set_preview(next);
         }
 
         let playlist = pane
@@ -876,7 +938,7 @@ impl Engine {
 
         // Panes showing the song straight from the library.
         let look = self.look(ContentKind::Song, song.theme_id);
-        for pane in [&mut self.preview, &mut self.live].into_iter().flatten() {
+        for pane in self.previews.values_mut().chain(self.live.as_mut()) {
             let shows_song = matches!(
                 pane.presentation.source,
                 PresentationSource::Song { song_id } if song_id == song.id
@@ -1946,6 +2008,37 @@ mod tests {
             engine.dispatch(Command::NextSlide).unwrap();
         }
         assert!(engine.snapshot().output.flags.logo);
+    }
+
+    #[test]
+    fn each_operator_has_their_own_preview_and_shares_live() {
+        let mut engine = themed_engine(Vec::new());
+        let pulpit = Id::new();
+        let text = |title: &str| Command::PreviewText {
+            title: title.into(),
+            text: title.into(),
+        };
+
+        engine.dispatch(text("Welcome")).unwrap();
+        let events = engine.dispatch_as(pulpit, text("John 3:16")).unwrap();
+        assert!(events.iter().any(|event| matches!(
+            event,
+            EngineEvent::PreviewChanged { operator, .. } if *operator == pulpit
+        )));
+
+        // Neither disturbed the other's preview.
+        let title = |snapshot: EngineSnapshot| snapshot.preview.map(|pane| pane.presentation.title);
+        assert_eq!(title(engine.snapshot()), Some("Welcome".to_owned()));
+        assert_eq!(
+            title(engine.snapshot_for(pulpit)),
+            Some("John 3:16".to_owned())
+        );
+
+        // Go Live sends the sender's own preview; everyone sees it live.
+        engine.dispatch_as(pulpit, Command::GoLive).unwrap();
+        let live = engine.snapshot().live.unwrap().presentation.title;
+        assert_eq!(live, "John 3:16");
+        assert_eq!(title(engine.snapshot()), Some("Welcome".to_owned()));
     }
 
     #[test]

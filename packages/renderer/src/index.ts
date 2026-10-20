@@ -41,4 +41,4 @@ export { default as ScaledCanvas } from "./ScaledCanvas.svelte";
 export { default as SlideView } from "./SlideView.svelte";
 export { default as StreamView } from "./StreamView.svelte";
 export { textStyle } from "./styles.ts";
-export { formatClock, remainingMs, stageTimerMs } from "./timing.ts";
+export { formatClock, now, remainingMs, setClockOffset, stageTimerMs } from "./timing.ts";
