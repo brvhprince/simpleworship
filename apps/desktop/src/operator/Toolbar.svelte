@@ -19,6 +19,7 @@
   import { Button } from "@simpleworship/ui";
   import { engine } from "../lib/engine.svelte.ts";
   import { t } from "../lib/i18n/i18n.svelte.ts";
+  import { ndi } from "../lib/ndi.svelte.ts";
   import { outputs } from "../lib/outputs.svelte.ts";
   import { panels } from "../lib/panels.svelte.ts";
   import { remote } from "../lib/remote.svelte.ts";
@@ -63,7 +64,7 @@
         label={t("toolbar.stream")}
         align="start"
         open={panels.open === "stream"}
-        active={(remote.status?.streamLinks.length ?? 0) > 0}
+        active={(remote.status?.streamLinks.length ?? 0) > 0 || ndi.sending}
         ontoggle={() => panels.toggle("stream")}
         onclose={() => panels.close()}
       >

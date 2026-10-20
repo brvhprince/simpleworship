@@ -271,12 +271,15 @@ fn project_page(page: &str) -> Option<String> {
         "report" => format!("{PROJECT_URL}/issues/new"),
         "license" => format!("{PROJECT_URL}/blob/main/LICENSE"),
         "changes" => format!("{PROJECT_URL}/blob/main/CHANGELOG.md"),
+        // The free NDI Tools, which include the NDI Runtime.
+        "ndi" => "https://ndi.video/tools/".to_owned(),
         _ => return None,
     })
 }
 
 /// Opens one of the project's web pages in the browser: "website",
-/// "guide", "moving", "report", "license" or "changes".
+/// "guide", "moving", "report", "license" or "changes" (or "ndi", where to
+/// get NDI).
 #[tauri::command]
 pub fn open_project_page(app: AppHandle, page: String) -> Result<(), String> {
     let url = project_page(&page).ok_or_else(|| format!("no page called {page}"))?;

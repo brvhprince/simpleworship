@@ -9,6 +9,7 @@
   import { saveStream } from "../lib/api.ts";
   import { engine } from "../lib/engine.svelte.ts";
   import { type MessageKey, t } from "../lib/i18n/i18n.svelte.ts";
+  import NdiSettings from "./NdiSettings.svelte";
   import StreamLinks from "./StreamLinks.svelte";
 
   type Kind = "songs" | "scripture" | "presentations" | "other";
@@ -87,6 +88,7 @@
   </label>
   <p class="hint">{t("stream.panicHint")}</p>
   <StreamLinks />
+  <NdiSettings />
 {/if}
 
 <style>

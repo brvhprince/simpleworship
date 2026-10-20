@@ -2,7 +2,7 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Permissions for the operator window and the output windows.",
-  "windows": ["main", "output", "stage", "stream"],
+  "windows": ["main", "output", "stage", "stream", "ndi-stream", "ndi-main"],
   "permissions": [
     "core:default",
     "core:window:allow-set-title",

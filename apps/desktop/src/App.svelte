@@ -1,7 +1,7 @@
 <!--
   @component
   Picks the screen for this window. Every SimpleWorship window loads the same
-  page; the Rust side opens it with `?view=output`, `?view=stage` or `?view=stream`
+  page; the Rust side opens it with `?view=output`, `?view=stage`, `?view=stream` or `?view=ndi`
   (see `src-tauri/src/windows.rs`). Without a view it is the operator window.
 -->
 <script lang="ts">
@@ -10,6 +10,7 @@
   import { convertFileSrc } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
   import { i18n } from "./lib/i18n/i18n.svelte.ts";
+  import NdiPage from "./ndi/NdiPage.svelte";
   import Operator from "./operator/Operator.svelte";
   import Output from "./output/Output.svelte";
   import Stage from "./stage/Stage.svelte";
@@ -41,6 +42,8 @@
   <Stage />
 {:else if view === "stream"}
   <StreamWindow />
+{:else if view === "ndi"}
+  <NdiPage />
 {:else}
   <Operator />
 {/if}

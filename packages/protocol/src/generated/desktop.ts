@@ -203,6 +203,69 @@ export type MonitorInfo = {
 };
 
 /**
+ * The NDI settings, saved between services.
+ */
+export type NdiSettings = {
+  /**
+   * Send the stream look over NDI.
+   */
+  enabled: boolean;
+  /**
+   * Also send the projector's picture, as a second source.
+   */
+  main: boolean;
+};
+
+/**
+ * The NDI sources SimpleWorship can send.
+ */
+export type NdiSource = "stream" | "main";
+
+/**
+ * One source being sent.
+ */
+export type NdiSourceStatus = {
+  /**
+   * Which source.
+   */
+  source: NdiSource;
+  /**
+   * Its name on the network (after the computer's name).
+   */
+  name: string;
+  /**
+   * How many receivers are watching it.
+   */
+  receivers: number;
+};
+
+/**
+ * Everything the operator window shows about NDI.
+ */
+export type NdiStatus = {
+  /**
+   * The saved settings.
+   */
+  settings: NdiSettings;
+  /**
+   * NDI can work on this system at all (macOS and Windows for now).
+   */
+  supported: boolean;
+  /**
+   * The NDI library in use, e.g. "NDI SDK WIN64 6.1.1", once loaded.
+   */
+  runtime: string | null;
+  /**
+   * Why NDI is not sending although it is turned on.
+   */
+  error: string | null;
+  /**
+   * The sources being sent, with how many receivers are watching each.
+   */
+  sources: Array<NdiSourceStatus>;
+};
+
+/**
  * The kinds of output window.
  */
 export type OutputKind = "projector" | "stage" | "stream";

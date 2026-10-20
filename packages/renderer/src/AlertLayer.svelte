@@ -11,6 +11,9 @@
   `onend` fires once when the alert has run its course (its seconds are up,
   or the ticker has scrolled across the set number of times). A still
   banner set to end "after passes" counts each pass as ten seconds.
+
+  `still`: show a ticker as a still banner too, shrunk to fit if it is too
+  long (NDI output, which is not redrawn often enough to scroll smoothly).
 -->
 <script lang="ts">
   import type { Alert } from "@simpleworship/protocol";
@@ -23,10 +26,14 @@
 
   interface Props {
     alert: Alert;
+    still?: boolean;
     onend?: () => void;
   }
 
-  let { alert, onend }: Props = $props();
+  let { alert, still = false, onend }: Props = $props();
+
+  /** Room for a still banner's text, leaving a margin at each side. */
+  const STILL_WIDTH = CANVAS_WIDTH * 0.94;
 
   let text: HTMLSpanElement;
   /** The text's width in canvas pixels, once measured (the ticker waits for it). */
@@ -35,7 +42,11 @@
   let joinedAt = $state(0);
   let ended = false;
 
-  const isTicker = $derived(alert.style === "ticker");
+  const isTicker = $derived(alert.style === "ticker" && !still);
+  /** Shrinks a still banner's text that would not fit. */
+  const fit = $derived(
+    !isTicker && textWidth !== null && textWidth > STILL_WIDTH ? STILL_WIDTH / textWidth : null,
+  );
   /** One pass: from just off the right edge until the end leaves the left. */
   const passMs = $derived(
     textWidth === null ? 0 : ((CANVAS_WIDTH + textWidth) / TICKER_SPEED) * 1000,
@@ -86,6 +97,7 @@
     style:animation-duration="{passMs}ms"
     style:animation-delay="{-joinedAt}ms"
     style:animation-iteration-count={passes}
+    style:transform={fit === null ? null : `scale(${fit})`}
     onanimationend={finish}
   >
     {alert.text}

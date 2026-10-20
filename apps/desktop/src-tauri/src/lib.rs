@@ -28,6 +28,7 @@ mod import_sources;
 mod launch;
 mod media;
 mod menu;
+mod ndi;
 mod office;
 mod recent;
 mod remote;
@@ -64,6 +65,7 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .manage(launch::PendingOpen::default())
         .manage(remote::RemoteState::default())
+        .manage(ndi::NdiState::default())
         .setup(|app| {
             log::info!("SimpleWorship {} starting", app.package_info().version);
             let state = AppState::load(app.handle())?;
@@ -82,6 +84,7 @@ pub fn run() {
             commands::themes::sync_settings(app.handle(), &state)?;
 
             remote::start_if_enabled(app.handle());
+            ndi::start_if_enabled(app.handle());
 
             // Windows and Linux: started by double-clicking a schedule file.
             let args: Vec<String> = std::env::args().collect();
@@ -184,6 +187,9 @@ pub fn run() {
             remote::remote_answer,
             remote::remote_set_role,
             remote::remote_remove,
+            ndi::ndi_status,
+            ndi::ndi_set,
+            ndi::ndi_frame_ready,
         ])
         .on_window_event(windows::on_window_event)
         .build(tauri::generate_context!())

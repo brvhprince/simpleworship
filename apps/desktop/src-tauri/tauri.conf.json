@@ -34,7 +34,8 @@
         "enable": true,
         "scope": ["$APPDATA/media/**", "$APPDATA/thumbnails/**"]
       }
-    }
+    },
+    "macOSPrivateApi": true
   },
   "bundle": {
     "active": true,
@@ -67,7 +68,8 @@
       }
     ],
     "macOS": {
-      "minimumSystemVersion": "11.0"
+      "minimumSystemVersion": "11.0",
+      "entitlements": "Entitlements.plist"
     },
     "windows": {
       "webviewInstallMode": {

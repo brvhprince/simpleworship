@@ -24,6 +24,7 @@
   import { importer } from "../lib/importer.svelte.ts";
   import { media } from "../lib/media.svelte.ts";
   import { connectEditMenu } from "../lib/menu.ts";
+  import { ndi } from "../lib/ndi.svelte.ts";
   import { outputs } from "../lib/outputs.svelte.ts";
   import { panels } from "../lib/panels.svelte.ts";
   import { remote } from "../lib/remote.svelte.ts";
@@ -94,6 +95,7 @@
       updates.connect(),
       remote.connect(),
       outputs.connect(),
+      ndi.connect(),
     ];
     for (const connection of connections) {
       connection.catch((error) => engine.showError(error));

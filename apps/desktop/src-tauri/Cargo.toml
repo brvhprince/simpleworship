@@ -37,10 +37,11 @@ sw-core.workspace = true
 sw-db.workspace = true
 sw-files.workspace = true
 sw-import.workspace = true
+sw-ndi.workspace = true
 sw-server.workspace = true
 # protocol-asset serves media files to the webview (with range requests,
 # so videos can seek).
-tauri = { version = "2.12", features = ["protocol-asset"] }
+tauri = { version = "2.12", features = ["protocol-asset", "macos-private-api"] }
 tauri-plugin-dialog = "2.8"
 tauri-plugin-log = "2.10"
 tauri-plugin-opener = "2.7"

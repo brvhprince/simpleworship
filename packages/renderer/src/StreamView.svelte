@@ -15,9 +15,11 @@
 
   interface Props {
     output: OutputState;
+    /** Videos and alerts as stills (see `OutputView`). */
+    still?: boolean;
   }
 
-  let { output }: Props = $props();
+  let { output, still = false }: Props = $props();
 
   const shown: OutputState = $derived({
     ...output,
@@ -34,7 +36,7 @@
 </script>
 
 <div class="backdrop" style:background={output.stream.backdrop}></div>
-<OutputView output={shown} muted />
+<OutputView output={shown} muted {still} />
 
 <style>
   .backdrop {

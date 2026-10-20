@@ -18,6 +18,8 @@
 
   - `muted`: silence videos (the operator's live pane), so only the
     projector plays sound.
+  - `still`: videos as a still frame and alerts as a still banner, for
+    outputs that are not redrawn often enough for movement (NDI).
   - `onalertend`, `oncountdownend`: an alert ran its course, a countdown
     reached zero. The operator window passes these on to the engine.
 
@@ -35,11 +37,12 @@
   interface Props {
     output: OutputState;
     muted?: boolean;
+    still?: boolean;
     onalertend?: () => void;
     oncountdownend?: () => void;
   }
 
-  let { output, muted = false, onalertend, oncountdownend }: Props = $props();
+  let { output, muted = false, still = false, onalertend, oncountdownend }: Props = $props();
 
   const urls = getMediaUrls();
 
@@ -92,14 +95,19 @@
 
 {#each backgroundLayers as layer (layer.key)}
   <div class="layer" transition:fade={{ duration }}>
-    <BackgroundLayer background={layer.frame.theme.background} playback={output.video} {muted} />
+    <BackgroundLayer
+      background={layer.frame.theme.background}
+      playback={output.video}
+      {muted}
+      {still}
+    />
   </div>
 {/each}
 
 {#each textLayers as layer (layer.key)}
   <div class="layer" transition:fade={{ duration }}>
     {#if layer.frame.elements}
-      <ElementsLayer elements={layer.frame.elements} hideText={flags.hideText} {muted} />
+      <ElementsLayer elements={layer.frame.elements} hideText={flags.hideText} {muted} {still} />
     {:else}
       <TextLayer frame={layer.frame} {oncountdownend} />
     {/if}
@@ -114,8 +122,8 @@
 
 {#if output.alert}
   {#key output.alert.startedAt}
-    <div class="layer" transition:fade={{ duration: 300 }}>
-      <AlertLayer alert={output.alert} onend={onalertend} />
+    <div class="layer" transition:fade={{ duration: still ? 0 : 300 }}>
+      <AlertLayer alert={output.alert} {still} onend={onalertend} />
     </div>
   {/key}
 {/if}

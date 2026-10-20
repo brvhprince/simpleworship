@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Entitlements for signed macOS builds (see bundle.macOS in tauri.conf.json).
+
+  disable-library-validation: lets SimpleWorship load the NDI Runtime,
+  which the user installs from ndi.video and which is signed by NDI, not
+  by us. Without it, a signed build could not send NDI.
+-->
+<plist version="1.0">
+<dict>
+  <key>com.apple.security.cs.disable-library-validation</key>
+  <true/>
+</dict>
+</plist>

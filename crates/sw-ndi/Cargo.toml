@@ -1,0 +1,37 @@
+[package]
+name = "sw-ndi"
+description = "SimpleWorship's NDI output: the NDI runtime, frames taken from a webview, and fades between them"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+libloading = "0.8"
+log = "0.4"
+tauri = "2.12"
+thiserror.workspace = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+block2 = "0.6"
+objc2 = "0.6"
+objc2-app-kit = { version = "0.3", features = ["NSGraphicsContext", "NSImage", "NSImageRep", "objc2-core-graphics"] }
+objc2-core-foundation = { version = "0.3", features = ["CFCGTypes", "CFString"] }
+objc2-core-graphics = { version = "0.3", default-features = false, features = ["std", "CGBitmapContext", "CGColorSpace", "CGContext", "CGImage"] }
+objc2-foundation = { version = "0.3", features = ["NSError", "NSValue"] }
+objc2-web-kit = { version = "0.3", features = ["WKWebView", "WKSnapshotConfiguration", "block2", "objc2-app-kit"] }
+
+[target.'cfg(windows)'.dependencies]
+png = "0.17"
+webview2-com = "0.39"
+windows = { version = "0.62", features = ["Win32_Foundation", "Win32_System_Com", "Win32_System_Com_StructuredStorage"] }
+
+# The workspace forbids unsafe code; this crate is where SimpleWorship talks
+# to the NDI library and the system's webviews, so it allows it only in
+# the modules that need it (see `lib.rs`).
+[lints.rust]
+missing_docs = "warn"
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }

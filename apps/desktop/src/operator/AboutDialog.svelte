@@ -45,6 +45,7 @@
       </dd>
       <dt>{t("about.credits")}</dt>
       <dd>{t("about.creditsText")}</dd>
+      <dd class="trademark">{t("about.ndiTrademark")}</dd>
       <dt>{t("about.support")}</dt>
       <dd>
         {t("about.supportText")}
@@ -135,6 +136,11 @@
 
   .copyright {
     margin: var(--sw-space-2) 0 0;
+    color: var(--sw-text-faint);
+    font-size: var(--sw-font-size-small);
+  }
+
+  .trademark {
     color: var(--sw-text-faint);
     font-size: var(--sw-font-size-small);
   }

@@ -6,6 +6,7 @@
  * {@link MIN_FONT_SIZE}) until it fits.
  */
 
+import { tick } from "svelte";
 import type { Action } from "svelte/action";
 
 /** Text never shrinks below this size (in reference pixels), so it stays readable. */
@@ -90,8 +91,9 @@ export const autofit: Action<HTMLElement, AutofitOptions> = (box, initial) => {
       options = next;
       // Svelte calls `update` before it has put the new text (or swapped
       // lyrics for scripture) on the page. Measuring now would measure the
-      // old content, so wait for the next frame, when the new text is laid out.
-      requestAnimationFrame(fitText);
+      // old content, so wait until Svelte has updated the page. (Not for an
+      // animation frame: hidden windows, such as NDI's, never get one.)
+      void tick().then(fitText);
     },
   };
 };

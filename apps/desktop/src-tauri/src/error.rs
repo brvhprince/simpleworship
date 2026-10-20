@@ -64,6 +64,10 @@ pub enum AppError {
     #[error("{0}")]
     Conversion(String),
 
+    /// A command only NDI's hidden windows may use came from elsewhere.
+    #[error("only an NDI output window can do that")]
+    NotAnNdiWindow,
+
     /// The phone remote is turned off.
     #[error("the phone remote is turned off; turn it on in Settings")]
     RemoteOff,

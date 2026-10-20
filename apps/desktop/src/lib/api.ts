@@ -360,7 +360,7 @@ export const setMenuLabels = (labels: Record<string, string>) =>
 
 /** Opens one of the project's web pages in the browser. */
 export const openProjectPage = (
-  page: "website" | "guide" | "moving" | "report" | "license" | "changes",
+  page: "website" | "guide" | "moving" | "report" | "license" | "changes" | "ndi",
 ) => invoke<void>("open_project_page", { page });
 
 /** Opens the folder with the log files. */

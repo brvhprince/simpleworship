@@ -16,6 +16,7 @@ sw-core = { path = "crates/sw-core" }
 sw-db = { path = "crates/sw-db" }
 sw-files = { path = "crates/sw-files" }
 sw-import = { path = "crates/sw-import" }
+sw-ndi = { path = "crates/sw-ndi" }
 sw-server = { path = "crates/sw-server" }
 
 # Shared third-party crates
@@ -37,3 +38,8 @@ missing_docs = "warn"
 
 [workspace.lints.clippy]
 all = { level = "warn", priority = -1 }
+
+# NDI's pixel work (fades, alpha) is far too slow unoptimized, even while
+# developing.
+[profile.dev.package.sw-ndi]
+opt-level = 3

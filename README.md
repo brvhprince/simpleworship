@@ -125,7 +125,13 @@ with EasyWorship should feel at home.
   - a **browser source** in OBS, vMix or Streamlabs (Stream › copy the link;
     1920 × 1080), on this computer or another one on the network;
   - a **stream window** on a screen, for a capture card or a video switcher
-    (with a green background for chroma key).
+    (with a green background for chroma key);
+  - **NDI**, for vMix, OBS (with its NDI plugin), TriCaster and other NDI
+    receivers: the source "SimpleWorship Stream", with transparency, and
+    optionally "SimpleWorship Main" (what the projector shows). Turn it on in
+    Stream › NDI. It needs the free [NDI Tools](https://ndi.video/tools/) (or
+    NDI Runtime) on the computer; macOS and Windows for now. Fades are sent
+    as fades; on NDI, videos show as a still and alerts as a still banner.
 - **Per-content transitions:** a cut or a fade, with its own length, for
   songs, scripture, presentations and everything else, remembered between
   services.
@@ -235,6 +241,7 @@ crates/
   sw-bible/     Bible books, reference parsing, and Bible file importers
   sw-import/    Song importers for other worship software
   sw-server/    The phone remote's server: pairing, roles, WebSocket, media
+  sw-ndi/       NDI output: the NDI runtime, pictures of a webview, fades
 apps/
   desktop/      The Tauri app: operator window, output and stage windows
   remote/       The phone remote: a web app the desktop serves on the network
@@ -269,7 +276,7 @@ projector, the stage display and every thumbnail look the same.
 | M8        | Presentation editor, slideshows, scripture styling (verse numbers, reference box) | ✅     |
 | M9        | Installers, auto-update, translations (English, French, Twi), EasyWorship media import | ✅     |
 | M10       | Phone remote (roles, QR pairing, stage display on a tablet), per-content transitions | ✅     |
-| M11       | Stream output: lower-third look, browser source for OBS/vMix, stream window; NDI | 🚧     |
+| M11       | Stream output: lower-third look, browser source for OBS/vMix, stream window, NDI | 🚧     |
 
 Later: multi-operator sync and AI-assisted features.
 
@@ -286,3 +293,6 @@ Planned, in order, after everything above:
 
 SimpleWorship is free software, released under the
 [GNU General Public License v3.0 or later](LICENSE).
+
+NDI® is a registered trademark of Vizrt NDI AB. SimpleWorship does not
+include NDI; it uses the NDI Runtime if you install it.
