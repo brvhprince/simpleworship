@@ -32,6 +32,7 @@ mod media;
 mod menu;
 mod ndi;
 mod office;
+mod plain_http;
 mod recent;
 mod remote;
 mod schedule_archive;

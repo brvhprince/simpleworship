@@ -39,6 +39,7 @@ use ts_rs::TS;
 
 use crate::commands::engine::ENGINE_EVENT;
 use crate::error::{AppError, AppResult};
+use crate::plain_http;
 use crate::state::AppState;
 
 /// The network service hosts announce themselves with (see `remote.rs`).
@@ -415,15 +416,15 @@ async fn measure_clock(app: &AppHandle, address: &str) {
     struct Now {
         now: i64,
     }
-    let client = reqwest::Client::new();
     let mut best: Option<(Duration, i64)> = None;
     for _ in 0..5 {
         let sent = Instant::now();
         let before = sw_core::time::now();
-        let Ok(response) = client.get(format!("{address}/api/time")).send().await else {
+        let Ok(response) = plain_http::get(address, "/api/time", Duration::from_secs(3)).await
+        else {
             continue;
         };
-        let Ok(Now { now }) = response.json::<Now>().await else {
+        let Ok(Now { now }) = response.json::<Now>() else {
             continue;
         };
         let took = sent.elapsed();
@@ -570,15 +571,13 @@ pub async fn link_join(
     name: String,
 ) -> AppResult<LinkStatus> {
     let address = normalize(&address);
-    let client = reqwest::Client::new();
-    let hello: Hello = client
-        .get(format!("{address}/api/hello"))
-        .timeout(Duration::from_secs(5))
-        .send()
+    let hello: Hello = plain_http::get(&address, "/api/hello", Duration::from_secs(5))
         .await
-        .map_err(|_| AppError::HostUnreachable)?
+        .map_err(|error| {
+            log::warn!("link: no answer from {address}: {error}");
+            AppError::HostUnreachable
+        })?
         .json()
-        .await
         .map_err(|_| AppError::HostUnreachable)?;
     if hello.instance.as_deref() == Some(crate::remote::instance_id()) {
         return Err(AppError::JoinSelf);
@@ -591,20 +590,22 @@ pub async fn link_join(
         });
     }
     log::info!("link: asking {address} to let this computer join");
-    let response = client
-        .post(format!("{address}/api/pair"))
-        .timeout(PAIRING_TIMEOUT)
-        .json(&serde_json::json!({ "code": code.trim(), "name": name.trim() }))
-        .send()
-        .await
-        .map_err(|_| AppError::HostUnreachable)?;
-    if !response.status().is_success() {
-        let reason = response.text().await.unwrap_or_default();
-        return Err(AppError::FromHost(reason));
+    let response = plain_http::post_json(
+        &address,
+        "/api/pair",
+        &serde_json::json!({ "code": code.trim(), "name": name.trim() }),
+        PAIRING_TIMEOUT,
+    )
+    .await
+    .map_err(|error| {
+        log::warn!("link: pairing with {address} failed: {error}");
+        AppError::HostUnreachable
+    })?;
+    if !response.ok() {
+        return Err(AppError::FromHost(response.text()));
     }
     let answer: PairAnswer = response
         .json()
-        .await
         .map_err(|error| AppError::Conversion(error.to_string()))?;
     let settings = LinkSettings {
         address,

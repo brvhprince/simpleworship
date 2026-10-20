@@ -3935,7 +3935,6 @@ dependencies = [
  "log",
  "mdns-sd",
  "qrcode",
- "reqwest",
  "serde",
  "serde_json",
  "sw-bible",
