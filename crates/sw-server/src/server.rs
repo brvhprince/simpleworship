@@ -110,6 +110,9 @@ pub struct ServerConfig {
     pub app_version: String,
     /// What other computers list this one as (the church or computer name).
     pub computer_name: String,
+    /// Identifies this running copy of SimpleWorship, so a computer never
+    /// lists or joins itself.
+    pub instance: String,
 }
 
 /// State shared by every request.
@@ -130,6 +133,7 @@ struct Shared {
     stream_id: Id,
     app_version: String,
     computer_name: String,
+    instance: String,
 }
 
 /// Locks a mutex, carrying on if a thread panicked while holding it (the
@@ -179,6 +183,7 @@ impl RemoteServer {
             stream_id: Id::new(),
             app_version: config.app_version,
             computer_name: config.computer_name,
+            instance: config.instance,
         });
 
         let router = Router::new()
@@ -326,6 +331,7 @@ async fn hello(State(shared): State<Arc<Shared>>) -> Json<serde_json::Value> {
         "protocol": crate::PROTOCOL_VERSION,
         "version": shared.app_version,
         "name": shared.computer_name,
+        "instance": shared.instance,
     }))
 }
 
@@ -371,6 +377,7 @@ async fn pair(State(shared): State<Arc<Shared>>, Json(body): Json<PairBody>) -> 
     };
     let (reply, answer) = oneshot::channel();
     lock(&shared.pending).insert(request.id, reply);
+    log::info!("“{}” asks to connect", request.name);
     shared.host.pairing_requested(request.clone());
 
     let role = tokio::time::timeout(APPROVAL_TIMEOUT, answer).await;

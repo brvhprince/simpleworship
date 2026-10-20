@@ -376,7 +376,7 @@
   "join.otherVersion": "SimpleWorship {version}: ma mmienu nyinaa nnya nhyehyɛeɛ koro",
   "join.panelHint": "Anaa ma kɔmputa yi nyɛ ɔyɛfoɔ a ɛtɔ so mmienu anaa ahwehwɛ ma kɔmputa a ɛredi som no anim no.",
   "join.title": "Fa Bɔ Kɔmputa Foforɔ Ho",
-  "join.waiting": "Ɛretwɛn ma kɔmputa titire no ɔyɛfoɔ ama kɔmputa yi ho kwan…",
+  "join.waitingFor": "Ɛretwɛn ma {name} ɔyɛfoɔ ama kɔmputa yi ho kwan…",
   "kind.bible": "Twerɛ Kronkron",
   "kind.camera": "Kamera",
   "kind.deckSlides": "Slaede · {count}",

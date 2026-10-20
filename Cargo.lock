@@ -4215,6 +4215,7 @@ version = "0.2.0"
 dependencies = [
  "axum",
  "futures-util",
+ "log",
  "rand",
  "serde",
  "serde_json",

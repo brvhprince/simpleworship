@@ -376,7 +376,7 @@
   "join.otherVersion": "SimpleWorship {version}: update both to the same version",
   "join.panelHint": "Or make this computer a second operator or a mirror of the computer running the service.",
   "join.title": "Join Another Computer",
-  "join.waiting": "Waiting for the main computer's operator to allow this computer…",
+  "join.waitingFor": "Waiting for the operator of {name} to allow this computer…",
   "kind.bible": "Bible",
   "kind.camera": "Camera",
   "kind.deckSlides": "Slides · {count}",

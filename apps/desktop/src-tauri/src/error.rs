@@ -85,6 +85,10 @@ pub enum AppError {
         ours: String,
     },
 
+    /// The address given is this computer's own.
+    #[error("that address is this computer; type the address of the main computer instead")]
+    JoinSelf,
+
     /// Looking on the network failed.
     #[error("could not look on the network: {0}")]
     Network(String),

@@ -376,7 +376,7 @@
   "join.otherVersion": "SimpleWorship {version} : mettez les deux à la même version",
   "join.panelHint": "Ou faites de cet ordinateur un second opérateur ou un miroir de l’ordinateur qui mène le culte.",
   "join.title": "Rejoindre un autre ordinateur",
-  "join.waiting": "En attente de l’autorisation de l’opérateur de l’ordinateur principal…",
+  "join.waitingFor": "En attente de l’autorisation de l’opérateur de {name}…",
   "kind.bible": "Bible",
   "kind.camera": "Caméra",
   "kind.deckSlides": "Diapos · {count}",

@@ -517,7 +517,9 @@ pub async fn link_discover(app: AppHandle) -> AppResult<Vec<FoundHost>> {
             let Some(ip) = info.get_addresses_v4().into_iter().next() else {
                 continue;
             };
-            if own.contains(&std::net::IpAddr::V4(ip)) {
+            let itself =
+                info.get_property_val_str("instance") == Some(crate::remote::instance_id());
+            if itself || own.contains(&std::net::IpAddr::V4(ip)) {
                 continue;
             }
             let address = format!("http://{ip}:{}", info.get_port());
@@ -548,6 +550,7 @@ struct Hello {
     protocol: u32,
     version: String,
     name: Option<String>,
+    instance: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -577,6 +580,9 @@ pub async fn link_join(
         .json()
         .await
         .map_err(|_| AppError::HostUnreachable)?;
+    if hello.instance.as_deref() == Some(crate::remote::instance_id()) {
+        return Err(AppError::JoinSelf);
+    }
     let ours = app.package_info().version.to_string();
     if hello.protocol != sw_server::PROTOCOL_VERSION || hello.version != ours {
         return Err(AppError::HostVersion {
@@ -584,6 +590,7 @@ pub async fn link_join(
             ours,
         });
     }
+    log::info!("link: asking {address} to let this computer join");
     let response = client
         .post(format!("{address}/api/pair"))
         .timeout(PAIRING_TIMEOUT)

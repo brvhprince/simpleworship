@@ -189,6 +189,7 @@ async fn start(app: &AppHandle, settings: &RemoteSettings) {
         stream_key: settings.browser_source.then(|| settings.stream_key.clone()),
         app_version: app.package_info().version.to_string(),
         computer_name: computer_name(app),
+        instance: instance_id().to_owned(),
     };
     let result = RemoteServer::start(config, host, devices).await;
     {
@@ -259,11 +260,23 @@ fn announce(app: &AppHandle, port: u16) -> Option<mdns_sd::ServiceDaemon> {
         "simpleworship.local.",
         &addresses[..],
         port,
-        &[("name", name.as_str()), ("version", version.as_str())][..],
+        &[
+            ("name", name.as_str()),
+            ("version", version.as_str()),
+            ("instance", instance_id()),
+        ][..],
     ) {
         let _ = daemon.register(joinable);
     }
     Some(daemon)
+}
+
+/// Identifies this running copy of SimpleWorship on the network (new each
+/// time it starts), so a computer never lists or joins itself, whatever
+/// network addresses it has.
+pub fn instance_id() -> &'static str {
+    static INSTANCE: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+    INSTANCE.get_or_init(|| Id::new().to_string())
 }
 
 /// What other computers list this one as: the church's name (from

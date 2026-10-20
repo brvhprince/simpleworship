@@ -234,16 +234,17 @@
     {#if remote.connecting}
       <ConnectPhoneDialog />
     {/if}
-    {#if remote.requests[0]}
-      {#key remote.requests[0].id}
-        <PairRequestDialog request={remote.requests[0]} />
-      {/key}
-    {/if}
     {#if importer.isOpen}
       <ImportDialog />
     {/if}
     {#if link.joining}
       <JoinDialog />
+    {/if}
+    <!-- Last, so it shows above any other window: a phone or computer is waiting. -->
+    {#if remote.requests[0]}
+      {#key remote.requests[0].id}
+        <PairRequestDialog request={remote.requests[0]} />
+      {/key}
     {/if}
 
     <PromptHost />

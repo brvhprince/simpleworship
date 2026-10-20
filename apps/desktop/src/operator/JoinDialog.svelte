@@ -55,7 +55,12 @@
 
 <Dialog title={t("join.title")} size="small" onclose={() => (link.joining = false)}>
   {#if waiting}
-    <p class="waiting">{t("join.waiting")}</p>
+    <p class="waiting">
+      {t("join.waitingFor", {
+        name: hosts.find((host) => host.address === address)?.name ?? address,
+      })}
+    </p>
+    <p class="hint">{address}</p>
   {:else}
     <form id="join" onsubmit={join}>
       <p class="hint">{t("join.intro")}</p>
