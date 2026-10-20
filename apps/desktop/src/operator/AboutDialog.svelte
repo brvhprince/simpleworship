@@ -42,6 +42,7 @@
         <button type="button" class="link" onclick={() => openProjectPage("license")}>
           {t("about.readLicense")}
         </button>
+        <span class="trademark">{t("about.nameTrademark")}</span>
       </dd>
       <dt>{t("about.credits")}</dt>
       <dd>

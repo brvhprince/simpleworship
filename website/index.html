@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SimpleWorship · Free worship presentation software</title>
+    <meta
+      name="description"
+      content="Free, open-source worship presentation software for churches: songs, scripture, media and the live screen, with no subscription. A free EasyWorship alternative for Mac, Windows and Linux."
+    >
+    <meta property="og:title" content="SimpleWorship · Put the Word on the screen">
+    <meta
+      property="og:description"
+      content="Free worship presentation software for churches. It even hears the scripture the preacher reads."
+    >
+    <meta property="og:type" content="website">
+    <meta name="theme-color" content="#0a0b0e">
+    <link rel="icon" href="icon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=JetBrains+Mono:wght@400;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap"
+      rel="stylesheet"
+    >
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+
+    <header class="top">
+      <a class="brand" href="./" aria-label="SimpleWorship home">
+        <img src="icon.svg" alt="" width="28" height="28">
+        <span>SimpleWorship</span>
+      </a>
+      <nav aria-label="Sections">
+        <a href="#listen">Listen</a>
+        <a href="#library">Features</a>
+        <a href="#easyworship">From EasyWorship</a>
+        <a href="https://github.com/brvhprince/simpleworship">GitHub</a>
+      </nav>
+      <a class="button small" href="#download">Download</a>
+    </header>
+
+    <main id="main">
+      <!-- The opening: the site behaves like the operator's screen. -->
+      <section class="hero">
+        <div class="hero-text">
+          <p class="eyebrow">
+            <span>Akwaaba</span><span>Welcome</span><span>Bienvenue</span>
+          </p>
+          <h1>Put the Word<br>on the screen.</h1>
+          <p class="lede">
+            Free worship presentation software for churches. Songs, scripture, media and every
+            screen in the building, with no subscription, no account and nothing to pay. Ever.
+          </p>
+          <div class="actions">
+            <a class="button primary" id="hero-download" href="#download">
+              <span id="hero-download-label">Download SimpleWorship</span>
+            </a>
+            <a class="button ghost" href="#download">Mac, Windows &amp; Linux</a>
+          </div>
+          <p class="fineprint">
+            <span id="version">Version 0.4</span>
+            · Open source (GPL-3.0) · English, Français, Twi
+          </p>
+        </div>
+
+        <section class="console" aria-label="A working SimpleWorship screen">
+          <div class="beam" aria-hidden="true"></div>
+          <div class="pane-bar">
+            <span class="badge live">LIVE</span>
+            <span class="pane-title" id="live-title">Amazing Grace</span>
+            <span class="flags" id="flags"></span>
+          </div>
+          <button
+            type="button"
+            class="screen"
+            id="screen"
+            aria-live="polite"
+            aria-label="The live screen: click for the next slide"
+          >
+            <span class="slide" id="slide"></span>
+            <span class="logo-card" aria-hidden="true"
+              ><img src="icon.svg" alt="" width="96" height="96"></span
+            >
+          </button>
+          <ol class="strip" id="strip" aria-label="Slides"></ol>
+          <p class="keys" aria-hidden="true">
+            Try it: <kbd>→</kbd> next · <kbd>←</kbd> back · <kbd>B</kbd> black · <kbd>L</kbd> logo ·
+            <kbd>C</kbd>
+            clear text
+          </p>
+        </section>
+      </section>
+
+      <!-- Listen: the demo plays as it comes into view. -->
+      <section class="listen" id="listen">
+        <div class="section-head">
+          <span class="badge new">NEW IN 0.4</span>
+          <h2>It hears the scripture<br>before you can type it.</h2>
+          <p>
+            Turn on <strong>Listen</strong> and choose the mixer's feed. When the preacher says
+            <em>“turn with me to John chapter three, verse sixteen”</em>, the passage is waiting for
+            you, one click from the screen. Nothing goes live by itself.
+          </p>
+        </div>
+
+        <div class="listen-demo" id="listen-demo">
+          <div class="mic">
+            <div class="mic-head">
+              <span class="dot" aria-hidden="true"></span>
+              Listening
+              <span class="meter" aria-hidden="true"
+                ><i></i><i></i><i></i><i></i><i></i><i></i><i></i></span
+              >
+            </div>
+            <p class="transcript" id="transcript" aria-live="polite"></p>
+            <div class="heard">
+              <span class="heard-label">Heard</span>
+              <span class="chips" id="chips"></span>
+            </div>
+            <button class="replay" id="replay" type="button">Play again</button>
+          </div>
+          <div class="mini-screen" aria-live="polite">
+            <span class="badge preview">PREVIEW</span>
+            <p class="verse" id="verse">Click a reference to show it here.</p>
+            <p class="ref" id="verse-ref"></p>
+          </div>
+        </div>
+
+        <ul class="points">
+          <li>
+            <strong>On your computer.</strong>
+            Speech to text runs offline. No sound ever leaves the church.
+          </li>
+          <li>
+            <strong>Forgiving.</strong>
+            “Romans 8:28 to 30”, “first Corinthians thirteen”, “verse seventeen”: it follows along.
+          </li>
+          <li>
+            <strong>Fast.</strong>
+            Press <kbd>H</kbd> for the newest one. Double-click to send it straight live.
+          </li>
+        </ul>
+      </section>
+
+      <!-- The library tabs, as in the app. -->
+      <section class="library" id="library">
+        <div class="section-head">
+          <h2>Everything for Sunday,<br>where you expect it.</h2>
+          <p>
+            Schedule on the left, preview in the middle, live on the right. If you have run
+            EasyWorship, you already know your way around.
+          </p>
+        </div>
+
+        <div class="tabs" role="tablist" aria-label="Features">
+          <button
+            type="button"
+            role="tab"
+            aria-selected="true"
+            aria-controls="tab-songs"
+            id="t-songs"
+          >
+            Songs
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected="false"
+            aria-controls="tab-scripture"
+            id="t-scripture"
+          >
+            Scripture
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected="false"
+            aria-controls="tab-media"
+            id="t-media"
+          >
+            Media
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected="false"
+            aria-controls="tab-phones"
+            id="t-phones"
+          >
+            Phones
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected="false"
+            aria-controls="tab-stream"
+            id="t-stream"
+          >
+            Stream
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected="false"
+            aria-controls="tab-assistant"
+            id="t-assistant"
+          >
+            Assistant
+          </button>
+        </div>
+
+        <div class="tab-panels">
+          <article role="tabpanel" id="tab-songs" aria-labelledby="t-songs">
+            <div class="copy">
+              <h3>Find any song in two letters.</h3>
+              <p>
+                Search titles, writers and every line of the lyrics. Jump to a section with a key:
+                <kbd>V</kbd><kbd>2</kbd>
+                for verse two, <kbd>C</kbd> for the chorus. Fix a typo mid-service and it is fixed
+                on the screen too.
+              </p>
+            </div>
+            <div class="visual songs-visual" aria-hidden="true">
+              <div class="search">gr<span class="caret"></span></div>
+              <ul>
+                <li class="on"><b>Amazing Grace</b><span>John Newton</span></li>
+                <li><b>Grace Greater Than Our Sin</b><span>Julia H. Johnston</span></li>
+                <li><b>Marvelous Grace of Our Loving Lord</b><span>Daniel B. Towner</span></li>
+                <li><b>Wonderful Grace of Jesus</b><span>Haldor Lillenas</span></li>
+              </ul>
+            </div>
+          </article>
+
+          <article role="tabpanel" id="tab-scripture" aria-labelledby="t-scripture" hidden>
+            <div class="copy">
+              <h3>Type it the way you think it.</h3>
+              <p>
+                <code>jn 3:16-18</code>, <code>1co13:4-7</code>, <code>isa 29:12-13, 17-21</code>.
+                Two translations side by side, your Twi Bible straight from EasyWorship, and verses
+                split across slides the way you like.
+              </p>
+            </div>
+            <div class="visual scripture-visual" aria-hidden="true">
+              <div class="refbox"><span>jn 3:16-18</span><em>John 3:16–18</em></div>
+              <div class="parallel">
+                <p>
+                  <sup>16</sup>For God so loved the world, that he gave his only begotten Son…<small
+                    >KJV</small
+                  >
+                </p>
+                <p>
+                  <sup>16</sup>For God so loved the world, that he gave his one and only Son…<small
+                    >BSB</small
+                  >
+                </p>
+              </div>
+            </div>
+          </article>
+
+          <article role="tabpanel" id="tab-media" aria-labelledby="t-media" hidden>
+            <div class="copy">
+              <h3>Moving backgrounds, cameras and slides.</h3>
+              <p>
+                Looping video behind the lyrics, pictures, PDFs and PowerPoint, background music,
+                and live cameras or capture cards right in the media library.
+              </p>
+            </div>
+            <div class="visual media-visual" aria-hidden="true">
+              <span class="m m1"><i>VIDEO</i></span><span class="m m2"></span
+              ><span class="m m3"><i>CAMERA</i></span>
+              <span class="m m4"></span><span class="m m5"><i>PDF</i></span
+              ><span class="m m6"></span>
+            </div>
+          </article>
+
+          <article role="tabpanel" id="tab-phones" aria-labelledby="t-phones" hidden>
+            <div class="copy">
+              <h3>The pastor's phone is a remote.</h3>
+              <p>
+                Scan a code and any phone or tablet joins: next and previous for the worship leader,
+                alerts for the nursery, a stage display with the clock and next slide. Each gets
+                only what its role allows.
+              </p>
+            </div>
+            <div class="visual phone-visual" aria-hidden="true">
+              <div class="phone">
+                <div class="p-slide">Through many dangers, toils and snares…</div>
+                <div class="p-buttons"><span>◀</span><span class="go">Next ▶</span></div>
+                <div class="p-role">Worship leader</div>
+              </div>
+            </div>
+          </article>
+
+          <article role="tabpanel" id="tab-stream" aria-labelledby="t-stream" hidden>
+            <div class="copy">
+              <h3>A lower third for the livestream.</h3>
+              <p>
+                The same service, styled for the stream: a clean lower third with a transparent
+                background for OBS or vMix, or sent over the network with NDI.
+              </p>
+            </div>
+            <div class="visual stream-visual" aria-hidden="true">
+              <div class="cam"><span class="rec">● REC</span></div>
+              <div class="third">
+                I once was lost, but now am found,<br>was blind, but now I see.
+              </div>
+            </div>
+          </article>
+
+          <article role="tabpanel" id="tab-assistant" aria-labelledby="t-assistant" hidden>
+            <div class="copy">
+              <h3>An assistant, if you want one.</h3>
+              <p>
+                With your own Claude, ChatGPT or Gemini key: turn the pastor's sermon notes into
+                slides and scripture, tidy pasted lyrics, find “the song about the blood that never
+                loses its power”, or draft a translation into Twi or French. Nothing is sent until
+                you click.
+              </p>
+            </div>
+            <div class="visual assistant-visual" aria-hidden="true">
+              <div class="notes">
+                Sermon: <b>He sees you</b><br>1. In the valley · Ps 23:4<br>2. In the storm · Mk
+                4:39
+              </div>
+              <div class="arrow">→</div>
+              <ul>
+                <li><i>TEXT</i>He sees you</li>
+                <li><i>TEXT</i>1. In the valley</li>
+                <li><i>BIBLE</i>Psalm 23:4</li>
+                <li><i>TEXT</i>2. In the storm</li>
+                <li><i>BIBLE</i>Mark 4:39</li>
+              </ul>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <!-- Moving from EasyWorship. -->
+      <section class="easyworship" id="easyworship">
+        <div class="section-head">
+          <h2>Bring your EasyWorship<br>library with you.</h2>
+          <p>
+            Years of songs and Bibles come across in a minute. EasyWorship's files are only read,
+            never changed, so you can keep both while you decide.
+          </p>
+        </div>
+        <ol class="steps">
+          <li>
+            <span>1</span>
+            <h3>Install and open</h3>
+            <p>On the computer that runs EasyWorship, or copy its folders across on a USB stick.</p>
+          </li>
+          <li>
+            <span>2</span>
+            <h3>It finds your library</h3>
+            <p>Songs, Bibles (yes, your Twi <code>.ewb</code> too), backgrounds and media.</p>
+          </li>
+          <li>
+            <span>3</span>
+            <h3>Import</h3>
+            <p>Check the list and press Import. Sunday's schedule is ready to build.</p>
+          </li>
+        </ol>
+        <p class="more">
+          <a
+            href="https://github.com/brvhprince/simpleworship/blob/main/docs/moving-from-easyworship.md"
+            >The step-by-step guide →</a
+          >
+        </p>
+      </section>
+
+      <!-- Several computers. -->
+      <section class="computers">
+        <div class="section-head">
+          <h2>One service, every room.</h2>
+          <p>
+            A second computer can join the one running the service: as a second operator at the
+            pulpit desk, with its own preview, or as a mirror for the overflow room. If the main
+            computer stops answering, another takes over from the slide that was live.
+          </p>
+        </div>
+        <div class="rooms" aria-hidden="true">
+          <div class="room main"><b>Booth</b><span>Runs the service</span></div>
+          <div class="room"><b>Pulpit desk</b><span>Second operator</span></div>
+          <div class="room"><b>Overflow</b><span>Mirror</span></div>
+          <div class="room"><b>Stream</b><span>NDI · OBS</span></div>
+        </div>
+      </section>
+
+      <!-- The story and the promise. -->
+      <section class="story">
+        <blockquote>
+          <p>
+            Built by a church media operator in Ghana, after years behind the projector during live
+            preaching. Every feature is judged by one question: is it faster when the pastor is
+            already reading?
+          </p>
+        </blockquote>
+        <ul class="promises">
+          <li><b>Free, for good.</b> No subscription, no trial, no account.</li>
+          <li><b>Yours.</b> Your songs and files stay on your computers.</li>
+          <li><b>Private.</b> No tracking, no adverts, nothing sent home.</li>
+          <li><b>Open.</b> GPL-3.0. Read it, change it, share it.</li>
+        </ul>
+      </section>
+
+      <!-- Download. -->
+      <section class="download" id="download">
+        <div class="section-head">
+          <h2>Download SimpleWorship</h2>
+          <p id="download-version">Free for Mac, Windows and Linux.</p>
+        </div>
+        <div class="systems">
+          <article class="system" data-system="mac">
+            <h3>macOS</h3>
+            <p>Apple chip and Intel · macOS 11 or later</p>
+            <a
+              class="button primary"
+              data-asset="_universal.dmg"
+              href="https://github.com/brvhprince/simpleworship/releases/latest"
+              >Download for Mac</a
+            >
+            <details>
+              <summary>Opening it the first time</summary>
+              <p>
+                Open the downloaded file and drag SimpleWorship to Applications. The first time,
+                <b>right-click</b>
+                the app and choose <b>Open</b>, then <b>Open</b> again. After that it opens
+                normally. (Apple charges a yearly fee to skip this step, which a free app can't
+                carry.)
+              </p>
+            </details>
+          </article>
+          <article class="system" data-system="windows">
+            <h3>Windows</h3>
+            <p>Windows 10 and 11 · 64-bit</p>
+            <a
+              class="button primary"
+              data-asset="_x64-setup.exe"
+              href="https://github.com/brvhprince/simpleworship/releases/latest"
+              >Download for Windows</a
+            >
+            <a
+              class="alt"
+              data-asset="_x64_en-US.msi"
+              href="https://github.com/brvhprince/simpleworship/releases/latest"
+              >or the .msi, for IT installs</a
+            >
+            <details>
+              <summary>If Windows warns you</summary>
+              <p>
+                Windows may say it “protected your PC” because the installer isn't signed with a
+                paid certificate. Choose <b>More info</b>, then <b>Run anyway</b>.
+              </p>
+            </details>
+          </article>
+          <article class="system" data-system="linux">
+            <h3>Linux</h3>
+            <p>Ubuntu, Debian, Fedora and others</p>
+            <a
+              class="button primary"
+              data-asset="_amd64.AppImage"
+              href="https://github.com/brvhprince/simpleworship/releases/latest"
+              >Download AppImage</a
+            >
+            <p class="alt">
+              or the
+              <a
+                data-asset="_amd64.deb"
+                href="https://github.com/brvhprince/simpleworship/releases/latest"
+                >.deb</a
+              >
+              (Ubuntu, Debian) or
+              <a
+                data-asset=".x86_64.rpm"
+                href="https://github.com/brvhprince/simpleworship/releases/latest"
+                >.rpm</a
+              >
+              (Fedora)
+            </p>
+          </article>
+        </div>
+        <p class="updates">
+          It updates itself: new versions download quietly and install only when you say, never
+          during a service.
+        </p>
+      </section>
+    </main>
+
+    <footer class="bottom">
+      <div>
+        <a class="brand" href="./"
+          ><img src="icon.svg" alt="" width="22" height="22"><span>SimpleWorship</span></a
+        >
+        <p>Free software under the GNU GPL v3.0 or later.</p>
+      </div>
+      <nav aria-label="More">
+        <a href="https://github.com/brvhprince/simpleworship">Source code</a>
+        <a href="https://github.com/brvhprince/simpleworship/blob/main/CHANGELOG.md">What's new</a>
+        <a href="https://github.com/brvhprince/simpleworship/issues/new">Report a problem</a>
+      </nav>
+      <p class="trademark">
+        “SimpleWorship” and its logo are trademarks of Prince Takyi Akomea. The official download is
+        always free, here and on GitHub; changed versions must use their own name (<a
+          href="https://github.com/brvhprince/simpleworship/blob/main/TRADEMARKS.md"
+          >trademark policy</a
+        >). NDI® is a registered trademark of Vizrt NDI AB. EasyWorship is a trademark of its owner;
+        SimpleWorship is not affiliated with it.
+      </p>
+    </footer>
+
+    <script src="main.js" type="module"></script>
+  </body>
+</html>

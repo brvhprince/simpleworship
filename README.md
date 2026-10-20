@@ -326,5 +326,11 @@ projector, the stage display and every thumbnail look the same.
 SimpleWorship is free software, released under the
 [GNU General Public License v3.0 or later](LICENSE).
 
+The name “SimpleWorship” and its logo are trademarks of Prince Takyi
+Akomea. The licence covers the code, not the name: a changed version must
+use its own name and logo, and SimpleWorship may not be sold under its name.
+Talking about it, teaching it and sharing the official releases are always
+welcome. See [TRADEMARKS.md](TRADEMARKS.md).
+
 NDI® is a registered trademark of Vizrt NDI AB. SimpleWorship does not
 include NDI; it uses the NDI Runtime if you install it.
