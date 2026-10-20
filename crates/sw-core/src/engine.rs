@@ -1719,6 +1719,8 @@ mod tests {
                     style: AlertStyle::Ticker,
                     position: AlertPosition::Bottom,
                     end: AlertEnd::AfterPasses { passes: 3 },
+                    background: crate::alerts::DEFAULT_BACKGROUND.into(),
+                    color: crate::alerts::DEFAULT_COLOR.into(),
                 },
             })
             .unwrap();

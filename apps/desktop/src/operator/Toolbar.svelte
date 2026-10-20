@@ -89,7 +89,14 @@
 
     <span class="spacer"></span>
 
-    {#if updates.status === "ready" || updates.status === "installing"}
+    {#if updates.status === "downloading"}
+      <span
+        class="downloading"
+        title={t("toolbar.updateDownloadingHint", { version: updates.version ?? "" })}
+      >
+        {t("toolbar.updateDownloading", { percent: Math.round(updates.progress * 100) })}
+      </span>
+    {:else if updates.status === "ready" || updates.status === "installing"}
       <Button
         variant="primary"
         disabled={updates.status === "installing"}
@@ -214,5 +221,14 @@
     .bar {
       gap: var(--sw-space-2);
     }
+  }
+
+  /* A new version on its way: information only, nothing to click yet. */
+  .downloading {
+    flex: none;
+    padding: 0 var(--sw-space-2);
+    color: var(--sw-text-muted);
+    font-size: var(--sw-font-size-small);
+    white-space: nowrap;
   }
 </style>

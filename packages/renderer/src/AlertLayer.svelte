@@ -87,7 +87,12 @@
   }
 </script>
 
-<div class="alert {alert.position}" class:ticker={isTicker}>
+<div
+  class="alert {alert.position}"
+  class:ticker={isTicker}
+  style:background={alert.background}
+  style:color={alert.color}
+>
   <span
     bind:this={text}
     class="text"

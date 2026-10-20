@@ -37,12 +37,14 @@
       : custom.trim();
     if (!text) return;
     const request = template
-      ? { text, style: template.style, position: template.position, end: template.end }
+      ? { ...template, text }
       : {
           text,
           style: "ticker" as const,
           position: "bottom" as const,
           end: { type: "afterPasses" as const, passes: 3 },
+          background: "rgba(0, 0, 0, 0.82)",
+          color: "#ffffff",
         };
     void remote.dispatch({ type: "showAlert", alert: request });
     blank = "";

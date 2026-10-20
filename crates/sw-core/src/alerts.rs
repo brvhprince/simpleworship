@@ -70,6 +70,25 @@ pub struct AlertRequest {
     pub position: AlertPosition,
     /// When it goes away by itself.
     pub end: AlertEnd,
+    /// The bar's colour, any CSS colour (see-through ones too).
+    #[serde(default = "default_background")]
+    pub background: String,
+    /// The text's colour.
+    #[serde(default = "default_color")]
+    pub color: String,
+}
+
+/// The usual bar: dark and a little see-through.
+pub const DEFAULT_BACKGROUND: &str = "rgba(0, 0, 0, 0.82)";
+/// The usual text: white.
+pub const DEFAULT_COLOR: &str = "#ffffff";
+
+fn default_background() -> String {
+    DEFAULT_BACKGROUND.to_owned()
+}
+
+fn default_color() -> String {
+    DEFAULT_COLOR.to_owned()
 }
 
 /// An alert on screen.
@@ -121,6 +140,8 @@ pub fn starter_templates() -> Vec<AlertTemplate> {
             style: AlertStyle::Ticker,
             position: AlertPosition::Bottom,
             end: AlertEnd::AfterPasses { passes: 3 },
+            background: default_background(),
+            color: default_color(),
         },
     };
     vec![
@@ -148,6 +169,14 @@ mod tests {
     use super::*;
 
     #[test]
+    fn saved_alerts_without_colours_get_the_usual_ones() {
+        let saved = r#"{"text":"Hi","style":"banner","position":"top","end":{"type":"manual"}}"#;
+        let request: AlertRequest = serde_json::from_str(saved).unwrap();
+        assert_eq!(request.background, DEFAULT_BACKGROUND);
+        assert_eq!(request.color, DEFAULT_COLOR);
+    }
+
+    #[test]
     fn timed_alerts_expire_and_others_do_not() {
         let alert = |end| Alert {
             request: AlertRequest {
@@ -155,6 +184,8 @@ mod tests {
                 style: AlertStyle::Banner,
                 position: AlertPosition::Top,
                 end,
+                background: default_background(),
+                color: default_color(),
             },
             started_at: 1_000,
         };

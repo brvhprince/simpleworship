@@ -61,11 +61,18 @@ class Updates {
     };
   }
 
-  /** Help › Check for Updates…: looks now and says what it found. */
+  /**
+   * Help › Check for Updates… (and the same button in About and Settings):
+   * looks now and says what it found. A new version downloads while the
+   * button and the toolbar show how far along it is; then it offers to
+   * install, unless something is live (the toolbar's Update Ready waits).
+   */
   async checkNow(): Promise<void> {
     try {
       const found = await this.#look();
-      if (!found) {
+      if (found && this.status === "ready" && !engine.live) {
+        await this.install();
+      } else if (!found) {
         await prompts.ask({
           title: t("updates.upToDate"),
           message: t("updates.newest"),

@@ -11,7 +11,7 @@
   import { openLogsFolder, openProjectPage } from "../lib/api.ts";
   import { dialogs } from "../lib/dialogs.svelte.ts";
   import { t } from "../lib/i18n/i18n.svelte.ts";
-  import { updates } from "../lib/updates.svelte.ts";
+  import UpdateButton from "./UpdateButton.svelte";
 
   let version = $state("");
 
@@ -44,8 +44,10 @@
         </button>
       </dd>
       <dt>{t("about.credits")}</dt>
-      <dd>{t("about.creditsText")}</dd>
-      <dd class="trademark">{t("about.ndiTrademark")}</dd>
+      <dd>
+        {t("about.creditsText")}
+        <span class="trademark">{t("about.ndiTrademark")}</span>
+      </dd>
       <dt>{t("about.support")}</dt>
       <dd>
         {t("about.supportText")}
@@ -59,9 +61,7 @@
   </div>
 
   {#snippet actions()}
-    <Button disabled={updates.status === "checking"} onclick={() => updates.checkNow()}>
-      {updates.status === "checking" ? t("about.checking") : t("about.checkUpdates")}
-    </Button>
+    <UpdateButton label={t("about.checkUpdates")} />
     <Button variant="primary" onclick={() => dialogs.close()}>{t("common.close")}</Button>
   {/snippet}
 </Dialog>
@@ -141,6 +141,8 @@
   }
 
   .trademark {
+    display: block;
+    margin-top: var(--sw-space-1);
     color: var(--sw-text-faint);
     font-size: var(--sw-font-size-small);
   }

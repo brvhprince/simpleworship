@@ -12,6 +12,11 @@
   import { engine } from "../lib/engine.svelte.ts";
   import { t } from "../lib/i18n/i18n.svelte.ts";
   import { panels } from "../lib/panels.svelte.ts";
+  import ColorField from "./themes/ColorField.svelte";
+
+  /** The usual alert: a dark, slightly see-through bar with white text. */
+  const DEFAULT_BACKGROUND = "rgba(0, 0, 0, 0.82)";
+  const DEFAULT_COLOR = "#ffffff";
 
   let templates: AlertTemplate[] = $state([]);
   let text = $state("");
@@ -21,6 +26,8 @@
   let position: AlertPosition = $state("bottom");
   let endType: AlertEnd["type"] = $state("afterPasses");
   let endAmount = $state(3);
+  let background = $state(DEFAULT_BACKGROUND);
+  let color = $state(DEFAULT_COLOR);
 
   const showing = $derived(engine.output?.alert ?? null);
   const needsBlank = $derived(template?.text.includes("___") ?? false);
@@ -42,6 +49,8 @@
     position = chosen.position;
     endType = chosen.end.type;
     endAmount = amountOf(chosen.end) ?? endAmount;
+    background = chosen.background;
+    color = chosen.color;
     text = chosen.text;
     keepEndingValid();
   }
@@ -78,7 +87,7 @@
     if (!message.trim()) return;
     engine.dispatch({
       type: "showAlert",
-      alert: { text: message.trim(), style, position, end: end() },
+      alert: { text: message.trim(), style, position, end: end(), background, color },
     });
     blank = "";
     panels.close();
@@ -139,6 +148,15 @@
       aria-label={endType === "afterPasses" ? t("alert.times") : t("alert.seconds")}
     >
   {/if}
+</div>
+
+<div class="row colours">
+  <ColorField
+    label={t("alert.background")}
+    value={background}
+    onchange={(value) => (background = value)}
+  />
+  <ColorField label={t("alert.textColour")} value={color} onchange={(value) => (color = value)} />
 </div>
 
 <div class="actions">

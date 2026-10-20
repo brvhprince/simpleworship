@@ -26,6 +26,14 @@ export type Alert = {
    * When it goes away by itself.
    */
   end: AlertEnd;
+  /**
+   * The bar's colour, any CSS colour (see-through ones too).
+   */
+  background: string;
+  /**
+   * The text's colour.
+   */
+  color: string;
 };
 
 /**
@@ -73,6 +81,14 @@ export type AlertRequest = {
    * When it goes away by itself.
    */
   end: AlertEnd;
+  /**
+   * The bar's colour, any CSS colour (see-through ones too).
+   */
+  background: string;
+  /**
+   * The text's colour.
+   */
+  color: string;
 };
 
 /**
@@ -105,6 +121,14 @@ export type AlertTemplate = {
    * When it goes away by itself.
    */
   end: AlertEnd;
+  /**
+   * The bar's colour, any CSS colour (see-through ones too).
+   */
+  background: string;
+  /**
+   * The text's colour.
+   */
+  color: string;
 };
 
 /**

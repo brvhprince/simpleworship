@@ -16,8 +16,9 @@
   import { i18n, LANGUAGES, type Language, t } from "../lib/i18n/i18n.svelte.ts";
   import { link } from "../lib/link.svelte.ts";
   import { ROLES, remote } from "../lib/remote.svelte.ts";
-  import { updates } from "../lib/updates.svelte.ts";
   import StreamSettings from "./StreamSettings.svelte";
+  import ColorField from "./themes/ColorField.svelte";
+  import UpdateButton from "./UpdateButton.svelte";
 
   let settings: AppSettings | null = $state(null);
   let version = $state("");
@@ -42,6 +43,8 @@
       style: "ticker",
       position: "bottom",
       end: { type: "afterPasses", passes: 3 },
+      background: "rgba(0, 0, 0, 0.82)",
+      color: "#ffffff",
     });
   }
 
@@ -101,6 +104,16 @@
                 <option value="bottom">{t("alert.bottom")}</option>
                 <option value="top">{t("alert.top")}</option>
               </select>
+              <ColorField
+                label={t("alert.background")}
+                value={template.background}
+                onchange={(value) => (template.background = value)}
+              />
+              <ColorField
+                label={t("alert.textColour")}
+                value={template.color}
+                onchange={(value) => (template.color = value)}
+              />
               <Button onclick={() => removeTemplate(template)}>{t("settings.remove")}</Button>
             </div>
           {/each}
@@ -116,9 +129,7 @@
         </label>
         <div class="option">
           <span class="hint">{t("settings.thisVersion", { version })}</span>
-          <Button disabled={updates.status === "checking"} onclick={() => updates.checkNow()}>
-            {updates.status === "checking" ? t("about.checking") : t("settings.checkNow")}
-          </Button>
+          <UpdateButton label={t("settings.checkNow")} />
         </div>
       </section>
 
@@ -271,6 +282,8 @@
 
   .template {
     display: flex;
+    flex-wrap: wrap;
+    align-items: center;
     gap: var(--sw-space-1);
     margin-bottom: var(--sw-space-2);
   }
