@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Added to SimpleWorship's Info.plist when the app is bundled. macOS shows
+  this sentence when SimpleWorship first uses a camera (Media › Cameras).
+-->
+<plist version="1.0">
+<dict>
+  <key>NSCameraUsageDescription</key>
+  <string>SimpleWorship shows live pictures from your cameras and capture cards on the screens.</string>
+</dict>
+</plist>

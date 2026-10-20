@@ -45,7 +45,15 @@ use crate::state::AppState;
 /// Builds and runs the application. Returns when the last window closes.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let builder = tauri::Builder::default();
+    let builder = tauri::Builder::default()
+        // Cameras (Media › Cameras) are opened by SimpleWorship's own
+        // windows, which only ever show its own pages: allow them without
+        // a browser prompt, which would appear on the projector. macOS
+        // still asks the user once (see Info.plist).
+        .on_permission_request(|_, kind| match kind {
+            tauri::webview::PermissionKind::Camera => tauri::webview::PermissionResponse::Allow,
+            _ => tauri::webview::PermissionResponse::Default,
+        });
 
     // First, so a second copy hands over its file and quits before doing
     // anything else.
@@ -104,6 +112,7 @@ pub fn run() {
             commands::songs::song_show_in_preview,
             commands::schedule::schedule_add_song,
             commands::schedule::schedule_add_text,
+            commands::schedule::schedule_add_camera,
             commands::schedule::schedule_missing_songs,
             commands::schedule::schedule_add_missing_songs,
             commands::schedule::schedule_file_status,

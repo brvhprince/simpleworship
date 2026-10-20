@@ -19,6 +19,8 @@ export function itemTitle(item: ScheduleItem): string {
     }
     case "media":
       return item.content.media.name;
+    case "camera":
+      return item.content.camera.label;
     case "countdown":
       return item.content.title;
     case "slides":
@@ -57,6 +59,8 @@ export function itemKind(item: ScheduleItem): string {
       return t("kind.bible");
     case "media":
       return item.content.media.kind === "video" ? t("kind.video") : t("kind.image");
+    case "camera":
+      return t("kind.camera");
     case "countdown":
       return t("kind.timer");
     case "slides":

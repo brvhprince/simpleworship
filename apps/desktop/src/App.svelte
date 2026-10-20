@@ -6,7 +6,7 @@
 -->
 <script lang="ts">
   import type { MediaFolderPaths, MediaRef } from "@simpleworship/protocol";
-  import { setMediaUrls } from "@simpleworship/renderer";
+  import { setCameraUse, setMediaUrls } from "@simpleworship/renderer";
   import { convertFileSrc } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
   import { i18n } from "./lib/i18n/i18n.svelte.ts";
@@ -30,6 +30,15 @@
   setMediaUrls({
     file: (media: MediaRef) => convertFileSrc(`${folders.media}/${media.file}`),
     thumbnail: (media: MediaRef) => convertFileSrc(`${folders.thumbnails}/${media.id}.jpg`),
+  });
+
+  // Cameras: live on the projector and the operator's panes (which also
+  // say when one is missing); never opened by NDI's hidden windows, whose
+  // pictures could not keep up with live video.
+  setCameraUse({
+    live: view !== "ndi" && view !== "stage",
+    placeholder: view === "operator",
+    explain: view === "operator",
   });
 
   // A language chosen in Settings reaches every window (the stage display too).

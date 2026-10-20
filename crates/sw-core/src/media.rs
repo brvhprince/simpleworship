@@ -78,3 +78,20 @@ impl MediaItem {
         }
     }
 }
+
+/// A camera or capture card connected to the computer, as a live picture
+/// (see the Cameras section of the Media tab).
+///
+/// Each window opens the camera itself, finding it by `device_id` (the
+/// system's identifier, which can change, e.g. on another computer), else
+/// by `label` (its name, such as "Elgato HD60 S"), so a saved schedule
+/// still finds the same model of camera.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "bindings.ts")]
+pub struct CameraRef {
+    /// The system's identifier for the camera.
+    pub device_id: String,
+    /// The camera's name.
+    pub label: String,
+}

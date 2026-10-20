@@ -32,6 +32,8 @@
         return item.content.reference;
       case "media":
         return item.content.media.name;
+      case "camera":
+        return item.content.camera.label;
       case "slides":
       case "playlist":
         return item.content.name;

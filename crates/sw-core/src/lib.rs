@@ -40,7 +40,7 @@ pub use command::{Command, EngineEvent};
 pub use deck::{AutoAdvance, DeckSlide, SlideDeck, SlideStyle};
 pub use engine::{Engine, EngineError, EngineSnapshot, PaneState};
 pub use id::Id;
-pub use media::{MediaItem, MediaKind, MediaRef};
+pub use media::{CameraRef, MediaItem, MediaKind, MediaRef};
 pub use output::{
     DisplayFlags, OutputState, RenderFrame, Transition, TransitionKind, VideoPlayback,
 };

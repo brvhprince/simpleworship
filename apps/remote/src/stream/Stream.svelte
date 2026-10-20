@@ -7,7 +7,7 @@
 -->
 <script lang="ts">
   import type { MediaRef } from "@simpleworship/protocol";
-  import { ScaledCanvas, StreamView, setMediaUrls } from "@simpleworship/renderer";
+  import { ScaledCanvas, StreamView, setCameraUse, setMediaUrls } from "@simpleworship/renderer";
   import { onMount } from "svelte";
   import { StreamConnection } from "./connection.svelte.ts";
 
@@ -18,6 +18,9 @@
     file: (media: MediaRef) => `/media/${encodeURIComponent(media.file)}?token=${key}`,
     thumbnail: (media: MediaRef) => `/thumbnails/${media.id}.jpg?token=${key}`,
   });
+
+  // OBS has the camera itself (and the stream look leaves cameras out).
+  setCameraUse({ live: false, placeholder: false, explain: false });
 
   onMount(() => {
     connection.start();

@@ -1,14 +1,17 @@
 <!--
   @component
   Draws a theme background filling the canvas: a colour, a gradient, an
-  image or a video.
+  image, a video or a camera.
 
-  - `still`: show a video as its thumbnail instead of playing it (previews
-    and slide thumbnails).
+  - `still`: show a video as its thumbnail instead of playing it, and a
+    camera as a symbol (previews and slide thumbnails).
   - `playback` and `muted` are passed to live videos (see `VideoLayer`).
 -->
 <script lang="ts">
   import type { Background, VideoPlayback } from "@simpleworship/protocol";
+  import CameraLayer from "./CameraLayer.svelte";
+  import CameraPlaceholder from "./CameraPlaceholder.svelte";
+  import { getCameraUse } from "./camera.ts";
   import { getMediaUrls } from "./media.ts";
   import { backgroundCss } from "./styles.ts";
   import VideoLayer from "./VideoLayer.svelte";
@@ -23,10 +26,13 @@
   let { background, still = false, playback = null, muted = false }: Props = $props();
 
   const urls = getMediaUrls();
+  const cameras = getCameraUse();
 
   /** Pictures and videos can be faded into the black behind them. */
   const opacity = $derived(
-    background.type === "image" || background.type === "video" ? background.opacity : 1,
+    background.type === "image" || background.type === "video" || background.type === "camera"
+      ? background.opacity
+      : 1,
   );
 </script>
 
@@ -36,6 +42,10 @@
       <img src={urls.file(background.media)} class={background.fit} alt="">
     {:else if background.type === "video" && still}
       <img src={urls.thumbnail(background.media)} class={background.fit} alt="">
+    {:else if background.type === "camera" && cameras.live && !still}
+      <CameraLayer camera={background.camera} fit={background.fit} />
+    {:else if background.type === "camera" && cameras.placeholder}
+      <CameraPlaceholder camera={background.camera} />
     {:else if background.type === "video"}
       <VideoLayer
         media={background.media}

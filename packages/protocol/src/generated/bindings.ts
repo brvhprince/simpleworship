@@ -202,6 +202,21 @@ export type Background =
       opacity: number;
     }
   | {
+      type: "camera";
+      /**
+       * Which camera.
+       */
+      camera: CameraRef;
+      /**
+       * How the picture fills the screen.
+       */
+      fit: MediaFit;
+      /**
+       * How see-through it is, from 0 (invisible) to 1 (solid).
+       */
+      opacity: number;
+    }
+  | {
       type: "video";
       /**
        * The video in the media library.
@@ -281,6 +296,26 @@ export type BookOutline = {
 };
 
 /**
+ * A camera or capture card connected to the computer, as a live picture
+ * (see the Cameras section of the Media tab).
+ *
+ * Each window opens the camera itself, finding it by `device_id` (the
+ * system's identifier, which can change, e.g. on another computer), else
+ * by `label` (its name, such as "Elgato HD60 S"), so a saved schedule
+ * still finds the same model of camera.
+ */
+export type CameraRef = {
+  /**
+   * The system's identifier for the camera.
+   */
+  deviceId: string;
+  /**
+   * The camera's name.
+   */
+  label: string;
+};
+
+/**
  * A request to change the live state.
  */
 export type Command =
@@ -331,6 +366,13 @@ export type Command =
        * The media item.
        */
       media: MediaItem;
+    }
+  | {
+      type: "previewCamera";
+      /**
+       * Which camera.
+       */
+      camera: CameraRef;
     }
   | {
       type: "selectPreviewSlide";
@@ -1143,6 +1185,13 @@ export type ItemContent =
       media: MediaItem;
     }
   | {
+      type: "camera";
+      /**
+       * Which camera.
+       */
+      camera: CameraRef;
+    }
+  | {
       type: "countdown";
       /**
        * Title in the schedule, e.g. "Countdown to 10:30".
@@ -1449,7 +1498,8 @@ export type PresentationSource =
        * The media item's id.
        */
       mediaId: Id;
-    };
+    }
+  | { type: "camera" };
 
 /**
  * One slide, resolved and ready to draw.

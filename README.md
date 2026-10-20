@@ -116,6 +116,13 @@ with EasyWorship should feel at home.
   computer checks every tap against the phone's role. Remove a phone in
   Settings › Phone Remote and it is disconnected at once. Video backgrounds
   show as stills on phones.
+- **Cameras:** cameras and capture cards connected to the computer appear
+  in Media › Cameras, live. Show one full screen (Preview, Go Live, or add
+  it to the schedule), or use one as the background of a theme, a schedule
+  item or a slide, with the words over the live picture. Video only; the
+  stream look and NDI leave cameras out (your streaming switcher has the
+  camera already). macOS asks once for permission. macOS and Windows for
+  now.
 - **Stream output:** the same slides in a look of their own for the
   livestream, like EasyWorship's Alternate Output. By default songs and
   scripture appear as a lower third on a see-through background, so OBS or
@@ -276,7 +283,7 @@ projector, the stage display and every thumbnail look the same.
 | M8        | Presentation editor, slideshows, scripture styling (verse numbers, reference box) | ✅     |
 | M9        | Installers, auto-update, translations (English, French, Twi), EasyWorship media import | ✅     |
 | M10       | Phone remote (roles, QR pairing, stage display on a tablet), per-content transitions | ✅     |
-| M11       | Stream output: lower-third look, browser source for OBS/vMix, stream window, NDI | 🚧     |
+| M11       | Stream output: lower-third look, browser source for OBS/vMix, stream window, NDI; camera feeds | ✅     |
 
 Later: multi-operator sync and AI-assisted features.
 

@@ -10,6 +10,7 @@ import type {
   BibleChoice,
   BibleInfo,
   BookOutline,
+  CameraRef,
   CountdownSlide,
   DeckSlide,
   FoundSource,
@@ -80,6 +81,10 @@ export const addSongToSchedule = (id: string, index: number | null = null) =>
 /** Adds free text to the schedule at `index`, or at the end. */
 export const addTextToSchedule = (title: string, text: string, index: number | null = null) =>
   invoke<void>("schedule_add_text", { title, text, index });
+
+/** Adds a camera's live picture to the schedule at `index` (or at the end). */
+export const addCameraToSchedule = (camera: CameraRef, index: number | null = null) =>
+  invoke<void>("schedule_add_camera", { camera, index });
 
 /** Ids of songs in the schedule that are not in this computer's library. */
 export const missingScheduleSongs = () => invoke<string[]>("schedule_missing_songs");

@@ -1,7 +1,8 @@
 <!--
   @component
   The media library: images and videos for backgrounds, the logo, and
-  schedule items, and sound files for background music.
+  schedule items, sound files for background music, and the cameras
+  connected to this computer (see `CamerasStrip`).
 
   - Import… copies files into the library (videos can take a moment).
   - Click to select, double-click to preview, drag onto the schedule.
@@ -32,6 +33,7 @@
   import { t } from "../../lib/i18n/i18n.svelte.ts";
   import { media } from "../../lib/media.svelte.ts";
   import { prompts } from "../../lib/prompts.svelte.ts";
+  import CamerasStrip from "./CamerasStrip.svelte";
 
   const MEDIA_FILTERS = [
     {
@@ -44,16 +46,20 @@
     },
   ];
 
-  type Filter = "all" | "image" | "video" | "audio";
+  type Filter = "all" | "image" | "video" | "audio" | "camera";
 
   const urls = getMediaUrls();
-  let filter: Filter = $state("all");
+  let filter = $state<Filter>("all");
   /** The item last clicked: the one the single-item buttons act on. */
   let selectedId: string | null = $state(null);
   /** Every picked item (more than one with ⌘/Ctrl- or Shift-click). */
   const picked = new SvelteSet<string>();
 
-  const shown = $derived(media.list.filter((item) => filter === "all" || item.kind === filter));
+  const shown = $derived(
+    filter === "camera"
+      ? []
+      : media.list.filter((item) => filter === "all" || item.kind === filter),
+  );
   const selected = $derived(media.list.find((item) => item.id === selectedId) ?? null);
   /** The picked items, in the order they are shown. */
   const pickedItems = $derived(shown.filter((item) => picked.has(item.id)));
@@ -171,6 +177,7 @@
         ["image", t("media.filterImages")],
         ["video", t("media.filterVideos")],
         ["audio", t("media.filterSound")],
+        ["camera", t("media.filterCameras")],
       ] as [value, label] (value)}
         <label>
           <input type="radio" bind:group={filter} {value}>
@@ -240,49 +247,55 @@
     {/if}
   </div>
 
-  <ul class="grid" aria-label={t("media.list")}>
-    {#each shown as item (item.id)}
-      <li>
-        <button
-          type="button"
-          class="card"
-          class:selected={picked.has(item.id)}
-          draggable="true"
-          ondragstart={(event) => startDrag(event, item)}
-          onclick={(event) => pick(event, item)}
-          ondblclick={() => activate(item)}
-        >
-          <span class="picture">
-            {#if item.kind === "audio"}
-              <span class="note" aria-hidden="true">♪</span>
-            {:else}
-              <img src={thumbnailUrl(item)} alt="" onerror={() => media.prepare(item)}>
-            {/if}
-            {#if item.kind !== "image" && item.durationMs}
-              <span class="badge">{formatDuration(item.durationMs)}</span>
-            {/if}
-            {#if item.id === logoId}
-              <span class="badge logo">{t("media.logo")}</span>
-            {/if}
-          </span>
-          <span class="caption">
-            <span class="title">{item.name}</span>
-            <span class="meta">
-              {kindLabel(item)}
-              {#if item.width && item.height}
-                · {item.width}×{item.height}
+  {#if filter === "camera"}
+    <CamerasStrip />
+  {/if}
+
+  {#if filter !== "camera"}
+    <ul class="grid" aria-label={t("media.list")}>
+      {#each shown as item (item.id)}
+        <li>
+          <button
+            type="button"
+            class="card"
+            class:selected={picked.has(item.id)}
+            draggable="true"
+            ondragstart={(event) => startDrag(event, item)}
+            onclick={(event) => pick(event, item)}
+            ondblclick={() => activate(item)}
+          >
+            <span class="picture">
+              {#if item.kind === "audio"}
+                <span class="note" aria-hidden="true">♪</span>
+              {:else}
+                <img src={thumbnailUrl(item)} alt="" onerror={() => media.prepare(item)}>
               {/if}
-              · {formatBytes(item.sizeBytes)}
+              {#if item.kind !== "image" && item.durationMs}
+                <span class="badge">{formatDuration(item.durationMs)}</span>
+              {/if}
+              {#if item.id === logoId}
+                <span class="badge logo">{t("media.logo")}</span>
+              {/if}
             </span>
-          </span>
-        </button>
-      </li>
-    {:else}
-      <li class="empty">
-        {t("media.empty")}
-      </li>
-    {/each}
-  </ul>
+            <span class="caption">
+              <span class="title">{item.name}</span>
+              <span class="meta">
+                {kindLabel(item)}
+                {#if item.width && item.height}
+                  · {item.width}×{item.height}
+                {/if}
+                · {formatBytes(item.sizeBytes)}
+              </span>
+            </span>
+          </button>
+        </li>
+      {:else}
+        <li class="empty">
+          {t("media.empty")}
+        </li>
+      {/each}
+    </ul>
+  {/if}
 </div>
 
 <style>

@@ -1,10 +1,11 @@
 <!--
   @component
   Edits a background: a colour, a two-colour gradient, an image or a video
-  from the media library.
+  from the media library, or a camera connected to this computer.
 -->
 <script lang="ts">
-  import type { Background, MediaFit, MediaItem } from "@simpleworship/protocol";
+  import type { Background, CameraRef, MediaFit, MediaItem } from "@simpleworship/protocol";
+  import { listCameras } from "@simpleworship/renderer";
   import { t } from "../../lib/i18n/i18n.svelte.ts";
   import ColorField from "./ColorField.svelte";
   import MediaPicker from "./MediaPicker.svelte";
@@ -16,8 +17,11 @@
 
   let { value, onchange }: Props = $props();
 
-  /** "image"/"video" chosen in the select before a file is picked. */
-  let pendingType: "image" | "video" | null = $state(null);
+  /** "image"/"video"/"camera" chosen in the select before one is picked. */
+  let pendingType: "image" | "video" | "camera" | null = $state(null);
+  /** The cameras connected now (once the camera choice was opened). */
+  let cameras: CameraRef[] = $state([]);
+  let camerasProblem = $state(false);
   const shownType = $derived(pendingType ?? value.type);
 
   // A different background from outside (another slide or theme) starts
@@ -50,7 +54,44 @@
         // Nothing to show until media is picked; keep the old background.
         pendingType = type;
         break;
+      case "camera":
+        pendingType = type;
+        void findCameras();
+        break;
     }
+  }
+
+  async function findCameras() {
+    try {
+      cameras = await listCameras();
+      camerasProblem = false;
+    } catch {
+      camerasProblem = true;
+    }
+  }
+
+  // Editing a camera background: list the cameras to choose from.
+  $effect(() => {
+    if (value.type === "camera" && cameras.length === 0) void findCameras();
+  });
+
+  /** The cameras to offer, including the chosen one if it is not connected. */
+  const cameraChoices = $derived.by(() => {
+    if (value.type !== "camera") return cameras;
+    const chosen = value.camera;
+    const connected = cameras.some(
+      (camera) => camera.deviceId === chosen.deviceId || camera.label === chosen.label,
+    );
+    return connected ? cameras : [chosen, ...cameras];
+  });
+
+  function pickCamera(deviceId: string) {
+    const camera = cameraChoices.find((choice) => choice.deviceId === deviceId);
+    if (!camera) return;
+    pendingType = null;
+    const opacity = value.type === "camera" ? value.opacity : 1;
+    const fit: MediaFit = value.type === "camera" ? value.fit : "cover";
+    onchange({ type: "camera", camera, fit, opacity });
   }
 
   function pick(media: MediaItem) {
@@ -77,6 +118,7 @@
     <option value="linearGradient">{t("background.gradient")}</option>
     <option value="image">{t("background.image")}</option>
     <option value="video">{t("background.video")}</option>
+    <option value="camera">{t("background.camera")}</option>
   </select>
 
   {#if shownType === "color" && value.type === "color"}
@@ -106,6 +148,50 @@
         onchange={(e) => onchange({ ...value, angleDeg: e.currentTarget.valueAsNumber || 0 })}
       >°
     </label>
+  {:else if shownType === "camera"}
+    {#if camerasProblem}
+      <span class="hint">{t("cameras.notAllowed")}</span>
+    {:else}
+      <select
+        value={value.type === "camera" ? value.camera.deviceId : ""}
+        aria-label={t("background.camera")}
+        onchange={(e) => pickCamera(e.currentTarget.value)}
+      >
+        {#if value.type !== "camera"}
+          <option value="" disabled>{t("background.chooseCamera")}</option>
+        {/if}
+        {#each cameraChoices as camera (camera.deviceId)}
+          <option value={camera.deviceId}>
+            {camera.label}{cameras.includes(camera) ? "" : ` ${t("background.notConnected")}`}
+          </option>
+        {/each}
+      </select>
+    {/if}
+    {#if value.type === "camera"}
+      <label class="inline">
+        {t("background.fit")}
+        <select
+          value={value.fit}
+          onchange={(e) => onchange({ ...value, fit: e.currentTarget.value as MediaFit })}
+        >
+          <option value="cover">{t("background.cover")}</option>
+          <option value="contain">{t("background.contain")}</option>
+          <option value="stretch">{t("background.stretch")}</option>
+        </select>
+      </label>
+      <label class="inline" title={t("background.opacityHint")}>
+        {t("background.opacity")}
+        <input
+          type="range"
+          min="0.05"
+          max="1"
+          step="0.05"
+          value={value.opacity}
+          oninput={(e) => onchange({ ...value, opacity: e.currentTarget.valueAsNumber })}
+        >
+        <span class="value">{Math.round(value.opacity * 100)}%</span>
+      </label>
+    {/if}
   {:else if shownType === "image" || shownType === "video"}
     <MediaPicker
       kind={shownType}
@@ -171,6 +257,11 @@
     align-items: center;
     gap: var(--sw-space-1);
     color: var(--sw-text-muted);
+  }
+
+  .hint {
+    color: var(--sw-text-faint);
+    font-size: var(--sw-font-size-small);
   }
 
   input[type="number"] {

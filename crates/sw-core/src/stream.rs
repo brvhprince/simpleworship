@@ -11,6 +11,11 @@
 //!   full-screen slides on the stream too;
 //! - **hidden**: nothing on the stream.
 //!
+//! A camera background never reaches the stream: the stream's switcher has
+//! the camera itself (and OBS on another computer could not open it), so
+//! it becomes the stream's backdrop, and a lower third over the camera
+//! shows as usual.
+//!
 //! The panic buttons keep the camera visible: Black, Logo and Clear Text
 //! take the words off the stream, leaving the backdrop (usually see-through),
 //! rather than putting black or the logo over the camera.
@@ -216,6 +221,12 @@ pub fn stream_output(
         }
     }
 
+    if matches!(frame.theme.background, Background::Camera { .. }) {
+        frame.theme.background = Background::Color {
+            color: backdrop.color().to_owned(),
+        };
+    }
+
     // Clear Text on plain text leaves only the backdrop and background,
     // which is what the renderer does with `hide_text`. A themed slide's
     // background is the backdrop, so there is nothing else to show.
@@ -347,6 +358,36 @@ mod tests {
             .expect("a frame");
         assert_eq!(frame.theme.name, "Lower Third");
         assert_eq!(frame.theme.background, song_frame().theme.background);
+    }
+
+    #[test]
+    fn a_camera_background_becomes_the_backdrop() {
+        let mut frame = song_frame();
+        frame.theme.background = Background::Camera {
+            camera: crate::media::CameraRef {
+                device_id: "cam-1".into(),
+                label: "Elgato HD60 S".into(),
+            },
+            fit: crate::theme::MediaFit::Cover,
+            opacity: 1.0,
+        };
+        let settings = StreamSettings {
+            songs: StreamLook::SameAsMain,
+            ..StreamSettings::default()
+        };
+        let output = stream_output(
+            &settings,
+            &starter_library(),
+            Some(StreamKind::Songs),
+            Some(&frame),
+            DisplayFlags::default(),
+        );
+        assert_eq!(
+            output.frame.expect("a frame").theme.background,
+            Background::Color {
+                color: "transparent".into()
+            }
+        );
     }
 
     #[test]

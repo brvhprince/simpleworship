@@ -11,7 +11,7 @@
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-use crate::media::MediaRef;
+use crate::media::{CameraRef, MediaRef};
 
 /// A complete visual style for slides.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
@@ -88,6 +88,17 @@ pub enum Background {
         #[serde(default = "full_opacity")]
         opacity: f32,
     },
+    /// A camera or capture card, live. Video only (no sound).
+    Camera {
+        /// Which camera.
+        camera: CameraRef,
+        /// How the picture fills the screen.
+        #[serde(default)]
+        fit: MediaFit,
+        /// How see-through it is, from 0 (invisible) to 1 (solid).
+        #[serde(default = "full_opacity")]
+        opacity: f32,
+    },
     /// A video. Playback (play, pause, position) is controlled from the live
     /// pane and shared by every screen; see [`crate::output::VideoPlayback`].
     Video {
@@ -118,7 +129,9 @@ impl Background {
     pub fn media(&self) -> Option<&MediaRef> {
         match self {
             Background::Image { media, .. } | Background::Video { media, .. } => Some(media),
-            Background::Color { .. } | Background::LinearGradient { .. } => None,
+            Background::Color { .. }
+            | Background::LinearGradient { .. }
+            | Background::Camera { .. } => None,
         }
     }
 }

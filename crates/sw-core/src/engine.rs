@@ -342,6 +342,10 @@ impl Engine {
                 let look = self.look(ContentKind::Text, None);
                 self.preview = Some(unscheduled(Presentation::from_media(&media, look)));
             }
+            Command::PreviewCamera { camera } => {
+                let look = self.look(ContentKind::Text, None);
+                self.preview = Some(unscheduled(Presentation::from_camera(&camera, look)));
+            }
             Command::SelectPreviewSlide { index } => {
                 let pane = self.preview.as_mut().ok_or(EngineError::NothingInPreview)?;
                 select(pane, index)?;
@@ -1942,6 +1946,38 @@ mod tests {
             engine.dispatch(Command::NextSlide).unwrap();
         }
         assert!(engine.snapshot().output.flags.logo);
+    }
+
+    #[test]
+    fn a_camera_goes_live_full_screen_but_not_on_the_stream() {
+        let mut engine = themed_engine(Vec::new());
+        let camera = crate::media::CameraRef {
+            device_id: "cam-1".into(),
+            label: "Elgato HD60 S".into(),
+        };
+        engine
+            .dispatch(Command::PreviewCamera {
+                camera: camera.clone(),
+            })
+            .unwrap();
+        assert_eq!(
+            engine.snapshot().preview.unwrap().presentation.title,
+            "Elgato HD60 S"
+        );
+        engine.dispatch(Command::GoLive).unwrap();
+
+        let output = engine.snapshot().output;
+        let frame = output.frame.expect("the camera is live");
+        assert!(matches!(
+            frame.theme.background,
+            Background::Camera { camera: ref live, .. } if *live == camera
+        ));
+        // The stream's switcher has the camera itself.
+        let stream = output.stream.frame.expect("the stream shows the slide");
+        assert!(!matches!(
+            stream.theme.background,
+            Background::Camera { .. }
+        ));
     }
 
     #[test]

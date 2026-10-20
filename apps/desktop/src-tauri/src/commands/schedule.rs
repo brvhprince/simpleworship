@@ -7,7 +7,7 @@
 use std::path::PathBuf;
 
 use sw_core::countdown::CountdownSlide;
-use sw_core::{Command, Id, ItemContent, Schedule, ScheduleItem};
+use sw_core::{CameraRef, Command, Id, ItemContent, Schedule, ScheduleItem};
 use tauri::{AppHandle, Manager, State};
 
 use crate::autosave::AutosaveInfo;
@@ -47,6 +47,17 @@ pub fn schedule_add_text(
     index: Option<usize>,
 ) -> AppResult<()> {
     add_item(&app, &state, ItemContent::Text { title, text }, index)
+}
+
+/// Adds a camera's live picture at `index` (or at the end).
+#[tauri::command]
+pub fn schedule_add_camera(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    camera: CameraRef,
+    index: Option<usize>,
+) -> AppResult<()> {
+    add_item(&app, &state, ItemContent::Camera { camera }, index)
 }
 
 fn add_item(

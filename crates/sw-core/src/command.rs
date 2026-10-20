@@ -20,7 +20,7 @@ use crate::audio::AudioState;
 use crate::deck::{AutoAdvance, DeckSlide, SlideDeck};
 use crate::engine::PaneState;
 use crate::id::Id;
-use crate::media::{MediaItem, MediaRef};
+use crate::media::{CameraRef, MediaItem, MediaRef};
 use crate::output::{OutputState, TransitionSettings};
 use crate::presentation::Presentation;
 use crate::schedule::{Schedule, ScheduleItem};
@@ -72,6 +72,11 @@ pub enum Command {
     PreviewMedia {
         /// The media item.
         media: Box<MediaItem>,
+    },
+    /// Show a camera's live picture in the preview pane.
+    PreviewCamera {
+        /// Which camera.
+        camera: CameraRef,
     },
     /// Select a slide in the preview pane.
     SelectPreviewSlide {

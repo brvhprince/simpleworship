@@ -21,7 +21,7 @@ use sw_bible::Passage;
 use crate::countdown::CountdownSlide;
 use crate::deck::{DeckSlide, SlideDeck};
 use crate::id::Id;
-use crate::media::MediaItem;
+use crate::media::{CameraRef, MediaItem};
 use crate::presentation::Presentation;
 use crate::scripture::{self, ScriptureOptions, TranslationText};
 use crate::slides::{self, SlideOptions};
@@ -92,6 +92,11 @@ pub enum ItemContent {
         /// The media item (the file travels with a saved schedule).
         media: MediaItem,
     },
+    /// A camera's live picture, filling the screen.
+    Camera {
+        /// Which camera.
+        camera: CameraRef,
+    },
     /// A countdown, e.g. to the start of the service.
     Countdown {
         /// Title in the schedule, e.g. "Countdown to 10:30".
@@ -146,6 +151,7 @@ impl ScheduleItem {
                 ..
             } => scripture::title(passage, translations),
             ItemContent::Media { media } => media.name.clone(),
+            ItemContent::Camera { camera } => camera.label.clone(),
             ItemContent::Countdown { title, .. } => title.clone(),
             ItemContent::Slides { name, .. } | ItemContent::Playlist { name, .. } => name.clone(),
             ItemContent::Deck { deck } => deck.name.clone(),
@@ -178,6 +184,9 @@ impl ScheduleItem {
             ),
             ItemContent::Media { media } => {
                 Presentation::from_media(media, look(ContentKind::Text, None))
+            }
+            ItemContent::Camera { camera } => {
+                Presentation::from_camera(camera, look(ContentKind::Text, None))
             }
             ItemContent::Countdown { title, countdown } => Presentation::from_countdown(
                 title.clone(),
@@ -219,6 +228,7 @@ impl ScheduleItem {
             ItemContent::Song { .. }
             | ItemContent::Scripture { .. }
             | ItemContent::Countdown { .. }
+            | ItemContent::Camera { .. }
             | ItemContent::Playlist { .. } => return None,
         };
         if let Some(deck) = deck {

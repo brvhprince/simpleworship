@@ -16,6 +16,13 @@
 
 export { autofit } from "./autofit.ts";
 export { default as BackgroundLayer } from "./BackgroundLayer.svelte";
+export {
+  type CameraUse,
+  getCameraUse,
+  listCameras,
+  onCamerasChanged,
+  setCameraUse,
+} from "./camera.ts";
 export { CANVAS_HEIGHT, CANVAS_WIDTH } from "./canvas.ts";
 export { default as ElementsLayer } from "./ElementsLayer.svelte";
 export {

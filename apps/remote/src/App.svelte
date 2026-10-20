@@ -14,7 +14,7 @@
 <script lang="ts">
   import { i18n, type MessageKey, t } from "@simpleworship/i18n";
   import type { Role } from "@simpleworship/protocol";
-  import { setMediaUrls } from "@simpleworship/renderer";
+  import { setCameraUse, setMediaUrls } from "@simpleworship/renderer";
   import { onMount } from "svelte";
   import { remote } from "./lib/remote.svelte.ts";
   import Alerts from "./screens/Alerts.svelte";
@@ -54,6 +54,9 @@
     file: (media) => remote.mediaUrl(media),
     thumbnail: (media) => remote.thumbnailUrl(media),
   });
+
+  // A camera belongs to the computer: phones show its symbol and name.
+  setCameraUse({ live: false, placeholder: true, explain: false });
 
   onMount(() => {
     const stop = i18n.listen();

@@ -14,7 +14,7 @@ use crate::countdown::CountdownSlide;
 use crate::deck::{AutoAdvance, SlideDeck, SlideStyle};
 use crate::id::Id;
 use crate::markup;
-use crate::media::{MediaItem, MediaKind};
+use crate::media::{CameraRef, MediaItem, MediaKind};
 use crate::output::RenderFrame;
 use crate::scripture::{self, ScriptureOptions, TranslationText};
 use crate::slides::{self, Slide, SlideOptions};
@@ -60,6 +60,8 @@ pub enum PresentationSource {
         /// The media item's id.
         media_id: Id,
     },
+    /// A camera, shown on its own.
+    Camera,
 }
 
 /// A titled list of slides, styled with one theme.
@@ -126,6 +128,26 @@ impl Presentation {
         Self::new(
             PresentationSource::Media { media_id: media.id },
             media.name.clone(),
+            vec![Slide::text("")],
+            look,
+            None,
+        )
+    }
+
+    /// Builds a one-slide presentation of a camera's live picture, filling
+    /// the screen.
+    pub fn from_camera(camera: &CameraRef, look: impl Into<Look>) -> Self {
+        let mut look: Look = look.into();
+        let background = Background::Camera {
+            camera: camera.clone(),
+            fit: MediaFit::Cover,
+            opacity: 1.0,
+        };
+        look.background_override = Some(background.clone());
+        look.theme.background = background;
+        Self::new(
+            PresentationSource::Camera,
+            camera.label.clone(),
             vec![Slide::text("")],
             look,
             None,
@@ -397,6 +419,23 @@ pub(crate) fn shown_on_its_own(media: &MediaItem) -> Option<Background> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_camera_fills_the_screen_with_no_text() {
+        let camera = CameraRef {
+            device_id: "abc".into(),
+            label: "FaceTime HD Camera".into(),
+        };
+        let presentation = Presentation::from_camera(&camera, Theme::default());
+        assert_eq!(presentation.title, "FaceTime HD Camera");
+        assert_eq!(presentation.slides.len(), 1);
+        let frame = presentation.frame(0).expect("one slide");
+        assert_eq!(frame.text, "");
+        assert!(matches!(
+            frame.theme.background,
+            Background::Camera { ref camera, fit: MediaFit::Cover, .. } if camera.label == "FaceTime HD Camera"
+        ));
+    }
 
     fn song() -> Song {
         let mut song = Song::new("Test Song");

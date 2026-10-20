@@ -107,6 +107,7 @@ export function backgroundCss(background: Background): string | null {
       return `linear-gradient(${background.angleDeg}deg, ${background.from}, ${background.to})`;
     case "image":
     case "video":
+    case "camera":
       return null;
   }
 }
