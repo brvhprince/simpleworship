@@ -285,16 +285,56 @@ impl Engine {
     }
 
     fn dispatch_now(&mut self, command: Command) -> Result<Vec<EngineEvent>, EngineError> {
+        let themes_changing = matches!(command, Command::SetThemes { .. });
+        self.changes(themes_changing, |engine| engine.apply(command))
+    }
+
+    /// Carries on a service that was running on another computer, from its
+    /// last state (see [`crate::takeover`]): its schedule, what was live
+    /// and where, the screens' state, the stage display, the music and the
+    /// transitions. Its times must already be on this computer's clock
+    /// ([`EngineSnapshot::shifted`]). This computer keeps its own themes,
+    /// logo and settings.
+    pub fn take_over(&mut self, service: EngineSnapshot) -> Vec<EngineEvent> {
+        let result = self.changes(false, |engine| {
+            engine.countdown_end = service.live.as_ref().and_then(|pane| {
+                let countdown = service.output.frame.as_ref()?.countdown.as_ref()?;
+                Some((pane.presentation.id, countdown.ends_at))
+            });
+            engine.schedule = service.schedule;
+            engine.schedule_changed = true;
+            match service.preview {
+                Some(pane) => engine.previews.insert(LOCAL_OPERATOR, pane),
+                None => engine.previews.remove(&LOCAL_OPERATOR),
+            };
+            engine.live = service.live;
+            engine.flags = service.output.flags;
+            engine.video = service.output.video;
+            engine.alert = service.output.alert;
+            engine.stage = service.stage;
+            engine.audio = service.audio;
+            engine.transitions = service.transitions;
+            engine.stream = service.stream;
+            Ok(())
+        });
+        result.unwrap_or_default()
+    }
+
+    /// Runs `change` and returns the events describing what it changed.
+    fn changes(
+        &mut self,
+        themes_changing: bool,
+        change: impl FnOnce(&mut Self) -> Result<(), EngineError>,
+    ) -> Result<Vec<EngineEvent>, EngineError> {
         let before_previews = self.previews.clone();
         let before_live = self.live.clone();
         let before_stage = self.stage.clone();
         let before_audio = self.audio.clone();
         let before_transitions = self.transitions;
         let before_stream = self.stream;
-        let themes_changing = matches!(command, Command::SetThemes { .. });
         self.schedule_changed = false;
 
-        self.apply(command)?;
+        change(self)?;
 
         let mut events = Vec::new();
         if themes_changing {

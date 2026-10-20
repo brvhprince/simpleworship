@@ -116,6 +116,15 @@ with EasyWorship should feel at home.
   computer checks every tap against the phone's role. Remove a phone in
   Settings › Phone Remote and it is disconnected at once. Video backgrounds
   show as stills on phones.
+- **More than one computer:** another SimpleWorship computer can join the
+  one running the service (Remote › Join Another Computer), as a **second
+  operator** with its own preview (scripture at the pulpit desk while songs
+  run from the booth) or a **mirror** that follows with its own screens or
+  NDI (an overflow room, the stream booth). Pictures and videos come from
+  the main computer, clocks are kept in step, and the sound plays there.
+  If the main computer stops answering, a joined computer offers to **take
+  over** and carries on from the slide that was live. Both computers must
+  run the same version.
 - **Cameras:** cameras and capture cards connected to the computer appear
   in Media › Cameras, live. Show one full screen (Preview, Go Live, or add
   it to the schedule), or use one as the background of a theme, a schedule
@@ -284,8 +293,9 @@ projector, the stage display and every thumbnail look the same.
 | M9        | Installers, auto-update, translations (English, French, Twi), EasyWorship media import | ✅     |
 | M10       | Phone remote (roles, QR pairing, stage display on a tablet), per-content transitions | ✅     |
 | M11       | Stream output: lower-third look, browser source for OBS/vMix, stream window, NDI; camera feeds | ✅     |
+| M12       | More than one computer: second operators, mirrors, take over        | 🚧     |
 
-Later: multi-operator sync and AI-assisted features.
+Later: AI-assisted features.
 
 ### Backlog
 

@@ -711,6 +711,16 @@
   "stream.transparent": "See-through (for OBS and vMix)",
   "stream.windowInScreens": "For a capture card or a video switcher, switch on the Stream window in Screens.",
   "stream.withTheme": "{name} theme",
+  "takeOver.doneTitle": "This computer is running the service",
+  "takeOver.keepWaiting": "Keep Waiting",
+  "takeOver.missing": {
+    "one": "1 picture, video or sound in the service isn't on this computer: it shows black, or is silent. The words show as usual.",
+    "other": "{count} pictures, videos or sounds in the service aren't on this computer: they show black, or are silent. The words show as usual."
+  },
+  "takeOver.onlyOne": "Do this on one computer only. If the main computer comes back, it runs separately: join it again to work together.",
+  "takeOver.question": "Take over the service on this computer? It carries on from the slide that was live, with the same schedule, screens, timer and music.",
+  "takeOver.takeOver": "Take Over",
+  "takeOver.title": "{name} isn't answering",
   "text.placeholder": "Type the text to show. Leave a blank line between slides.",
   "text.text": "Text",
   "text.title": "Title",

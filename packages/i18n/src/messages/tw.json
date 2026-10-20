@@ -711,6 +711,16 @@
   "stream.transparent": "Hann (ma OBS ne vMix)",
   "stream.windowInScreens": "Sɛ ɛyɛ capture card anaa video switcher a, bue Intanɛt so mpomma wɔ Skrin Ahodoɔ mu.",
   "stream.withTheme": "{name} ahosiesie",
+  "takeOver.doneTitle": "Kɔmputa yi na ɛredi som no anim",
+  "takeOver.keepWaiting": "Twɛn Kakra",
+  "takeOver.missing": {
+    "one": "Mfoni, video anaa nnyegyeeɛ 1 a ɛwɔ som no mu nni kɔmputa yi so: ɛbɛyɛ tuntum anaa ɛrenyɛ dede. Nsɛm no bɛda adi sɛdeɛ ɛteɛ.",
+    "other": "Mfoni, video anaa nnyegyeeɛ {count} a ɛwɔ som no mu nni kɔmputa yi so: ɛbɛyɛ tuntum anaa ɛrenyɛ dede. Nsɛm no bɛda adi sɛdeɛ ɛteɛ."
+  },
+  "takeOver.onlyOne": "Yɛ yei wɔ kɔmputa biako pɛ so. Sɛ kɔmputa titire no san ba a, ɛbɛyɛ adwuma n'ankasa: san fa bɔ ho na mo nyinaa nyɛ adwuma bom.",
+  "takeOver.question": "Fa som no to kɔmputa yi so? Ɛbɛtoa so afiri slaede a na ɛda skrin so no, ne som nhyehyɛeɛ koro, skrin, mmerɛkanfoɔ ne nnwom koro no ara.",
+  "takeOver.takeOver": "Fa To So",
+  "takeOver.title": "{name} nnye so",
   "text.placeholder": "Twerɛ nsɛm a wopɛ sɛ wokyerɛ no. Gya nsensaneeɛ pan wɔ slaede ahodoɔ ntam.",
   "text.text": "Atwerɛdeɛ",
   "text.title": "Ti asɛm",

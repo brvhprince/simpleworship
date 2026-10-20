@@ -49,6 +49,7 @@
   import SchedulePanel from "./SchedulePanel.svelte";
   import SettingsDialog from "./SettingsDialog.svelte";
   import SlidePane from "./SlidePane.svelte";
+  import TakeOverPrompt from "./TakeOverPrompt.svelte";
   import Toolbar from "./Toolbar.svelte";
   import UsageDialog from "./UsageDialog.svelte";
   import VideoControls from "./VideoControls.svelte";
@@ -254,6 +255,8 @@
     {/if}
   </div>
 {/if}
+
+<TakeOverPrompt />
 
 {#if link.joined && !link.status.connected}
   <div class="offline" role="status">

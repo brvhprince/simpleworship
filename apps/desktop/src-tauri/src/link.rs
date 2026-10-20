@@ -55,12 +55,18 @@ pub const CHANGED_EVENT: &str = "link://changed";
 
 const SETTINGS_KEY: &str = "link";
 
+/// Label of the operator window.
+const MAIN_WINDOW: &str = "main";
+
 /// How long a host may take to answer a request.
 const CALL_TIMEOUT: Duration = Duration::from_secs(30);
 /// How long to wait for the host's operator to allow this computer.
 const PAIRING_TIMEOUT: Duration = Duration::from_secs(150);
 /// How often to measure the difference between the clocks again.
 const CLOCK_EVERY: Duration = Duration::from_secs(300);
+/// How long the main computer may be unreachable before this computer
+/// offers to take over the service.
+const LOST_AFTER: Duration = Duration::from_secs(10);
 
 /// The saved link to a host.
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -98,6 +104,19 @@ pub struct LinkStatus {
     pub clock_offset_ms: i64,
     /// The host removed this computer.
     pub removed: bool,
+    /// The main computer has been unreachable for a while: this computer
+    /// can take over the service ([`link_take_over`]).
+    pub host_lost: bool,
+}
+
+/// What taking over found.
+#[derive(Clone, Debug, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "desktop.ts")]
+pub struct TakeOverResult {
+    /// Pictures, videos and sound in the service that are not on this
+    /// computer (they show as black, or are silent).
+    pub missing_media: u32,
 }
 
 /// A host found on the network.
@@ -136,6 +155,12 @@ struct Linked {
     removed: bool,
     /// Ends the connection (leaving).
     stop: Option<oneshot::Sender<()>>,
+    /// The service as last heard from the main computer, kept up to date
+    /// for taking over (see `sw_core::takeover`).
+    copy: Option<EngineSnapshot>,
+    /// Since when the main computer has been unreachable.
+    lost_since: Option<Instant>,
+    host_lost: bool,
 }
 
 fn lock(state: &LinkState) -> MutexGuard<'_, Linked> {
@@ -180,6 +205,7 @@ fn status(app: &AppHandle) -> LinkStatus {
             connected: linked.connected,
             clock_offset_ms: state.clock_offset_ms.load(Ordering::Relaxed),
             removed: false,
+            host_lost: linked.host_lost && linked.copy.is_some(),
         },
         None => LinkStatus {
             removed: linked.removed,
@@ -233,6 +259,11 @@ fn connect(app: &AppHandle) {
                 linked.outgoing = None;
                 for (_, waiting) in linked.pending.drain() {
                     let _ = waiting.send(Err("lost the connection to the host".into()));
+                }
+                // Unreachable for a while: offer to take over.
+                let since = *linked.lost_since.get_or_insert_with(Instant::now);
+                if since.elapsed() >= LOST_AFTER {
+                    linked.host_lost = true;
                 }
                 if linked.settings.is_none() {
                     drop(linked);
@@ -309,6 +340,11 @@ fn receive(app: &AppHandle, message: ServerMessage) {
                 let mut linked = lock(&state);
                 linked.device = Some(device);
                 linked.connected = true;
+                linked.lost_since = None;
+                linked.host_lost = false;
+                // The host's snapshot for this device has its own preview,
+                // which is this computer's local one.
+                linked.copy = Some((*snapshot).clone());
                 if let Some(settings) = &mut linked.settings {
                     settings.role = role;
                 }
@@ -321,8 +357,15 @@ fn receive(app: &AppHandle, message: ServerMessage) {
             announce_status(app);
         }
         ServerMessage::Event { event } => {
-            let device = lock(&state).device;
-            if let Some(event) = for_this_computer(*event, device) {
+            let event = {
+                let mut linked = lock(&state);
+                let event = for_this_computer(*event, linked.device);
+                if let (Some(event), Some(copy)) = (&event, &mut linked.copy) {
+                    copy.apply(event);
+                }
+                event
+            };
+            if let Some(event) = event {
                 let _ = app.emit(ENGINE_EVENT, &event);
             }
         }
@@ -650,6 +693,84 @@ pub fn link_leave(app: AppHandle) -> AppResult<LinkStatus> {
     Ok(status(&app))
 }
 
+/// The main computer stopped answering: carries on its service here, from
+/// the last state heard, and leaves the link. This computer's other windows
+/// reload (to show its own pictures and videos); the operator window shows
+/// the result first, then reloads itself.
+#[tauri::command]
+pub fn link_take_over(app: AppHandle) -> AppResult<TakeOverResult> {
+    let state = app.state::<LinkState>();
+    let (service, stop) = {
+        let mut linked = lock(&state);
+        if linked.connected {
+            return Err(AppError::FromHost(
+                "the main computer is answering again: carry on from there".into(),
+            ));
+        }
+        let service = linked.copy.take().ok_or(AppError::HostUnreachable)?;
+        linked.settings = None;
+        linked.device = None;
+        linked.outgoing = None;
+        linked.lost_since = None;
+        linked.host_lost = false;
+        (service, linked.stop.take())
+    };
+    if let Some(stop) = stop {
+        let _ = stop.send(());
+    }
+    save(&app, None)?;
+
+    let offset = state.clock_offset_ms.load(Ordering::Relaxed);
+    let service = service.shifted(offset);
+    let missing_media = missing_media(&app, &service);
+    log::info!(
+        "link: took over the service ({missing_media} media files are not on this computer)"
+    );
+    crate::commands::engine::take_over(&app, &app.state::<AppState>(), service)?;
+    crate::remote::start_if_enabled(&app);
+    announce_status(&app);
+    let _ = app.emit_filter(CHANGED_EVENT, (), |target| match target {
+        tauri::EventTarget::WebviewWindow { label } => label != MAIN_WINDOW,
+        _ => true,
+    });
+    Ok(TakeOverResult { missing_media })
+}
+
+/// How many media files the service uses that are not on this computer.
+fn missing_media(app: &AppHandle, service: &EngineSnapshot) -> u32 {
+    let folder = &app.state::<AppState>().media_folders.media;
+    let missing = media_files(service)
+        .iter()
+        .filter(|file| !folder.join(file).is_file())
+        .count();
+    u32::try_from(missing).unwrap_or(u32::MAX)
+}
+
+/// Every picture, video and sound file the service refers to: anything
+/// shaped like a media reference (`{ "id", "file" }`) anywhere in it, so
+/// backgrounds, slides, schedule items and the music are all counted.
+fn media_files(service: &EngineSnapshot) -> std::collections::BTreeSet<String> {
+    fn walk(value: &Value, found: &mut std::collections::BTreeSet<String>) {
+        match value {
+            Value::Object(map) => {
+                if let (Some(Value::String(_)), Some(Value::String(file))) =
+                    (map.get("id"), map.get("file"))
+                {
+                    found.insert(file.clone());
+                }
+                map.values().for_each(|value| walk(value, found));
+            }
+            Value::Array(items) => items.iter().for_each(|value| walk(value, found)),
+            _ => {}
+        }
+    }
+    let mut found = std::collections::BTreeSet::new();
+    if let Ok(value) = serde_json::to_value(service) {
+        walk(&value, &mut found);
+    }
+    found
+}
+
 /// `192.168.1.20` → `http://192.168.1.20:7270`.
 fn normalize(address: &str) -> String {
     let address = address.trim().trim_end_matches('/');
@@ -680,6 +801,31 @@ mod tests {
             "http://192.168.1.20:8000"
         );
         assert_eq!(normalize(" main-pc.local "), "http://main-pc.local:7270");
+    }
+
+    #[test]
+    fn finds_the_media_a_service_uses() {
+        let mut engine = sw_core::Engine::new();
+        let picture = sw_core::MediaItem {
+            id: Id::new(),
+            name: "Sunrise".into(),
+            kind: sw_core::MediaKind::Image,
+            file: "sunrise.jpg".into(),
+            width: None,
+            height: None,
+            duration_ms: None,
+            size_bytes: 0,
+            created_at: 0,
+            collection: None,
+        };
+        engine
+            .dispatch(Command::PreviewMedia {
+                media: Box::new(picture),
+            })
+            .unwrap();
+        engine.dispatch(Command::GoLive).unwrap();
+        let files = media_files(&engine.snapshot());
+        assert!(files.contains("sunrise.jpg"), "{files:?}");
     }
 
     #[test]

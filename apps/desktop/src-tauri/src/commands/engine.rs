@@ -64,6 +64,20 @@ pub fn dispatch(app: &AppHandle, state: &AppState, command: Command) -> AppResul
     if crate::link::is_joined(app) {
         return Ok(());
     }
+    broadcast(app, state, events)
+}
+
+/// Carries on a service from the computer this one had joined (see
+/// `link::link_take_over`), and shows it in every window.
+pub fn take_over(app: &AppHandle, state: &AppState, service: EngineSnapshot) -> AppResult<()> {
+    let mut engine = state.engine();
+    let events = engine.take_over(service);
+    broadcast(app, state, events)
+}
+
+/// Sends the engine's events to every window and phone, keeping the
+/// schedule file status, the autosave and the CCLI log up to date.
+fn broadcast(app: &AppHandle, state: &AppState, events: Vec<EngineEvent>) -> AppResult<()> {
     for event in events {
         match &event {
             EngineEvent::ScheduleChanged { schedule } => schedule_changed(app, state, schedule),

@@ -188,6 +188,11 @@ export type LinkStatus = {
    * The host removed this computer.
    */
   removed: boolean;
+  /**
+   * The main computer has been unreachable for a while: this computer
+   * can take over the service ([`link_take_over`]).
+   */
+  hostLost: boolean;
 };
 
 /**
@@ -587,4 +592,15 @@ export type StageOptions = {
    * Text size, as a percentage of normal.
    */
   textScale: number;
+};
+
+/**
+ * What taking over found.
+ */
+export type TakeOverResult = {
+  /**
+   * Pictures, videos and sound in the service that are not on this
+   * computer (they show as black, or are silent).
+   */
+  missingMedia: number;
 };

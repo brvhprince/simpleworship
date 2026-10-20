@@ -31,6 +31,7 @@ pub mod slides;
 pub mod song;
 pub mod stage;
 pub mod stream;
+pub mod takeover;
 pub mod theme;
 pub mod themes;
 pub mod time;

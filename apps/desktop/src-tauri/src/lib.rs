@@ -210,6 +210,7 @@ pub fn run() {
             link::link_discover,
             link::link_join,
             link::link_leave,
+            link::link_take_over,
         ])
         .on_window_event(windows::on_window_event)
         .build(tauri::generate_context!())

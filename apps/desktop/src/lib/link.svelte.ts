@@ -9,7 +9,7 @@
  * clock in step with it. Joining or leaving reloads every window.
  */
 
-import type { FoundHost, LinkStatus } from "@simpleworship/protocol";
+import type { FoundHost, LinkStatus, TakeOverResult } from "@simpleworship/protocol";
 import { setClockOffset } from "@simpleworship/renderer";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
@@ -27,6 +27,7 @@ const NOT_JOINED: LinkStatus = {
   connected: false,
   clockOffsetMs: 0,
   removed: false,
+  hostLost: false,
 };
 
 class LinkStore {
@@ -73,6 +74,11 @@ class LinkStore {
 
   leave(): Promise<LinkStatus> {
     return invoke<LinkStatus>("link_leave");
+  }
+
+  /** The main computer stopped answering: carries on its service here. */
+  takeOver(): Promise<TakeOverResult> {
+    return invoke<TakeOverResult>("link_take_over");
   }
 
   #apply(status: LinkStatus) {

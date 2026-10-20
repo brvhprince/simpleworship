@@ -711,6 +711,16 @@
   "stream.transparent": "Transparent (pour OBS et vMix)",
   "stream.windowInScreens": "Pour une carte d’acquisition ou un mélangeur vidéo, activez la fenêtre de diffusion dans Écrans.",
   "stream.withTheme": "Thème {name}",
+  "takeOver.doneTitle": "Cet ordinateur mène le culte",
+  "takeOver.keepWaiting": "Continuer d’attendre",
+  "takeOver.missing": {
+    "one": "1 image, vidéo ou son du culte n’est pas sur cet ordinateur : il s’affiche en noir ou reste muet. Les paroles s’affichent normalement.",
+    "other": "{count} images, vidéos ou sons du culte ne sont pas sur cet ordinateur : ils s’affichent en noir ou restent muets. Les paroles s’affichent normalement."
+  },
+  "takeOver.onlyOne": "Faites-le sur un seul ordinateur. Si l’ordinateur principal revient, il fonctionne à part : rejoignez-le à nouveau pour travailler ensemble.",
+  "takeOver.question": "Reprendre le culte sur cet ordinateur ? Il continue depuis la diapositive en direct, avec le même programme, les mêmes écrans, le minuteur et la musique.",
+  "takeOver.takeOver": "Reprendre",
+  "takeOver.title": "{name} ne répond plus",
   "text.placeholder": "Saisissez le texte à afficher. Laissez une ligne vide entre les diapositives.",
   "text.text": "Texte",
   "text.title": "Titre",
