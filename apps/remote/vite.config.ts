@@ -2,7 +2,8 @@ import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { defineConfig } from "vite";
 
 /**
- * The phone remote is built into `dist/` and served by SimpleWorship itself
+ * The phone remote (`index.html`) and the stream page for OBS and vMix
+ * (`stream.html`) are built into `dist/` and served by SimpleWorship itself
  * (see `crates/sw-server`). While developing, `pnpm dev` here serves it on
  * port 1430 and passes the server's routes on to a running SimpleWorship
  * with the remote turned on.
@@ -24,7 +25,11 @@ export default defineConfig({
     },
   },
   build: {
-    // Phones from the last few years: iOS 15+ Safari, Android Chrome.
+    // Phones from the last few years: iOS 15+ Safari, Android Chrome (and
+    // the Chromium inside OBS and vMix).
     target: ["es2022", "safari15", "chrome100"],
+    rollupOptions: {
+      input: { remote: "index.html", stream: "stream.html" },
+    },
   },
 });

@@ -393,6 +393,13 @@ export type Command =
       transitions: TransitionSettings;
     }
   | {
+      type: "setStreamSettings";
+      /**
+       * The new stream look.
+       */
+      settings: StreamSettings;
+    }
+  | {
       type: "setLogoImage";
       /**
        * The logo image, or `None` to show the background instead.
@@ -929,6 +936,13 @@ export type EngineEvent =
       transitions: TransitionSettings;
     }
   | {
+      type: "streamSettingsChanged";
+      /**
+       * The new stream look.
+       */
+      settings: StreamSettings;
+    }
+  | {
       type: "songWentLive";
       /**
        * The song.
@@ -977,6 +991,10 @@ export type EngineSnapshot = {
    * The transition for each kind of content.
    */
   transitions: TransitionSettings;
+  /**
+   * How the stream output shows each kind of content.
+   */
+  stream: StreamSettings;
 };
 
 /**
@@ -1316,6 +1334,10 @@ export type OutputState = {
    * An alert over the slides, if one is showing.
    */
   alert: Alert | null;
+  /**
+   * What the stream output shows (see [`crate::stream`]).
+   */
+  stream: StreamOutput;
   /**
    * Increases by one every time the output changes. Lets renderers that
    * connect late, or miss an event, tell whether they are up to date.
@@ -1934,6 +1956,86 @@ export type StageTimer = {
    * Whether it is running.
    */
   running: boolean;
+};
+
+/**
+ * What is behind the words on the stream, where a theme is used (and
+ * whenever nothing is showing).
+ */
+export type StreamBackdrop = "transparent" | "green" | "black" | "main";
+
+/**
+ * How the stream shows one kind of content.
+ */
+export type StreamLook =
+  | {
+      type: "theme";
+      /**
+       * The theme, from the library. If it has been deleted, the stream
+       * shows the content as the main output does.
+       */
+      themeId: Id;
+    }
+  | { type: "sameAsMain" }
+  | { type: "hidden" };
+
+/**
+ * What the stream draws right now. Part of
+ * [`OutputState`](crate::output::OutputState); it shares the main output's
+ * transition, video playback and alert.
+ */
+export type StreamOutput = {
+  /**
+   * The slide as the stream shows it, or `None` for just the backdrop.
+   */
+  frame: RenderFrame | null;
+  /**
+   * Hide the text but keep the slide's pictures (Clear Text on a slide
+   * made in the canvas editor).
+   */
+  hideText: boolean;
+  /**
+   * Leave out the slide's own background (Clear Background).
+   */
+  hideBackground: boolean;
+  /**
+   * The CSS colour behind everything.
+   */
+  backdrop: string;
+  /**
+   * Show the main output's alert.
+   */
+  showAlerts: boolean;
+};
+
+/**
+ * The stream look, chosen in Settings › Stream and saved by the host.
+ */
+export type StreamSettings = {
+  /**
+   * Songs.
+   */
+  songs: StreamLook;
+  /**
+   * Bible passages.
+   */
+  scripture: StreamLook;
+  /**
+   * Presentations, imported PDFs and slideshows.
+   */
+  presentations: StreamLook;
+  /**
+   * Everything else: typed text, pictures, videos, countdowns.
+   */
+  other: StreamLook;
+  /**
+   * What is behind the words.
+   */
+  backdrop: StreamBackdrop;
+  /**
+   * Show alerts (nursery calls, notices) on the stream as well.
+   */
+  showAlerts: boolean;
 };
 
 /**

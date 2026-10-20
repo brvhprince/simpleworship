@@ -27,6 +27,7 @@ use crate::schedule::{Schedule, ScheduleItem};
 use crate::scripture::{ScriptureOptions, TranslationText};
 use crate::song::Song;
 use crate::stage::{StageState, TimerMode};
+use crate::stream::StreamSettings;
 use crate::themes::{ItemLook, ThemeLibrary};
 
 /// A request to change the live state.
@@ -122,6 +123,11 @@ pub enum Command {
     SetTransitions {
         /// The new transitions.
         transitions: TransitionSettings,
+    },
+    /// Change how the stream output shows each kind of content.
+    SetStreamSettings {
+        /// The new stream look.
+        settings: StreamSettings,
     },
     /// Set (or remove) the church logo shown by the Logo button.
     SetLogoImage {
@@ -384,7 +390,7 @@ pub enum EngineEvent {
     /// What the output screens should draw changed.
     OutputChanged {
         /// The new output state.
-        output: OutputState,
+        output: Box<OutputState>,
     },
     /// The schedule changed: items added, moved, removed or edited.
     ScheduleChanged {
@@ -410,6 +416,11 @@ pub enum EngineEvent {
     TransitionsChanged {
         /// The new transitions.
         transitions: TransitionSettings,
+    },
+    /// The stream look changed.
+    StreamSettingsChanged {
+        /// The new stream look.
+        settings: StreamSettings,
     },
     /// A song went live, for the CCLI usage report.
     SongWentLive {

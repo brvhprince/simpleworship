@@ -14,6 +14,7 @@ import type {
   PaneState,
   Schedule,
   StageState,
+  StreamSettings,
   ThemeLibrary,
   TransitionSettings,
   Transport,
@@ -48,6 +49,8 @@ export class EngineStore {
     presentations: { kind: "fade", durationMs: 400 },
     other: { kind: "fade", durationMs: 400 },
   });
+  /** How the stream output shows each kind of content (see Settings › Stream). */
+  stream: StreamSettings | null = $state.raw(null);
   /** The last error, shown to the operator for a few seconds. */
   error: string | null = $state(null);
 
@@ -108,6 +111,9 @@ export class EngineStore {
       case "transitionsChanged":
         this.transitions = event.transitions;
         break;
+      case "streamSettingsChanged":
+        this.stream = event.settings;
+        break;
       case "songWentLive":
         // Recorded by the app for the CCLI report; nothing to show.
         break;
@@ -120,6 +126,7 @@ export class EngineStore {
     this.stage = snapshot.stage;
     this.audio = snapshot.audio;
     this.transitions = snapshot.transitions;
+    this.stream = snapshot.stream;
     this.preview = snapshot.preview;
     this.live = snapshot.live;
     // An event may already have delivered a newer output than this snapshot.

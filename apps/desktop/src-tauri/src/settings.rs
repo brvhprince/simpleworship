@@ -2,6 +2,7 @@
 //! display options, kept in the library's settings table.
 
 use serde::{Deserialize, Serialize};
+use sw_core::StreamSettings;
 use sw_core::alerts::{AlertTemplate, starter_templates};
 use sw_core::output::TransitionSettings;
 use sw_db::Database;
@@ -90,6 +91,20 @@ pub fn load_transitions(database: &Database) -> AppResult<TransitionSettings> {
 /// Saves the transitions, so they are the same after a restart.
 pub fn save_transitions(database: &Database, transitions: &TransitionSettings) -> AppResult<()> {
     Ok(database.settings().set(TRANSITIONS_KEY, transitions)?)
+}
+
+/// Settings key for the stream look.
+const STREAM_KEY: &str = "stream";
+
+/// The saved stream look, or the defaults (songs and scripture as a lower
+/// third, everything else as on the main output).
+pub fn load_stream(database: &Database) -> AppResult<StreamSettings> {
+    Ok(database.settings().get(STREAM_KEY)?.unwrap_or_default())
+}
+
+/// Saves the stream look.
+pub fn save_stream(database: &Database, stream: &StreamSettings) -> AppResult<()> {
+    Ok(database.settings().set(STREAM_KEY, stream)?)
 }
 
 /// The licence number to put on slides, if one is set.

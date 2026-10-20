@@ -51,6 +51,7 @@ use crate::schedule::{ItemContent, Schedule, ScheduleItem};
 use crate::slides::SlideOptions;
 use crate::song::Song;
 use crate::stage::{StageState, StageTimer, TimerMode};
+use crate::stream::{StreamKind, StreamOutput, StreamSettings, stream_output};
 use crate::theme::Background;
 use crate::themes::{ContentKind, ItemLook, ThemeLibrary};
 use crate::time::{self, Timestamp};
@@ -91,6 +92,8 @@ pub struct EngineSnapshot {
     pub audio: AudioState,
     /// The transition for each kind of content.
     pub transitions: TransitionSettings,
+    /// How the stream output shows each kind of content.
+    pub stream: StreamSettings,
 }
 
 /// A command that could not be carried out.
@@ -128,6 +131,8 @@ pub struct Engine {
     flags: DisplayFlags,
     /// The transition for each kind of content.
     transitions: TransitionSettings,
+    /// How the stream output shows each kind of content.
+    stream: StreamSettings,
     /// The themes and defaults everything is styled with.
     themes: ThemeLibrary,
     /// The church logo, if one is set.
@@ -171,6 +176,7 @@ impl Default for OutputState {
             video: None,
             logo: None,
             alert: None,
+            stream: StreamOutput::default(),
             revision: 0,
         }
     }
@@ -198,6 +204,7 @@ impl Engine {
             live: None,
             flags: DisplayFlags::default(),
             transitions: TransitionSettings::default(),
+            stream: StreamSettings::default(),
             themes: ThemeLibrary::default(),
             logo: None,
             video: None,
@@ -224,6 +231,7 @@ impl Engine {
             stage: self.stage.clone(),
             audio: self.audio.clone(),
             transitions: self.transitions,
+            stream: self.stream,
         }
     }
 
@@ -247,6 +255,7 @@ impl Engine {
         let before_stage = self.stage.clone();
         let before_audio = self.audio.clone();
         let before_transitions = self.transitions;
+        let before_stream = self.stream;
         let themes_changing = matches!(command, Command::SetThemes { .. });
         self.schedule_changed = false;
 
@@ -275,7 +284,9 @@ impl Engine {
             events.extend(self.song_went_live(before_live.as_ref()));
         }
         if let Some(output) = self.refresh_output() {
-            events.push(EngineEvent::OutputChanged { output });
+            events.push(EngineEvent::OutputChanged {
+                output: Box::new(output),
+            });
         }
         if self.stage != before_stage {
             events.push(EngineEvent::StageChanged {
@@ -290,6 +301,11 @@ impl Engine {
         if self.transitions != before_transitions {
             events.push(EngineEvent::TransitionsChanged {
                 transitions: self.transitions,
+            });
+        }
+        if self.stream != before_stream {
+            events.push(EngineEvent::StreamSettingsChanged {
+                settings: self.stream,
             });
         }
         Ok(events)
@@ -354,6 +370,7 @@ impl Engine {
             Command::SetHideText { on } => self.flags.hide_text = on,
             Command::SetHideBackground { on } => self.flags.hide_background = on,
             Command::SetTransitions { transitions } => self.transitions = transitions,
+            Command::SetStreamSettings { settings } => self.stream = settings,
             Command::SetLogoImage { logo } => self.logo = logo,
 
             // ── Video ─────────────────────────────────────────────────────
@@ -881,13 +898,21 @@ impl Engine {
         });
         self.follow_live_video(frame.as_ref());
         let transition = self.live_transition();
+        let stream = stream_output(
+            &self.stream,
+            &self.themes,
+            self.live_kind(),
+            frame.as_ref(),
+            self.flags,
+        );
 
         let unchanged = frame == self.output.frame
             && self.flags == self.output.flags
             && transition == self.output.transition
             && self.video == self.output.video
             && self.logo == self.output.logo
-            && self.alert == self.output.alert;
+            && self.alert == self.output.alert
+            && stream == self.output.stream;
         if unchanged {
             return None;
         }
@@ -899,6 +924,7 @@ impl Engine {
             video: self.video,
             logo: self.logo.clone(),
             alert: self.alert.clone(),
+            stream,
             revision: self.output.revision + 1,
         };
         Some(self.output.clone())
@@ -913,16 +939,27 @@ impl Engine {
         self.flags.hide_text = false;
     }
 
+    /// What kind of content is live, for its transition and stream look.
+    fn live_kind(&self) -> Option<StreamKind> {
+        let source = &self.live.as_ref()?.presentation.source;
+        Some(match source {
+            PresentationSource::Song { .. } => StreamKind::Songs,
+            PresentationSource::Scripture { .. } => StreamKind::Scripture,
+            PresentationSource::Deck { .. } | PresentationSource::Slides => {
+                StreamKind::Presentations
+            }
+            _ => StreamKind::Other,
+        })
+    }
+
     /// The transition for what is live: the one set for its kind of content.
     fn live_transition(&self) -> Transition {
         let settings = &self.transitions;
-        match self.live.as_ref().map(|pane| &pane.presentation.source) {
-            Some(PresentationSource::Song { .. }) => settings.songs,
-            Some(PresentationSource::Scripture { .. }) => settings.scripture,
-            Some(PresentationSource::Deck { .. } | PresentationSource::Slides) => {
-                settings.presentations
-            }
-            _ => settings.other,
+        match self.live_kind() {
+            Some(StreamKind::Songs) => settings.songs,
+            Some(StreamKind::Scripture) => settings.scripture,
+            Some(StreamKind::Presentations) => settings.presentations,
+            Some(StreamKind::Other) | None => settings.other,
         }
     }
 
@@ -1905,6 +1942,44 @@ mod tests {
             engine.dispatch(Command::NextSlide).unwrap();
         }
         assert!(engine.snapshot().output.flags.logo);
+    }
+
+    #[test]
+    fn the_stream_shows_a_live_song_as_a_lower_third() {
+        let mut song = Song::new("Song");
+        song.lyrics = "[V1]\nfirst\n\nsecond".into();
+        let item = ScheduleItem::new(ItemContent::Song { song });
+        let id = item.id;
+        let mut engine = themed_engine(vec![item]);
+        engine.dispatch(Command::ShowScheduleItem { id }).unwrap();
+
+        let output = engine.snapshot().output;
+        assert_eq!(output.frame.as_ref().unwrap().theme.name, "Default");
+        let stream = output.stream.frame.expect("the song is on the stream");
+        assert_eq!(stream.text, "first");
+        assert_eq!(stream.theme.name, "Lower Third");
+
+        // Black clears the stream rather than covering the camera.
+        engine.dispatch(Command::SetBlack { on: true }).unwrap();
+        assert_eq!(engine.snapshot().output.stream.frame, None);
+
+        // Changing the stream look takes effect straight away.
+        engine.dispatch(Command::SetBlack { on: false }).unwrap();
+        let events = engine
+            .dispatch(Command::SetStreamSettings {
+                settings: StreamSettings {
+                    songs: crate::stream::StreamLook::SameAsMain,
+                    ..StreamSettings::default()
+                },
+            })
+            .unwrap();
+        assert!(
+            events
+                .iter()
+                .any(|e| matches!(e, EngineEvent::StreamSettingsChanged { .. }))
+        );
+        let stream = engine.snapshot().output.stream.frame.unwrap();
+        assert_eq!(stream.theme.name, "Default");
     }
 
     #[test]

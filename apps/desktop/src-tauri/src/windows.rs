@@ -22,7 +22,7 @@ use std::sync::Mutex;
 
 use serde::{Deserialize, Serialize};
 use tauri::{
-    AppHandle, LogicalSize, Manager, Monitor, PhysicalPosition, PhysicalSize, WebviewUrl,
+    AppHandle, Emitter, LogicalSize, Manager, Monitor, PhysicalPosition, PhysicalSize, WebviewUrl,
     WebviewWindow, WebviewWindowBuilder, Window, WindowEvent,
 };
 use ts_rs::TS;
@@ -45,6 +45,14 @@ pub enum OutputKind {
     /// The confidence monitor for musicians and speakers: current and next
     /// slide, plus a clock.
     Stage,
+    /// The stream look (lower thirds), for a capture card or a hardware
+    /// switcher. See `sw_core::stream`.
+    Stream,
+}
+
+impl OutputKind {
+    /// Every kind of output window.
+    const ALL: [OutputKind; 3] = [OutputKind::Projector, OutputKind::Stage, OutputKind::Stream];
 }
 
 impl OutputKind {
@@ -53,20 +61,20 @@ impl OutputKind {
         match self {
             OutputKind::Projector => "output",
             OutputKind::Stage => "stage",
+            OutputKind::Stream => "stream",
         }
     }
 
     /// The kind of output a window label belongs to, if any.
     fn from_label(label: &str) -> Option<Self> {
-        [OutputKind::Projector, OutputKind::Stage]
-            .into_iter()
-            .find(|kind| kind.label() == label)
+        Self::ALL.into_iter().find(|kind| kind.label() == label)
     }
 
     fn title(self) -> &'static str {
         match self {
             OutputKind::Projector => "SimpleWorship Output",
             OutputKind::Stage => "SimpleWorship Stage Display",
+            OutputKind::Stream => "SimpleWorship Stream",
         }
     }
 
@@ -75,6 +83,7 @@ impl OutputKind {
         let view = match self {
             OutputKind::Projector => "output",
             OutputKind::Stage => "stage",
+            OutputKind::Stream => "stream",
         };
         WebviewUrl::App(format!("index.html?view={view}").into())
     }
@@ -166,6 +175,31 @@ impl OutputPlacements {
     }
 }
 
+/// Sent to the operator window whenever an output window opens or closes,
+/// with the kinds that are open. Keep in sync with
+/// `apps/desktop/src/lib/outputs.svelte.ts`.
+pub const OUTPUTS_EVENT: &str = "outputs://changed";
+
+/// The output windows that are open now.
+pub fn open_outputs(app: &AppHandle) -> Vec<OutputKind> {
+    OutputKind::ALL
+        .into_iter()
+        .filter(|kind| app.get_webview_window(kind.label()).is_some())
+        .collect()
+}
+
+/// Tells the operator window which outputs are open. `closing` is a window
+/// being destroyed, which Tauri may still list.
+fn announce_outputs(app: &AppHandle, closing: Option<OutputKind>) {
+    let open: Vec<OutputKind> = open_outputs(app)
+        .into_iter()
+        .filter(|kind| Some(*kind) != closing)
+        .collect();
+    if let Err(error) = app.emit_to(MAIN_WINDOW, OUTPUTS_EVENT, open) {
+        log::warn!("could not announce the open outputs: {error}");
+    }
+}
+
 /// Opens an output window, or moves it if it is already open.
 pub fn open_output(app: &AppHandle, kind: OutputKind, target: OutputTarget) -> AppResult<()> {
     let window = match app.get_webview_window(kind.label()) {
@@ -183,6 +217,7 @@ pub fn open_output(app: &AppHandle, kind: OutputKind, target: OutputTarget) -> A
     app.state::<OutputPlacements>().set(kind.label(), monitor);
     window.show()?;
     update_stacking(app)?;
+    announce_outputs(app, None);
 
     // Keep keyboard focus on the operator window, so arrow keys keep working.
     if let Some(main) = app.get_webview_window(MAIN_WINDOW) {
@@ -250,7 +285,7 @@ fn update_stacking(app: &AppHandle) -> AppResult<()> {
     let placements = app.state::<OutputPlacements>();
 
     let mut covers_operator_screen = false;
-    for kind in [OutputKind::Projector, OutputKind::Stage] {
+    for kind in OutputKind::ALL {
         let Some(window) = app.get_webview_window(kind.label()) else {
             continue;
         };
@@ -281,6 +316,7 @@ pub fn on_window_event(window: &Window, event: &WindowEvent) {
             if let Some(kind) = OutputKind::from_label(window.label()) {
                 app.state::<OutputPlacements>().set(kind.label(), None);
                 restack(app);
+                announce_outputs(app, Some(kind));
             }
         }
         WindowEvent::Moved(_) if is_main => restack(app),

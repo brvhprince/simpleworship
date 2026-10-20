@@ -116,6 +116,16 @@ with EasyWorship should feel at home.
   computer checks every tap against the phone's role. Remove a phone in
   Settings › Phone Remote and it is disconnected at once. Video backgrounds
   show as stills on phones.
+- **Stream output:** the same slides in a look of their own for the
+  livestream, like EasyWorship's Alternate Output. By default songs and
+  scripture appear as a lower third on a see-through background, so OBS or
+  vMix shows the camera behind the words; presentations look as they do on
+  the projector. Black, Logo and Clear Text take the words off the stream
+  without covering the camera. Use it as:
+  - a **browser source** in OBS, vMix or Streamlabs (Stream › copy the link;
+    1920 × 1080), on this computer or another one on the network;
+  - a **stream window** on a screen, for a capture card or a video switcher
+    (with a green background for chroma key).
 - **Per-content transitions:** a cut or a fade, with its own length, for
   songs, scripture, presentations and everything else, remembered between
   services.
@@ -258,9 +268,10 @@ projector, the stage display and every thumbnail look the same.
 | M7        | Alerts, countdowns, background audio, presentations (PDF/PPTX), CCLI report | ✅     |
 | M8        | Presentation editor, slideshows, scripture styling (verse numbers, reference box) | ✅     |
 | M9        | Installers, auto-update, translations (English, French, Twi), EasyWorship media import | ✅     |
-| M10       | Phone remote (roles, QR pairing, stage display on a tablet), per-content transitions | 🚧     |
+| M10       | Phone remote (roles, QR pairing, stage display on a tablet), per-content transitions | ✅     |
+| M11       | Stream output: lower-third look, browser source for OBS/vMix, stream window; NDI | 🚧     |
 
-Later: NDI / stream output, multi-operator sync, and AI-assisted features.
+Later: multi-operator sync and AI-assisted features.
 
 ### Backlog
 

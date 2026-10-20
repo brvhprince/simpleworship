@@ -2,7 +2,8 @@
   @component
   The church's settings: name and CCLI licence (shown in song footers),
   the alert templates in the Alert panel, updates, the stage display
-  options, and the interface language (kept on this computer).
+  options, the stream look, the phone remote, and the interface language
+  (kept on this computer).
 -->
 <script lang="ts">
   import type { AlertTemplate, AppSettings } from "@simpleworship/protocol";
@@ -15,6 +16,7 @@
   import { i18n, LANGUAGES, type Language, t } from "../lib/i18n/i18n.svelte.ts";
   import { ROLES, remote } from "../lib/remote.svelte.ts";
   import { updates } from "../lib/updates.svelte.ts";
+  import StreamSettings from "./StreamSettings.svelte";
 
   let settings: AppSettings | null = $state(null);
   let version = $state("");
@@ -129,6 +131,11 @@
             <option value={150}>{t("settings.largest")}</option>
           </select>
         </label>
+      </section>
+
+      <section>
+        <h3>{t("settings.stream")}</h3>
+        <StreamSettings />
       </section>
 
       <section>

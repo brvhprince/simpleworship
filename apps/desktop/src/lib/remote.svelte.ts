@@ -61,6 +61,24 @@ class RemoteStore {
     }
   }
 
+  /** Turns the browser source (the stream page for OBS and vMix) on or off. */
+  async setBrowserSource(enabled: boolean): Promise<void> {
+    try {
+      this.status = await invoke<RemoteStatus>("stream_link_set_enabled", { enabled });
+    } catch (error) {
+      engine.showError(error);
+    }
+  }
+
+  /** A new browser source link; the old one stops working at once. */
+  async renewStreamLink(): Promise<void> {
+    try {
+      this.status = await invoke<RemoteStatus>("stream_link_renew");
+    } catch (error) {
+      engine.showError(error);
+    }
+  }
+
   /** A new pairing code for "Connect a Phone". */
   startPairing(): Promise<PairingCode> {
     return invoke<PairingCode>("remote_pairing_start");

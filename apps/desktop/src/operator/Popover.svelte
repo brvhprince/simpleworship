@@ -2,6 +2,13 @@
   @component
   A toolbar button with a panel that drops down below it. The panel closes
   on Escape or a click elsewhere.
+
+  - `align`: which edge of the button the panel lines up with: "start"
+    for buttons on the left of the toolbar, "end" (default) for those on
+    the right, so the panel always opens towards the window.
+
+  The panel never runs past the window: it is at most as wide as the
+  window allows, and scrolls when it is taller.
 -->
 <script lang="ts">
   import { Button } from "@simpleworship/ui";
@@ -13,12 +20,22 @@
     /** Show the button as "on", e.g. while an alert is showing. */
     active?: boolean;
     shortcut?: string;
+    align?: "start" | "end";
     ontoggle: () => void;
     onclose: () => void;
     children: Snippet;
   }
 
-  let { label, open, active = false, shortcut, ontoggle, onclose, children }: Props = $props();
+  let {
+    label,
+    open,
+    active = false,
+    shortcut,
+    align = "end",
+    ontoggle,
+    onclose,
+    children,
+  }: Props = $props();
 
   let wrapper: HTMLDivElement;
 
@@ -43,7 +60,7 @@
     >{label}</Button
   >
   {#if open}
-    <div class="panel" role="dialog" aria-label={label}>
+    <div class="panel {align}" role="dialog" aria-label={label}>
       {@render children()}
     </div>
   {/if}
@@ -57,13 +74,24 @@
   .panel {
     position: absolute;
     top: calc(100% + 6px);
-    right: 0;
     z-index: 20;
     width: 380px;
+    max-width: calc(100vw - 24px);
+    max-height: calc(100vh - 80px);
+    overflow-y: auto;
+    box-sizing: border-box;
     padding: var(--sw-space-3);
     border: 1px solid var(--sw-border);
     border-radius: var(--sw-radius);
     background: var(--sw-surface);
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  }
+
+  .start {
+    left: 0;
+  }
+
+  .end {
+    right: 0;
   }
 </style>

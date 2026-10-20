@@ -142,7 +142,9 @@ pub fn sync_settings(app: &AppHandle, state: &AppState) -> AppResult<()> {
     let minutes = chrono::Local::now().offset().local_minus_utc() / 60;
     dispatch(app, state, Command::SetUtcOffset { minutes })?;
     let transitions = crate::settings::load_transitions(&state.database())?;
-    dispatch(app, state, Command::SetTransitions { transitions })
+    dispatch(app, state, Command::SetTransitions { transitions })?;
+    let settings = crate::settings::load_stream(&state.database())?;
+    dispatch(app, state, Command::SetStreamSettings { settings })
 }
 
 /// Loads the saved logo into the engine. Called at startup.

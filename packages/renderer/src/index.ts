@@ -8,6 +8,7 @@
  * - {@link ScaledCanvas}: the 1920×1080 canvas, scaled to fit.
  * - {@link OutputView}: a live `OutputState`, with transitions.
  * - {@link SlideView}: a single still slide.
+ * - {@link StreamView}: the stream look of a live `OutputState`.
  *
  * Import the bundled fonts once per app with
  * `import "@simpleworship/renderer/fonts.css";`.
@@ -31,5 +32,6 @@ export { getMediaUrls, type MediaUrls, setMediaUrls } from "./media.ts";
 export { default as OutputView } from "./OutputView.svelte";
 export { default as ScaledCanvas } from "./ScaledCanvas.svelte";
 export { default as SlideView } from "./SlideView.svelte";
+export { default as StreamView } from "./StreamView.svelte";
 export { textStyle } from "./styles.ts";
 export { formatClock, remainingMs, stageTimerMs } from "./timing.ts";

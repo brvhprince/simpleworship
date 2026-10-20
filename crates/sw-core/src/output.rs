@@ -15,6 +15,7 @@ use crate::id::Id;
 use crate::markup::TextRun;
 use crate::media::MediaRef;
 use crate::scripture::ScriptureSlide;
+use crate::stream::StreamOutput;
 use crate::theme::Theme;
 use crate::time::Timestamp;
 
@@ -130,6 +131,9 @@ pub struct OutputState {
     pub logo: Option<MediaRef>,
     /// An alert over the slides, if one is showing.
     pub alert: Option<Alert>,
+    /// What the stream output shows (see [`crate::stream`]).
+    #[serde(default)]
+    pub stream: StreamOutput,
     /// Increases by one every time the output changes. Lets renderers that
     /// connect late, or miss an event, tell whether they are up to date.
     #[ts(type = "number")]

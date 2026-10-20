@@ -17,6 +17,8 @@ sha2 = "0.10"
 sw-core.workspace = true
 thiserror.workspace = true
 tokio = { version = "1", features = ["net", "sync", "time", "macros", "rt-multi-thread", "fs"] }
+tower = { version = "0.5", features = ["util"] }
+tower-http = { version = "0.6", features = ["fs"] }
 ts-rs.workspace = true
 
 [dev-dependencies]

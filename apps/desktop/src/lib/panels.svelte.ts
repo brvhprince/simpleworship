@@ -4,9 +4,9 @@
  */
 class Panels {
   /** The open panel, if any. */
-  open: "alerts" | "stage" | "transitions" | "remote" | null = $state(null);
+  open: "alerts" | "stage" | "transitions" | "remote" | "stream" | "screens" | null = $state(null);
 
-  toggle(panel: "alerts" | "stage" | "transitions" | "remote"): void {
+  toggle(panel: "alerts" | "stage" | "transitions" | "remote" | "stream" | "screens"): void {
     this.open = this.open === panel ? null : panel;
   }
 

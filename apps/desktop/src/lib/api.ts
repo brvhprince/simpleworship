@@ -34,6 +34,7 @@ import type {
   Song,
   SongSummary,
   SongUsage,
+  StreamSettings,
   ThemeDefaults,
   ThemeRecord,
   TransitionSettings,
@@ -336,6 +337,9 @@ export const saveSettings = (settings: AppSettings) => invoke<void>("settings_sa
 /** Saves the transition for each kind of content. */
 export const saveTransitions = (transitions: TransitionSettings) =>
   invoke<void>("transitions_save", { transitions });
+
+/** Changes and saves how the stream output shows each kind of content. */
+export const saveStream = (settings: StreamSettings) => invoke<void>("stream_save", { settings });
 
 /** Songs used between two dates (`YYYY-MM-DD`, inclusive), most used first. */
 export const usageReport = (from: string, to: string) =>

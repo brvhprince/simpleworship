@@ -14,10 +14,16 @@ pub async fn monitors_list(app: AppHandle) -> AppResult<Vec<MonitorInfo>> {
     windows::list_monitors(&app)
 }
 
-/// Opens (or moves) the projector or stage window.
+/// Opens (or moves) an output window.
 #[tauri::command]
 pub async fn output_open(app: AppHandle, kind: OutputKind, target: OutputTarget) -> AppResult<()> {
     windows::open_output(&app, kind, target)
+}
+
+/// The output windows that are open now.
+#[tauri::command]
+pub async fn outputs_open(app: AppHandle) -> Vec<OutputKind> {
+    windows::open_outputs(&app)
 }
 
 /// Closes the projector or stage window.

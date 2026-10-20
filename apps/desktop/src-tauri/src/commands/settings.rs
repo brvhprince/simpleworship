@@ -3,6 +3,7 @@
 use std::fmt::Write as _;
 
 use sw_core::Command;
+use sw_core::StreamSettings;
 use sw_core::output::TransitionSettings;
 use sw_core::usage::SongUsage;
 use tauri::{AppHandle, Emitter, State};
@@ -48,6 +49,17 @@ pub fn transitions_save(
 ) -> AppResult<()> {
     settings::save_transitions(&state.database(), &transitions)?;
     dispatch(&app, &state, Command::SetTransitions { transitions })
+}
+
+/// Changes and saves how the stream output shows each kind of content.
+#[tauri::command]
+pub fn stream_save(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    settings: StreamSettings,
+) -> AppResult<()> {
+    crate::settings::save_stream(&state.database(), &settings)?;
+    dispatch(&app, &state, Command::SetStreamSettings { settings })
 }
 
 /// Songs used from `from` to `to` (inclusive, `YYYY-MM-DD`), most used first.

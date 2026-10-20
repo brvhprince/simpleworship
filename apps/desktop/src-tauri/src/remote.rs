@@ -1,5 +1,6 @@
-//! The phone remote: runs the `sw-server` on the church's network while it
-//! is turned on in Settings, and connects it to this app.
+//! The phone remote and the stream browser source: runs the `sw-server` on
+//! the church's network while either is turned on, and connects it to this
+//! app.
 //!
 //! - [`DesktopHost`] gives the server the engine, the library and media.
 //!   Commands from phones go through the same [`dispatch`] as the
@@ -48,6 +49,11 @@ pub struct RemoteSettings {
     pub enabled: bool,
     /// The network port.
     pub port: u16,
+    /// OBS or vMix may show the stream look, from the browser source link.
+    pub browser_source: bool,
+    /// The secret in the browser source link. Made when the browser source
+    /// is first turned on; a new one stops old links working.
+    pub stream_key: String,
 }
 
 impl Default for RemoteSettings {
@@ -55,6 +61,8 @@ impl Default for RemoteSettings {
         Self {
             enabled: false,
             port: DEFAULT_PORT,
+            browser_source: false,
+            stream_key: String::new(),
         }
     }
 }
@@ -76,6 +84,9 @@ pub struct RemoteStatus {
     pub devices: Vec<Device>,
     /// Ids of the devices connected now.
     pub connected: Vec<Id>,
+    /// Browser source links, when it is on: this computer's first (for OBS
+    /// on the same computer), then its network addresses.
+    pub stream_links: Vec<String>,
 }
 
 /// A pairing code, ready to show.
@@ -129,22 +140,48 @@ pub fn publish(app: &AppHandle, event: &EngineEvent) {
 
 // ── Starting and stopping ────────────────────────────────────────────────
 
-/// Starts the remote if it is turned on. Called at startup.
+/// Starts the server if the phone remote or the browser source is on.
+/// Called at startup.
 pub fn start_if_enabled(app: &AppHandle) {
     let settings = load_settings(app);
-    if settings.enabled {
+    if settings.enabled || settings.browser_source {
         let app = app.clone();
-        tauri::async_runtime::spawn(async move { start(&app, settings.port).await });
+        tauri::async_runtime::spawn(async move { apply(&app).await });
     }
 }
 
-async fn start(app: &AppHandle, port: u16) {
+/// Makes the server match the saved settings: started, stopped, or (when
+/// only who may connect changed) adjusted without disconnecting anyone
+/// else.
+async fn apply(app: &AppHandle) {
+    let settings = load_settings(app);
+    let wanted = settings.enabled || settings.browser_source;
+    let key = settings
+        .browser_source
+        .then_some(settings.stream_key.as_str());
+    match server(app) {
+        Some(running) if wanted && running.port() == settings.port => {
+            running.set_phones(settings.enabled);
+            running.set_stream_key(key);
+        }
+        _ if wanted => start(app, &settings).await,
+        _ => {
+            stop(app);
+            lock(&app.state::<RemoteState>().0).error = None;
+        }
+    }
+    announce_status(app);
+}
+
+async fn start(app: &AppHandle, settings: &RemoteSettings) {
     stop(app);
     let devices = load_devices(app);
     let host = Arc::new(DesktopHost { app: app.clone() });
     let config = ServerConfig {
-        port,
+        port: settings.port,
         static_dir: static_dir(app),
+        phones: settings.enabled,
+        stream_key: settings.browser_source.then(|| settings.stream_key.clone()),
     };
     let result = RemoteServer::start(config, host, devices).await;
     {
@@ -163,7 +200,6 @@ async fn start(app: &AppHandle, port: u16) {
             }
         }
     }
-    announce_status(app);
 }
 
 fn stop(app: &AppHandle) {
@@ -333,6 +369,11 @@ fn load_settings(app: &AppHandle) -> RemoteSettings {
     settings.ok().flatten().unwrap_or_default()
 }
 
+fn save_settings(app: &AppHandle, settings: &RemoteSettings) -> AppResult<()> {
+    let state = app.state::<AppState>();
+    Ok(state.database().settings().set(SETTINGS_KEY, settings)?)
+}
+
 fn load_devices(app: &AppHandle) -> Vec<Device> {
     let state = app.state::<AppState>();
     let devices = state.database().settings().get(DEVICES_KEY);
@@ -356,13 +397,23 @@ fn status(app: &AppHandle) -> RemoteStatus {
         )
     };
     let port = server.as_deref().map_or(settings.port, RemoteServer::port);
+    let addresses: Vec<String> = local_addresses()
+        .into_iter()
+        .map(|address| format!("http://{address}:{port}"))
+        .collect();
+    let stream_links = if settings.browser_source && server.is_some() {
+        std::iter::once(format!("http://localhost:{port}"))
+            .chain(addresses.iter().cloned())
+            .map(|base| format!("{base}/stream?key={}", settings.stream_key))
+            .collect()
+    } else {
+        Vec::new()
+    };
     RemoteStatus {
         running: server.is_some(),
         error,
-        addresses: local_addresses()
-            .into_iter()
-            .map(|address| format!("http://{address}:{port}"))
-            .collect(),
+        addresses,
+        stream_links,
         devices: server
             .as_deref()
             .map(RemoteServer::devices)
@@ -386,25 +437,43 @@ pub fn remote_status(app: AppHandle) -> RemoteStatus {
     status(&app)
 }
 
-/// Turns the remote on (on `port`) or off, and saves the choice.
+/// Turns the phone remote on (on `port`) or off, and saves the choice.
 #[tauri::command]
 pub async fn remote_set_enabled(
     app: AppHandle,
     enabled: bool,
     port: u16,
 ) -> AppResult<RemoteStatus> {
-    let settings = RemoteSettings { enabled, port };
-    app.state::<AppState>()
-        .database()
-        .settings()
-        .set(SETTINGS_KEY, &settings)?;
-    if enabled {
-        start(&app, port).await;
-    } else {
-        stop(&app);
-        lock(&app.state::<RemoteState>().0).error = None;
-        announce_status(&app);
+    let settings = RemoteSettings {
+        enabled,
+        port,
+        ..load_settings(&app)
+    };
+    save_settings(&app, &settings)?;
+    apply(&app).await;
+    Ok(status(&app))
+}
+
+/// Turns the browser source on or off, and saves the choice.
+#[tauri::command]
+pub async fn stream_link_set_enabled(app: AppHandle, enabled: bool) -> AppResult<RemoteStatus> {
+    let mut settings = load_settings(&app);
+    settings.browser_source = enabled;
+    if settings.stream_key.is_empty() {
+        settings.stream_key = sw_server::pairing::new_token();
     }
+    save_settings(&app, &settings)?;
+    apply(&app).await;
+    Ok(status(&app))
+}
+
+/// Makes a new browser source link. The old link stops working at once.
+#[tauri::command]
+pub async fn stream_link_renew(app: AppHandle) -> AppResult<RemoteStatus> {
+    let mut settings = load_settings(&app);
+    settings.stream_key = sw_server::pairing::new_token();
+    save_settings(&app, &settings)?;
+    apply(&app).await;
     Ok(status(&app))
 }
 

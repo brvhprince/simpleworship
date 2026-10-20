@@ -7,6 +7,8 @@
     Used for previews and thumbnails.
   - `fit="contain"`: fills the parent in both directions, letterboxing if
     the parent is not 16:9. Used for full-screen output windows.
+  - `background`: what shows around and behind the slide; black unless the
+    page must be see-through (the stream output).
 -->
 <script lang="ts">
   import type { Snippet } from "svelte";
@@ -14,10 +16,11 @@
 
   interface Props {
     fit?: "width" | "contain";
+    background?: string;
     children: Snippet;
   }
 
-  let { fit = "width", children }: Props = $props();
+  let { fit = "width", background = "#000", children }: Props = $props();
 
   let width = $state(0);
   let height = $state(0);
@@ -29,7 +32,12 @@
   );
 </script>
 
-<div class="viewport {fit}" bind:clientWidth={width} bind:clientHeight={height}>
+<div
+  class="viewport {fit}"
+  style:background={background}
+  bind:clientWidth={width}
+  bind:clientHeight={height}
+>
   <div
     class="canvas"
     style:width="{CANVAS_WIDTH}px"
@@ -44,7 +52,6 @@
   .viewport {
     position: relative;
     overflow: hidden;
-    background: #000;
   }
 
   .width {

@@ -1,6 +1,7 @@
 //! A real WebSocket client against the server: it is welcomed with the
 //! engine's state, its role is enforced, events reach it, and removing the
-//! device disconnects it.
+//! device disconnects it. The browser source can only watch, and phones can
+//! be switched off without losing their pairing.
 
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -65,6 +66,8 @@ async fn a_presenter_phone_connects_and_is_kept_to_its_role() {
         ServerConfig {
             port: 0,
             static_dir: PathBuf::from("does-not-exist"),
+            phones: true,
+            stream_key: None,
         },
         host.clone(),
         vec![device],
@@ -131,6 +134,8 @@ async fn an_unknown_token_is_refused() {
         ServerConfig {
             port: 0,
             static_dir: PathBuf::from("does-not-exist"),
+            phones: true,
+            stream_key: None,
         },
         Arc::new(FakeHost::default()),
         Vec::new(),
@@ -139,5 +144,89 @@ async fn an_unknown_token_is_refused() {
     .unwrap();
     let url = format!("ws://127.0.0.1:{}/ws?token=guess", server.port());
     assert!(tokio_tungstenite::connect_async(url).await.is_err());
+    server.stop();
+}
+
+/// The status `/api/check` gives a token.
+async fn check(port: u16, token: &str) -> u16 {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+    let mut stream = tokio::net::TcpStream::connect(("127.0.0.1", port))
+        .await
+        .unwrap();
+    let request = format!(
+        "GET /api/check?token={token} HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"
+    );
+    stream.write_all(request.as_bytes()).await.unwrap();
+    let mut answer = String::new();
+    stream.read_to_string(&mut answer).await.unwrap();
+    answer[9..12].parse().unwrap()
+}
+
+#[tokio::test]
+async fn the_browser_source_watches_but_cannot_send_commands() {
+    let host = Arc::new(FakeHost::default());
+    let server = RemoteServer::start(
+        ServerConfig {
+            port: 0,
+            static_dir: PathBuf::from("does-not-exist"),
+            phones: false,
+            stream_key: Some("stream-key".into()),
+        },
+        host.clone(),
+        Vec::new(),
+    )
+    .await
+    .unwrap();
+
+    let url = format!("ws://127.0.0.1:{}/ws?token=stream-key", server.port());
+    let (mut socket, _) = tokio_tungstenite::connect_async(url).await.unwrap();
+    let welcome = next_json(&mut socket).await;
+    assert_eq!(welcome["type"], "welcome");
+    assert!(welcome["snapshot"]["output"]["stream"].is_object());
+
+    let black =
+        json!({ "type": "dispatch", "id": 1, "command": { "type": "setBlack", "on": true } });
+    socket
+        .send(Message::Text(black.to_string().into()))
+        .await
+        .unwrap();
+    assert!(next_json(&mut socket).await["error"].is_string());
+    assert!(host.commands.lock().unwrap().is_empty());
+
+    // A new link disconnects the old one.
+    server.set_stream_key(Some("new-key"));
+    assert_eq!(next_json(&mut socket).await["type"], "removed");
+    assert_eq!(check(server.port(), "stream-key").await, 401);
+    assert_eq!(check(server.port(), "new-key").await, 204);
+    server.stop();
+}
+
+#[tokio::test]
+async fn phones_switched_off_keep_their_pairing() {
+    let (device, token) = pairing::new_device("Usher's phone", Role::Alerts);
+    let server = RemoteServer::start(
+        ServerConfig {
+            port: 0,
+            static_dir: PathBuf::from("does-not-exist"),
+            phones: true,
+            stream_key: None,
+        },
+        Arc::new(FakeHost::default()),
+        vec![device],
+    )
+    .await
+    .unwrap();
+    let url = format!("ws://127.0.0.1:{}/ws?token={token}", server.port());
+    let (mut socket, _) = tokio_tungstenite::connect_async(&url).await.unwrap();
+    assert_eq!(next_json(&mut socket).await["type"], "welcome");
+
+    server.set_phones(false);
+    assert_eq!(next_json(&mut socket).await["type"], "closed");
+    // "Unavailable", not "unauthorized": the phone keeps its token.
+    assert_eq!(check(server.port(), &token).await, 503);
+    assert!(tokio_tungstenite::connect_async(&url).await.is_err());
+
+    server.set_phones(true);
+    assert_eq!(check(server.port(), &token).await, 204);
     server.stop();
 }

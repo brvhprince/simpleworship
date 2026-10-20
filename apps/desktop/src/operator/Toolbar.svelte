@@ -1,223 +1,184 @@
 <!--
   @component
-  The bar across the top of the operator window:
+  The bar across the top of the operator window, on one line at any width.
 
-  - **Outputs**: choose which screen the projector output and the stage
-    display appear on, and show or hide them.
-  - **Display controls**: Black, Logo, Clear Text, Clear Background.
-  - **Transitions**: cut or fade (and how long) for songs, scripture,
-    presentations and everything else, remembered between sessions.
+  On the left, the things set up before the service, each a panel:
+
+  - **Screens**: which screen the projector, stage display and stream
+    window go on, and switching each on or off.
+  - **Transitions**: cut or fade (and how long) for each kind of content.
+  - **Stream**: the browser source for OBS or vMix.
+  - **Remote**: phones and tablets.
+
+  On the right, what the operator reaches for during the service: Black,
+  Logo, Clear Text and Clear Background, then the Alert and Stage panels.
+
+  On narrower screens the keyboard hints are left out, then the name.
 -->
 <script lang="ts">
-  import type { MonitorInfo, OutputKind, OutputTarget } from "@simpleworship/protocol";
   import { Button } from "@simpleworship/ui";
-  import { onMount } from "svelte";
-  import { closeOutput, listMonitors, openOutput } from "../lib/api.ts";
   import { engine } from "../lib/engine.svelte.ts";
   import { t } from "../lib/i18n/i18n.svelte.ts";
+  import { outputs } from "../lib/outputs.svelte.ts";
   import { panels } from "../lib/panels.svelte.ts";
   import { remote } from "../lib/remote.svelte.ts";
   import { updates } from "../lib/updates.svelte.ts";
   import AlertsPanel from "./AlertsPanel.svelte";
   import Popover from "./Popover.svelte";
   import RemotePanel from "./RemotePanel.svelte";
+  import ScreensPanel from "./ScreensPanel.svelte";
   import StagePanel from "./StagePanel.svelte";
+  import StreamPanel from "./StreamPanel.svelte";
   import TransitionsPanel from "./TransitionsPanel.svelte";
 
-  /** Value of the "Windowed" choice in the screen pickers. */
-  const WINDOWED = "windowed";
-
-  let monitors: MonitorInfo[] = $state([]);
-  let projectorScreen = $state(WINDOWED);
-  let stageScreen = $state(WINDOWED);
-
   const flags = $derived(engine.output?.flags);
-
-  onMount(async () => {
-    await refreshMonitors();
-    // Ready to go at startup: with a projector or TV connected, the output
-    // opens on the first screen that is not the operator's own. With only
-    // the main screen, nothing opens (it would cover the operator window).
-    const secondary = monitors.find((monitor) => !monitor.isPrimary);
-    if (secondary) {
-      projectorScreen = String(secondary.index);
-      await show("projector", projectorScreen);
-    }
-  });
-
-  /** Re-reads the monitor list. Called whenever a picker is opened, so a
-   *  projector plugged in mid-service shows up. */
-  async function refreshMonitors() {
-    try {
-      monitors = await listMonitors();
-    } catch (error) {
-      engine.showError(error);
-    }
-  }
-
-  function targetFor(screen: string): OutputTarget {
-    return screen === WINDOWED ? { type: "windowed" } : { type: "monitor", index: Number(screen) };
-  }
-
-  async function show(kind: OutputKind, screen: string) {
-    try {
-      await openOutput(kind, targetFor(screen));
-    } catch (error) {
-      engine.showError(error);
-    }
-  }
-
-  async function hide(kind: OutputKind) {
-    try {
-      await closeOutput(kind);
-    } catch (error) {
-      engine.showError(error);
-    }
-  }
+  const screensOn = $derived(outputs.open.length);
 </script>
 
-{#snippet screenPicker(
-  label: string,
-  kind: OutputKind,
-  screen: string,
-  onchange: (value: string) => void,
-)}
-  <fieldset class="group" aria-label={label}>
-    <span class="label">{label}</span>
-    <select
-      value={screen}
-      onfocus={refreshMonitors}
-      onchange={(e) => onchange(e.currentTarget.value)}
-    >
-      <option value={WINDOWED}>{t("toolbar.inWindow")}</option>
-      {#each monitors as monitor (monitor.index)}
-        <option value={String(monitor.index)}>
-          {monitor.name}
-          ({monitor.width}×{monitor.height}){monitor.isPrimary ? t("toolbar.mainScreen") : ""}
-        </option>
-      {/each}
-    </select>
-    <Button onclick={() => show(kind, screen)}>{t("common.show")}</Button>
-    <Button onclick={() => hide(kind)}>{t("common.hide")}</Button>
-  </fieldset>
-{/snippet}
-
 <header class="toolbar">
-  <span class="brand">SimpleWorship</span>
+  <div class="bar">
+    <span class="brand">SimpleWorship</span>
 
-  {@render screenPicker(
-    t("toolbar.output"),
-    "projector",
-    projectorScreen,
-    (v) => (projectorScreen = v),
-  )}
-  {@render screenPicker(t("toolbar.stage"), "stage", stageScreen, (v) => (stageScreen = v))}
-
-  <span class="spacer"></span>
-
-  {#if flags}
-    <fieldset class="group" aria-label={t("toolbar.displayControls")}>
-      <Button
-        variant="live"
-        active={flags.black}
-        shortcut="F6"
-        onclick={() => engine.dispatch({ type: "setBlack", on: !flags.black })}
+    <div class="group">
+      <Popover
+        label={screensOn > 0 ? t("toolbar.screensOn", { count: screensOn }) : t("toolbar.screens")}
+        align="start"
+        open={panels.open === "screens"}
+        active={screensOn > 0}
+        ontoggle={() => panels.toggle("screens")}
+        onclose={() => panels.close()}
       >
-        {t("toolbar.black")}
-      </Button>
-      <Button
-        variant="live"
-        active={flags.logo}
-        shortcut="F7"
-        onclick={() => engine.dispatch({ type: "setLogo", on: !flags.logo })}
+        <ScreensPanel />
+      </Popover>
+      <Popover
+        label={t("toolbar.transitions")}
+        align="start"
+        open={panels.open === "transitions"}
+        ontoggle={() => panels.toggle("transitions")}
+        onclose={() => panels.close()}
       >
-        {t("toolbar.logo")}
-      </Button>
-      <Button
-        variant="live"
-        active={flags.hideText}
-        shortcut="F8"
-        onclick={() => engine.dispatch({ type: "setHideText", on: !flags.hideText })}
+        <TransitionsPanel />
+      </Popover>
+      <Popover
+        label={t("toolbar.stream")}
+        align="start"
+        open={panels.open === "stream"}
+        active={(remote.status?.streamLinks.length ?? 0) > 0}
+        ontoggle={() => panels.toggle("stream")}
+        onclose={() => panels.close()}
       >
-        {t("toolbar.clearText")}
-      </Button>
-      <Button
-        variant="live"
-        active={flags.hideBackground}
-        shortcut="F9"
-        onclick={() => engine.dispatch({ type: "setHideBackground", on: !flags.hideBackground })}
+        <StreamPanel />
+      </Popover>
+      <Popover
+        label={remote.connectedCount > 0
+          ? t("toolbar.remoteConnected", { count: remote.connectedCount })
+          : t("toolbar.remote")}
+        align="start"
+        open={panels.open === "remote"}
+        active={remote.connectedCount > 0}
+        ontoggle={() => panels.toggle("remote")}
+        onclose={() => panels.close()}
       >
-        {t("toolbar.clearBackground")}
+        <RemotePanel />
+      </Popover>
+    </div>
+
+    <span class="spacer"></span>
+
+    {#if updates.status === "ready" || updates.status === "installing"}
+      <Button
+        variant="primary"
+        disabled={updates.status === "installing"}
+        title={t("toolbar.updateHint", { version: updates.version ?? "" })}
+        onclick={() => updates.install()}
+      >
+        {updates.status === "installing" ? t("toolbar.updateInstalling") : t("toolbar.updateReady")}
       </Button>
-    </fieldset>
-  {/if}
+    {/if}
 
-  {#if updates.status === "ready" || updates.status === "installing"}
-    <Button
-      variant="primary"
-      disabled={updates.status === "installing"}
-      title={t("toolbar.updateHint", { version: updates.version ?? "" })}
-      onclick={() => updates.install()}
-    >
-      {updates.status === "installing" ? t("toolbar.updateInstalling") : t("toolbar.updateReady")}
-    </Button>
-  {/if}
+    {#if flags}
+      <fieldset class="group" aria-label={t("toolbar.displayControls")}>
+        <Button
+          variant="live"
+          active={flags.black}
+          shortcut="F6"
+          onclick={() => engine.dispatch({ type: "setBlack", on: !flags.black })}
+        >
+          {t("toolbar.black")}
+        </Button>
+        <Button
+          variant="live"
+          active={flags.logo}
+          shortcut="F7"
+          onclick={() => engine.dispatch({ type: "setLogo", on: !flags.logo })}
+        >
+          {t("toolbar.logo")}
+        </Button>
+        <Button
+          variant="live"
+          active={flags.hideText}
+          shortcut="F8"
+          onclick={() => engine.dispatch({ type: "setHideText", on: !flags.hideText })}
+        >
+          {t("toolbar.clearText")}
+        </Button>
+        <Button
+          variant="live"
+          active={flags.hideBackground}
+          shortcut="F9"
+          onclick={() => engine.dispatch({ type: "setHideBackground", on: !flags.hideBackground })}
+        >
+          {t("toolbar.clearBackground")}
+        </Button>
+      </fieldset>
+    {/if}
 
-  <Popover
-    label={t("toolbar.alert")}
-    shortcut="A"
-    open={panels.open === "alerts"}
-    active={engine.output?.alert != null}
-    ontoggle={() => panels.toggle("alerts")}
-    onclose={() => panels.close()}
-  >
-    <AlertsPanel />
-  </Popover>
-  <Popover
-    label={t("toolbar.stage")}
-    open={panels.open === "stage"}
-    active={engine.stage.timer != null || engine.stage.message != null}
-    ontoggle={() => panels.toggle("stage")}
-    onclose={() => panels.close()}
-  >
-    <StagePanel />
-  </Popover>
-
-  <Popover
-    label={remote.connectedCount > 0
-      ? t("toolbar.remoteConnected", { count: remote.connectedCount })
-      : t("toolbar.remote")}
-    open={panels.open === "remote"}
-    active={remote.connectedCount > 0}
-    ontoggle={() => panels.toggle("remote")}
-    onclose={() => panels.close()}
-  >
-    <RemotePanel />
-  </Popover>
-  <Popover
-    label={t("toolbar.transitions")}
-    open={panels.open === "transitions"}
-    ontoggle={() => panels.toggle("transitions")}
-    onclose={() => panels.close()}
-  >
-    <TransitionsPanel />
-  </Popover>
+    <div class="group">
+      <Popover
+        label={t("toolbar.alert")}
+        shortcut="A"
+        open={panels.open === "alerts"}
+        active={engine.output?.alert != null}
+        ontoggle={() => panels.toggle("alerts")}
+        onclose={() => panels.close()}
+      >
+        <AlertsPanel />
+      </Popover>
+      <Popover
+        label={t("toolbar.stage")}
+        open={panels.open === "stage"}
+        active={engine.stage.timer != null || engine.stage.message != null}
+        ontoggle={() => panels.toggle("stage")}
+        onclose={() => panels.close()}
+      >
+        <StagePanel />
+      </Popover>
+    </div>
+  </div>
 </header>
 
 <style>
+  /* The header is the size container; the bar inside it adapts. */
   .toolbar {
     grid-area: toolbar;
+    container-type: inline-size;
+    background: var(--sw-surface);
+    /* Panels drop down over the panes below. */
+    position: relative;
+    z-index: 10;
+  }
+
+  .bar {
     display: flex;
     align-items: center;
-    flex-wrap: wrap;
-    gap: var(--sw-space-4);
+    gap: var(--sw-space-3);
     padding: var(--sw-space-2) var(--sw-space-3);
-    background: var(--sw-surface);
   }
 
   .brand {
     font-weight: 700;
     letter-spacing: 0.02em;
+    white-space: nowrap;
   }
 
   .group {
@@ -230,12 +191,24 @@
     gap: var(--sw-space-1);
   }
 
-  .label,
   .spacer {
     flex: 1;
   }
 
-  select {
-    max-width: 220px;
+  /* Smaller screens: drop the keyboard hints first, then the name. */
+  @container (max-width: 1240px) {
+    .bar :global(kbd) {
+      display: none;
+    }
+  }
+
+  @container (max-width: 1000px) {
+    .brand {
+      display: none;
+    }
+
+    .bar {
+      gap: var(--sw-space-2);
+    }
   }
 </style>

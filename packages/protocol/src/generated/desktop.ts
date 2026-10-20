@@ -205,7 +205,7 @@ export type MonitorInfo = {
 /**
  * The kinds of output window.
  */
-export type OutputKind = "projector" | "stage";
+export type OutputKind = "projector" | "stage" | "stream";
 
 /**
  * Where to show an output window.
@@ -379,6 +379,15 @@ export type RemoteSettings = {
    * The network port.
    */
   port: number;
+  /**
+   * OBS or vMix may show the stream look, from the browser source link.
+   */
+  browserSource: boolean;
+  /**
+   * The secret in the browser source link. Made when the browser source
+   * is first turned on; a new one stops old links working.
+   */
+  streamKey: string;
 };
 
 /**
@@ -409,6 +418,11 @@ export type RemoteStatus = {
    * Ids of the devices connected now.
    */
   connected: Array<Id>;
+  /**
+   * Browser source links, when it is on: this computer's first (for OBS
+   * on the same computer), then its network addresses.
+   */
+  streamLinks: Array<string>;
 };
 
 /**
