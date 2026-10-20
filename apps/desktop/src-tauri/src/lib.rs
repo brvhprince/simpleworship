@@ -19,6 +19,7 @@
 //! the [`EngineEvent`](sw_core::EngineEvent)s broadcast on
 //! [`commands::engine::ENGINE_EVENT`].
 
+mod assistant;
 mod autosave;
 mod bibles;
 mod commands;
@@ -79,6 +80,7 @@ pub fn run() {
         .manage(remote::RemoteState::default())
         .manage(ndi::NdiState::default())
         .manage(listen::ListenState::default())
+        .manage(assistant::AssistantState::default())
         .manage(link::LinkState::default())
         .setup(|app| {
             log::info!("SimpleWorship {} starting", app.package_info().version);
@@ -213,6 +215,15 @@ pub fn run() {
             link::link_join,
             link::link_leave,
             link::link_take_over,
+            assistant::assistant_status,
+            assistant::assistant_configure,
+            assistant::assistant_set_key,
+            assistant::assistant_forget_key,
+            assistant::assistant_find_songs,
+            assistant::assistant_find_verses,
+            assistant::assistant_tidy_lyrics,
+            assistant::assistant_translate,
+            assistant::assistant_sermon_slides,
             listen::listen_status,
             listen::listen_devices,
             listen::listen_configure,

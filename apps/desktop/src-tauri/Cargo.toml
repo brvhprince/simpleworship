@@ -55,9 +55,12 @@ tauri-plugin-opener = "2.7"
 tauri-plugin-process = "2.4"
 tauri-plugin-updater = "2.14"
 log = "0.4"
-# Downloading Listen's speech model (listen.rs). The same HTTPS library the
-# updater uses, with the same encryption code (ring).
-reqwest = { version = "0.13", default-features = false, features = ["rustls-no-provider"] }
+# The assistant's API key, in the computer's keychain (assistant.rs).
+keyring = "4.2"
+# Downloading Listen's speech model (listen.rs) and talking to the
+# assistant (assistant.rs). The same HTTPS library the updater uses, with
+# the same encryption code (ring).
+reqwest = { version = "0.13", default-features = false, features = ["json", "rustls-no-provider"] }
 rustls = { version = "0.23", default-features = false, features = ["ring"] }
 sha2 = "0.10"
 thiserror.workspace = true

@@ -5,8 +5,10 @@
   - Type a reference ("jn 3:16-18") and press Enter to preview it; press
     Enter again to send it live. Or type words ("love is patient") to
     search the Bible.
-  - Or pick a book, a chapter and verses. Click a verse to select it;
-    shift-click another to select everything in between.
+  - Or pick a book, a chapter and verses. Click a verse to show it in the
+    preview; shift-click another to show everything in between;
+    double-click to send it live. Clicking a search result previews it and
+    opens its chapter, where the same works.
   - Choose a translation, and optionally a second one to show side by side.
 -->
 <script lang="ts">
@@ -26,6 +28,7 @@
     searchBible,
     showScriptureInPreview,
   } from "../../lib/api.ts";
+  import { assistant } from "../../lib/assistant.svelte.ts";
   import { bibles } from "../../lib/bibles.svelte.ts";
   import { engine } from "../../lib/engine.svelte.ts";
   import { t } from "../../lib/i18n/i18n.svelte.ts";
@@ -67,6 +70,11 @@
   /** The verse a shift-click range starts from. */
   let anchorVerse: number | null = null;
   let managing = $state(false);
+  /** Passages the assistant suggested for the words typed. */
+  let ideas: {
+    about: string;
+    list: { reference: string; why: string; passage: Passage }[];
+  } | null = $state(null);
 
   const options: ScriptureOptions = $derived({ maxVerses, maxChars: 300, verseNumbers });
 
@@ -89,6 +97,9 @@
   const searching = $derived(!!feedback?.error && query.trim() !== "" && !/\d/.test(query));
   const currentBook = $derived(outline.find((book) => book.book === passage?.book) ?? null);
   const currentChapter = $derived(passage?.ranges[0]?.start.chapter ?? null);
+  /** The selection's book, as a plain number: effects that depend on it
+   *  rerun only when the book changes, not on every new selection. */
+  const currentBookId = $derived(passage?.book ?? null);
 
   // Pick a translation once the Bibles have loaded, or if the chosen one is gone.
   $effect(() => {
@@ -131,10 +142,12 @@
     return () => clearTimeout(timer);
   });
 
-  // Show the chapter the selection is in.
+  // Show the chapter the selection is in. Only a different book or chapter
+  // reloads it: choosing verses in it must keep the same list on screen
+  // (or a double-click would land on a new list and never count).
   $effect(() => {
     const id = primaryId;
-    const book = passage?.book;
+    const book = currentBookId;
     const chapter = currentChapter;
     chapterVerses = [];
     if (id && book && chapter) {
@@ -165,6 +178,8 @@
       anchorVerse = verse;
       choose(currentBook, currentChapter, verse, verse);
     }
+    // A click on a verse shows it (or the range) in the preview at once.
+    void preview(passage);
   }
 
   /** Selects a whole chapter (no verses) or a verse range, and writes it in
@@ -183,6 +198,7 @@
     if (book) {
       anchorVerse = verse.verse;
       choose(book, verse.chapter, verse.verse, verse.verse);
+      void preview(passage);
     }
   }
 
@@ -255,11 +271,21 @@
     return preview(heard.passage);
   }
 
-  /** A double-click on a heard reference: straight to live. (The first
-   *  click has already started the preview; showing it again first makes
-   *  sure live gets this passage, not whatever was previewed before.) */
+  /** A double-click on a heard reference: straight to live. */
   async function sendHeardLive(heard: Heard) {
-    if (await showHeard(heard)) engine.dispatch({ type: "goLive" });
+    query = heard.reference;
+    passage = heard.passage;
+    await sendLive(heard.passage);
+  }
+
+  /**
+   * A double-click (on a verse in the chapter, or a heard reference):
+   * straight to live. The clicks before it have already started the
+   * preview; showing it again first makes sure live gets this passage, not
+   * whatever was previewed before.
+   */
+  async function sendLive(shown: Passage | null = passage) {
+    if (await preview(shown)) engine.dispatch({ type: "goLive" });
   }
 
   // The H key, pressed anywhere: the newest reference heard.
@@ -275,6 +301,30 @@
     void listen.heard;
     listen.unseen = 0;
   });
+
+  /** Ask AI: passages on the theme typed ("God's faithfulness in trouble"). */
+  async function askAssistant() {
+    const about = query.trim();
+    try {
+      const found = await assistant.findVerses(about);
+      const list = [];
+      for (const idea of found) {
+        // Only passages that really parse (the assistant can be wrong).
+        const parsed = await parseReference(idea.reference);
+        if (parsed.passage) list.push({ ...idea, passage: parsed.passage });
+      }
+      if (query.trim() === about) ideas = { about, list };
+    } catch (error) {
+      engine.showError(error);
+    }
+  }
+
+  /** A suggested passage: select it and show it in the preview. */
+  function chooseIdea(idea: { reference: string; passage: Passage }) {
+    query = idea.reference;
+    passage = idea.passage;
+    void preview(idea.passage);
+  }
 
   async function addToSchedule() {
     if (!passage) return;
@@ -338,28 +388,51 @@
     </select>
 
     <div class="reference">
-      <input
-        type="search"
-        bind:value={query}
-        onkeydown={handleQueryKeys}
-        placeholder={t("scripture.placeholder")}
-        aria-label={t("scripture.search")}
-        aria-describedby="reference-feedback"
-      >
-      <span id="reference-feedback" class="feedback" class:error={feedback?.error && !searching}>
-        {#if searching}
-          {t("scripture.searching", { words: query.trim() })}
-        {:else if feedback?.error}
-          {feedback.error}
-        {:else if feedback}
-          {feedback.display}
-          {#if feedback.alternatives.length}
-            <span class="alternatives">
-              {t("scripture.alternatives", { names: feedback.alternatives.slice(0, 3).join(", ") })}
-            </span>
+      <!-- What was understood ("John 3:16–18") shows inside the box, on the
+           right, so it takes no room of its own. -->
+      <span class="field">
+        <input
+          type="search"
+          bind:value={query}
+          onkeydown={handleQueryKeys}
+          placeholder={t("scripture.placeholder")}
+          aria-label={t("scripture.search")}
+          aria-describedby="reference-feedback"
+          class:typed={query.trim() !== ""}
+        >
+        <span
+          id="reference-feedback"
+          class="feedback"
+          class:error={feedback?.error && !searching}
+          title={searching ? undefined : (feedback?.error ?? feedback?.display)}
+        >
+          {#if !query.trim()}
+            <!-- Nothing typed: the placeholder says what to do. -->
+          {:else if searching}
+            {t("scripture.searching", { words: query.trim() })}
+          {:else if feedback?.error}
+            {feedback.error}
+          {:else if feedback}
+            {feedback.display}
+            {#if feedback.alternatives.length}
+              <span class="alternatives">
+                {t("scripture.alternatives", {
+                  names: feedback.alternatives.slice(0, 3).join(", "),
+                })}
+              </span>
+            {/if}
           {/if}
-        {/if}
+        </span>
       </span>
+      {#if searching && assistant.ready}
+        <Button
+          disabled={assistant.busy}
+          title={t("assistant.findVersesHint")}
+          onclick={askAssistant}
+        >
+          {assistant.busy ? t("assistant.thinking") : t("assistant.ask")}
+        </Button>
+      {/if}
     </div>
 
     <label class="option">
@@ -436,6 +509,20 @@
 
       <ol class="verses" aria-label={searching ? t("scripture.results") : t("scripture.verses")}>
         {#if searching}
+          {#if ideas && ideas.about === query.trim()}
+            <li class="hint">{t("assistant.versesFor", { about: ideas.about })}</li>
+            {#each ideas.list as idea (idea.reference)}
+              <li>
+                <button type="button" onclick={() => chooseIdea(idea)}>
+                  <span class="number">{idea.reference}</span>
+                  {idea.why}
+                </button>
+              </li>
+            {:else}
+              <li class="hint">{t("assistant.nothingFound")}</li>
+            {/each}
+            <li class="hint">{t("assistant.wordsInBible")}</li>
+          {/if}
           {#each searchResults as verse (`${verse.book}.${verse.chapter}.${verse.verse}`)}
             <li>
               <button type="button" onclick={() => chooseSearchResult(verse)}>
@@ -453,6 +540,7 @@
                 type="button"
                 class:selected={isSelected(verse.verse)}
                 onclick={(event) => chooseVerse(verse.verse, event.shiftKey)}
+                ondblclick={() => sendLive()}
               >
                 <span class="number">{verse.verse}</span>
                 {verse.text}
@@ -488,18 +576,44 @@
 
   .reference {
     display: flex;
-    flex-direction: column;
-    gap: 2px;
+    align-items: center;
+    gap: var(--sw-space-2);
   }
 
-  .reference input {
-    width: 300px;
+  /* The box, with what was understood written faintly at its right end. */
+  .field {
+    position: relative;
+    display: flex;
+  }
+
+  .field input {
+    width: 420px;
+  }
+
+  /* The system's clear button would sit in the middle of the box, beside
+     the feedback; Escape or typing over the selection clears it. */
+  .field input::-webkit-search-cancel-button {
+    display: none;
+  }
+
+  /* Room for the feedback once something is typed (an empty box shows its
+     whole placeholder). */
+  .field input.typed {
+    padding-right: 45%;
   }
 
   .feedback {
-    min-height: 1.2em;
+    position: absolute;
+    top: 50%;
+    right: var(--sw-space-2);
+    max-width: 43%;
+    overflow: hidden;
+    transform: translateY(-50%);
     font-size: var(--sw-font-size-small);
     color: var(--sw-text-muted);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    pointer-events: none;
   }
 
   .feedback.error {

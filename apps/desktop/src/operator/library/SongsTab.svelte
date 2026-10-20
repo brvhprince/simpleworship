@@ -6,6 +6,9 @@
   - ↑/↓ move through the results; Enter or double-click sends the song to
     the preview pane.
   - Drag a song onto the schedule, or use “Add to Schedule”.
+  - With the assistant on, Ask AI finds songs from a description ("the
+    song about the blood that never loses its power"): the assistant names
+    songs, and they are looked up in this library.
 -->
 <script lang="ts">
   import type { Song, SongSummary } from "@simpleworship/protocol";
@@ -18,6 +21,7 @@
     searchSongs,
     showSongInPreview,
   } from "../../lib/api.ts";
+  import { assistant } from "../../lib/assistant.svelte.ts";
   import { SONG_DRAG_TYPE } from "../../lib/drag.ts";
   import { engine } from "../../lib/engine.svelte.ts";
   import { t } from "../../lib/i18n/i18n.svelte.ts";
@@ -35,6 +39,8 @@
   /** The song open in the editor, if any. */
   let editing: Song | null = $state(null);
   let confirmingDelete = $state(false);
+  /** The results are the assistant's suggestions for this description. */
+  let suggested: { about: string; missing: string[] } | null = $state(null);
 
   const selected = $derived(results.find((song) => song.id === selectedId) ?? null);
 
@@ -49,9 +55,44 @@
   async function refresh(currentQuery = query) {
     try {
       results = await searchSongs(currentQuery);
+      suggested = null;
       if (!results.some((song) => song.id === selectedId)) {
         selectedId = results[0]?.id ?? null;
       }
+    } catch (error) {
+      engine.showError(error);
+    }
+  }
+
+  /** Letters only, for comparing titles loosely. */
+  function loose(text: string): string {
+    return text.toLowerCase().replace(/[^\p{L}]/gu, "");
+  }
+
+  /** Ask AI: songs that fit the description, from this library. */
+  async function askAssistant() {
+    const about = query.trim();
+    if (!about) return;
+    try {
+      const ideas = await assistant.findSongs(about);
+      const found: SongSummary[] = [];
+      const missing: string[] = [];
+      for (const idea of ideas) {
+        // By title first; then by a line of its lyrics.
+        const byTitle = (await searchSongs(idea.title)).find(
+          (song) =>
+            loose(song.title).includes(loose(idea.title)) ||
+            loose(idea.title).includes(loose(song.title)),
+        );
+        const song = byTitle ?? (await searchSongs(idea.line))[0];
+        if (!song) missing.push(idea.title);
+        else if (!found.some((other) => other.id === song.id)) found.push(song);
+      }
+      // Still the same question (the operator may have typed on).
+      if (query.trim() !== about) return;
+      results = found;
+      selectedId = found[0]?.id ?? null;
+      suggested = { about, missing };
     } catch (error) {
       engine.showError(error);
     }
@@ -147,6 +188,15 @@
       placeholder={t("songs.search")}
       aria-label={t("songs.searchLabel")}
     >
+    {#if assistant.ready}
+      <Button
+        disabled={!query.trim() || assistant.busy}
+        title={t("assistant.findSongsHint")}
+        onclick={askAssistant}
+      >
+        {assistant.busy ? t("assistant.thinking") : t("assistant.ask")}
+      </Button>
+    {/if}
     <Button onclick={() => (editing = newSong())}>{t("songs.new")}</Button>
     {#if !link.joined}
       <Button onclick={() => importer.open()}>{t("common.import")}</Button>
@@ -177,6 +227,15 @@
     handles the arrow keys; aria-activedescendant tells screen readers which
     option is current.
   -->
+  {#if suggested}
+    <p class="suggested">
+      {t("assistant.songsFor", { about: suggested.about })}
+      {#if suggested.missing.length > 0}
+        {t("assistant.notInLibrary", { titles: suggested.missing.join(", ") })}
+      {/if}
+    </p>
+  {/if}
+
   <div
     class="results"
     role="listbox"
@@ -234,6 +293,13 @@
 
   .spacer {
     flex: 1;
+  }
+
+  .suggested {
+    margin: 0;
+    padding: 0 var(--sw-space-3) var(--sw-space-2);
+    color: var(--sw-text-muted);
+    font-size: var(--sw-font-size-small);
   }
 
   .confirm {

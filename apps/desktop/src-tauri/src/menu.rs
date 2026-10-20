@@ -273,13 +273,18 @@ fn project_page(page: &str) -> Option<String> {
         "changes" => format!("{PROJECT_URL}/blob/main/CHANGELOG.md"),
         // The free NDI Tools, which include the NDI Runtime.
         "ndi" => "https://ndi.video/tools/".to_owned(),
+        // Where to make an API key for the assistant, with each service.
+        "anthropic-keys" => "https://console.anthropic.com/settings/keys".to_owned(),
+        "openai-keys" => "https://platform.openai.com/api-keys".to_owned(),
+        "gemini-keys" => "https://aistudio.google.com/apikey".to_owned(),
         _ => return None,
     })
 }
 
 /// Opens one of the project's web pages in the browser: "website",
 /// "guide", "moving", "report", "license" or "changes" (or "ndi", where to
-/// get NDI).
+/// get NDI, and "anthropic-keys", "openai-keys" and "gemini-keys", where
+/// to make an assistant key).
 #[tauri::command]
 pub fn open_project_page(app: AppHandle, page: String) -> Result<(), String> {
     let url = project_page(&page).ok_or_else(|| format!("no page called {page}"))?;

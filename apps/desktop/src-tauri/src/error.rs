@@ -113,6 +113,10 @@ pub enum AppError {
     #[error("that theme is no longer in the library")]
     ThemeNotFound,
 
+    /// The assistant could not do what was asked.
+    #[error("{0}")]
+    Assistant(String),
+
     /// Listen could not start, or its speech model could not be had.
     #[error("{0}")]
     Listen(String),

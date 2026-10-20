@@ -4,13 +4,18 @@
   right, a live preview shows how the lyrics will be split into slides.
 
   ⌘/Ctrl+S saves, Escape cancels.
+
+  With the assistant on, Tidy Lyrics sets out pasted lyrics in sections
+  (with Undo), and Translate makes a new song in another language from
+  this one, as a draft to correct; the original song is not changed.
 -->
 <script lang="ts">
-  import type { Presentation, Song } from "@simpleworship/protocol";
+  import type { Presentation, Song, TranslateTo } from "@simpleworship/protocol";
   import { ScaledCanvas, SlideView } from "@simpleworship/renderer";
   import { Button, Dialog } from "@simpleworship/ui";
   import { untrack } from "svelte";
-  import { saveSong, songPresentation } from "../../lib/api.ts";
+  import { newSong, saveSong, songPresentation } from "../../lib/api.ts";
+  import { assistant } from "../../lib/assistant.svelte.ts";
   import { engine } from "../../lib/engine.svelte.ts";
   import { frameAt } from "../../lib/frames.ts";
   import { t } from "../../lib/i18n/i18n.svelte.ts";
@@ -37,7 +42,11 @@
   let saving = $state(false);
   let error: string | null = $state(null);
 
-  const isNew = untrack(() => song.createdAt === 0);
+  let isNew = $state(untrack(() => song.createdAt === 0));
+  /** The lyrics before Tidy Lyrics, for Undo. */
+  let beforeTidy: string | null = $state(null);
+  /** The song this one was translated from, if it was. */
+  let translatedFrom: string | null = $state(null);
 
   let titleInput: HTMLInputElement;
 
@@ -58,6 +67,52 @@
     }, PREVIEW_DELAY_MS);
     return () => clearTimeout(timer);
   });
+
+  /** Tidy Lyrics: sets out the lyrics in sections, and fills in any song
+   *  details found in them that are still empty. */
+  async function tidy() {
+    error = null;
+    try {
+      const tidied = await assistant.tidyLyrics(draft.lyrics);
+      beforeTidy = draft.lyrics;
+      draft.lyrics = tidied.lyrics;
+      draft.arrangement ||= tidied.arrangement;
+      draft.title ||= tidied.title;
+      draft.author ||= tidied.author;
+      draft.copyright ||= tidied.copyright;
+      draft.ccliNumber ||= tidied.ccliNumber;
+    } catch (failure) {
+      error = String(failure);
+    }
+  }
+
+  function undoTidy() {
+    if (beforeTidy === null) return;
+    draft.lyrics = beforeTidy;
+    beforeTidy = null;
+  }
+
+  /** Translate: this editor becomes a new song in that language. */
+  async function translate(language: TranslateTo) {
+    error = null;
+    try {
+      const translated = await assistant.translate(draft.title, draft.lyrics, language);
+      translatedFrom = draft.title;
+      const fresh = newSong();
+      draft = {
+        ...draft,
+        id: fresh.id,
+        createdAt: 0,
+        updatedAt: 0,
+        title: translated.title,
+        lyrics: translated.lyrics,
+      };
+      isNew = true;
+      beforeTidy = null;
+    } catch (failure) {
+      error = String(failure);
+    }
+  }
 
   async function save() {
     if (!draft.title.trim()) {
@@ -107,9 +162,40 @@
         {t("song.lyrics")}
         <textarea bind:value={draft.lyrics} spellcheck="true"></textarea>
       </label>
-      <p class="help wide">
-        {t("song.help")}
-      </p>
+      <div class="help wide">
+        <p>
+          {#if translatedFrom}
+            {t("assistant.translatedFrom", { title: translatedFrom })}
+          {:else}
+            {t("song.help")}
+          {/if}
+        </p>
+        {#if assistant.ready}
+          <div class="assist">
+            {#if beforeTidy !== null}
+              <Button onclick={undoTidy}>{t("common.undo")}</Button>
+            {/if}
+            <Button disabled={assistant.busy || !draft.lyrics.trim()} onclick={tidy}>
+              {assistant.busy ? t("assistant.thinking") : t("assistant.tidy")}
+            </Button>
+            <select
+              aria-label={t("assistant.translate")}
+              disabled={assistant.busy || !draft.lyrics.trim()}
+              value=""
+              onchange={(e) => {
+                const language = e.currentTarget.value as TranslateTo;
+                e.currentTarget.value = "";
+                if (language) void translate(language);
+              }}
+            >
+              <option value="" disabled>{t("assistant.translate")}</option>
+              <option value="twi">Twi</option>
+              <option value="french">Français</option>
+              <option value="english">English</option>
+            </select>
+          </div>
+        {/if}
+      </div>
       <label>
         {t("song.order")}
         <input bind:value={draft.arrangement} placeholder="V1 C V2 C B C">
@@ -193,8 +279,21 @@
   }
 
   .help {
-    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--sw-space-2);
     color: var(--sw-text-faint);
+  }
+
+  .help p {
+    flex: 1;
+    margin: 0;
+  }
+
+  .assist {
+    display: flex;
+    flex: none;
+    gap: var(--sw-space-1);
   }
 
   .slides {
@@ -203,6 +302,13 @@
     gap: var(--sw-space-2);
     overflow-y: auto;
     padding-right: var(--sw-space-1);
+  }
+
+  /* Each slide keeps its 16:9 shape: in a scrolling column the pictures
+     would otherwise shrink to fit, squashing the words. */
+  .slides > :global(.viewport) {
+    flex-shrink: 0;
+    border-radius: var(--sw-radius-small);
   }
 
   h3 {

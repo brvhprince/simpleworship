@@ -17,6 +17,7 @@
   import { Button } from "@simpleworship/ui";
   import { onMount, untrack } from "svelte";
   import { setMenuLabels } from "../lib/api.ts";
+  import { assistant } from "../lib/assistant.svelte.ts";
   import { bibles } from "../lib/bibles.svelte.ts";
   import { dialogs } from "../lib/dialogs.svelte.ts";
   import { engine } from "../lib/engine.svelte.ts";
@@ -102,6 +103,8 @@
       outputs.connect(),
       ndi.connect(),
       listen.connect(),
+      // Whether to show the assistant's buttons (nothing to stop later).
+      assistant.load().then(() => () => {}),
     ];
     for (const connection of connections) {
       connection.catch((error) => engine.showError(error));

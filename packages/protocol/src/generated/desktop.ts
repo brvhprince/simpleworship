@@ -33,6 +33,52 @@ export type AppSettings = {
 };
 
 /**
+ * How capable (and costly) a model to use.
+ */
+export type AssistantModel = "fast" | "better";
+
+/**
+ * The AI service.
+ */
+export type AssistantProvider = "anthropic" | "openai" | "gemini";
+
+/**
+ * What the operator chose (saved).
+ */
+export type AssistantSettings = {
+  /**
+   * The assistant's buttons are shown.
+   */
+  enabled: boolean;
+  /**
+   * Which service answers.
+   */
+  provider: AssistantProvider;
+  /**
+   * Its quick model, or its better one.
+   */
+  model: AssistantModel;
+};
+
+/**
+ * Whether the assistant can be used.
+ */
+export type AssistantStatus = {
+  /**
+   * What was chosen.
+   */
+  settings: AssistantSettings;
+  /**
+   * A key for the chosen service is saved on this computer.
+   */
+  hasKey: boolean;
+  /**
+   * The chosen service's models, once its key was checked.
+   */
+  models: ChosenModels | null;
+};
+
+/**
  * A microphone or audio input to listen to.
  */
 export type AudioInput = {
@@ -80,6 +126,20 @@ export type BibleChoice = {
    * The short name to give it.
    */
   abbreviation: string;
+};
+
+/**
+ * The models chosen from a service's list when its key was saved.
+ */
+export type ChosenModels = {
+  /**
+   * Its newest quick model.
+   */
+  fast: string;
+  /**
+   * Its newest main model.
+   */
+  better: string;
 };
 
 /**
@@ -698,6 +758,43 @@ export type ScheduleFileStatus = {
 };
 
 /**
+ * One slide or scripture from a preacher's notes, in order.
+ */
+export type SermonItem =
+  | {
+      kind: "point";
+      /**
+       * A short heading ("1. He sees you").
+       */
+      title: string;
+      /**
+       * The words on the slide.
+       */
+      text: string;
+    }
+  | {
+      kind: "scripture";
+      /**
+       * The reference, e.g. "Romans 8:28-30".
+       */
+      reference: string;
+    };
+
+/**
+ * A song that might be the one described.
+ */
+export type SongIdea = {
+  /**
+   * Its usual title.
+   */
+  title: string;
+  /**
+   * A line from it that is likely in its lyrics, to find it by.
+   */
+  line: string;
+};
+
+/**
  * The kind of thing that was found.
  */
 export type SourceKind = "easyWorshipSongs" | "easyWorshipBible" | "openLpSongs" | "songFiles";
@@ -735,4 +832,58 @@ export type TakeOverResult = {
    * computer (they show as black, or are silent).
    */
   missingMedia: number;
+};
+
+/**
+ * Lyrics set out for SimpleWorship, and any song details found in them.
+ */
+export type TidiedSong = {
+  /**
+   * The lyrics, with `[Verse 1]`-style section tags.
+   */
+  lyrics: string;
+  /**
+   * The order to sing the sections in ("V1 C V2 C B C"), if clear.
+   */
+  arrangement: string;
+  /**
+   * Details found in the pasted text (empty if none).
+   */
+  title: string;
+  author: string;
+  copyright: string;
+  ccliNumber: string;
+};
+
+/**
+ * A language to translate into.
+ */
+export type TranslateTo = "twi" | "french" | "english";
+
+/**
+ * A song in another language.
+ */
+export type TranslatedSong = {
+  /**
+   * The title, translated.
+   */
+  title: string;
+  /**
+   * The lyrics, translated, with the same section tags.
+   */
+  lyrics: string;
+};
+
+/**
+ * A passage on the theme asked about.
+ */
+export type VerseIdea = {
+  /**
+   * The reference, e.g. "Lamentations 3:22-23".
+   */
+  reference: string;
+  /**
+   * Why it fits, in a few words.
+   */
+  why: string;
 };

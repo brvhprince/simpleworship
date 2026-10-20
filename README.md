@@ -134,6 +134,15 @@ with EasyWorship should feel at home.
   offline and no sound leaves the church; the speech model is downloaded
   once. It understands English; in a Twi sermon it catches references said
   in English.
+- **Assistant (optional):** with the church's own API key for Claude
+  (Anthropic), ChatGPT (OpenAI) or Gemini (Google), kept in the computer's
+  keychain (Settings › Assistant), an AI can help:
+  **Ask AI** finds songs from a description ("the song about the blood
+  that never loses its power") and passages on a theme; **Tidy Lyrics**
+  sets out pasted lyrics in sections; **Translate** drafts a song in Twi,
+  French or English as a new song; **From Sermon Notes** turns the
+  preacher's outline into slides and scripture for the schedule. Nothing
+  is sent until a button is clicked, and the library is never sent.
 - **Cameras:** cameras and capture cards connected to the computer appear
   in Media › Cameras, live. Show one full screen (Preview, Go Live, or add
   it to the schedule), or use one as the background of a theme, a schedule
@@ -310,18 +319,7 @@ projector, the stage display and every thumbnail look the same.
 | M10       | Phone remote (roles, QR pairing, stage display on a tablet), per-content transitions | ✅     |
 | M11       | Stream output: lower-third look, browser source for OBS/vMix, stream window, NDI; camera feeds | ✅     |
 | M12       | More than one computer: second operators, mirrors, take over        | ✅     |
-| M13       | AI: Listen for scripture (on the computer), then an optional assistant | 🚧     |
-
-Later: the optional AI assistant (M13b).
-
-### Backlog
-
-Planned, in order, after everything above:
-
-1. Import the Bible Society of Ghana *Nkwa Asɛm* (NA-TWI) text files: one
-   inconsistent text file per book, so it needs a careful reader that checks
-   each chapter's verses and reports anything doubtful. (Twi already works
-   today through EasyWorship `.ewb` import.)
+| M13       | AI: Listen for scripture (on the computer), and an optional assistant  | 🚧     |
 
 ## License
 

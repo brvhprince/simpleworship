@@ -16,6 +16,7 @@
   import { i18n, LANGUAGES, type Language, t } from "../lib/i18n/i18n.svelte.ts";
   import { link } from "../lib/link.svelte.ts";
   import { ROLES, remote } from "../lib/remote.svelte.ts";
+  import AssistantSettings from "./AssistantSettings.svelte";
   import StreamSettings from "./StreamSettings.svelte";
   import ColorField from "./themes/ColorField.svelte";
   import UpdateButton from "./UpdateButton.svelte";
@@ -120,6 +121,11 @@
           <Button onclick={addTemplate}>{t("settings.addTemplate")}</Button>
         </section>
       {/if}
+
+      <section>
+        <h3>{t("settings.assistant")}</h3>
+        <AssistantSettings />
+      </section>
 
       <section>
         <h3>{t("settings.updates")}</h3>

@@ -8,12 +8,15 @@
   import type { CountdownEnd, CountdownTarget } from "@simpleworship/protocol";
   import { Button } from "@simpleworship/ui";
   import { addCountdownToSchedule, addTextToSchedule, showTextInPreview } from "../../lib/api.ts";
+  import { assistant } from "../../lib/assistant.svelte.ts";
   import { engine } from "../../lib/engine.svelte.ts";
   import { t } from "../../lib/i18n/i18n.svelte.ts";
   import { withModifier } from "../../lib/platform.ts";
+  import SermonNotesDialog from "./SermonNotesDialog.svelte";
 
   let title = $state("");
   let text = $state("");
+  let fromNotes = $state(false);
 
   // Countdown settings.
   let countdownMessage = $state(t("countdown.defaultMessage"));
@@ -76,6 +79,11 @@
       aria-label={t("text.text")}
     ></textarea>
     <div class="actions">
+      {#if assistant.ready}
+        <Button title={t("sermon.hint")} onclick={() => (fromNotes = true)}
+          >{t("sermon.open")}</Button
+        >
+      {/if}
       <span class="hint">{withModifier("Enter")}</span>
       <Button disabled={!text.trim()} onclick={addToSchedule}>{t("common.addToSchedule")}</Button>
       <Button variant="primary" disabled={!text.trim()} onclick={preview}
@@ -113,6 +121,10 @@
     </div>
   </section>
 </div>
+
+{#if fromNotes}
+  <SermonNotesDialog onclose={() => (fromNotes = false)} />
+{/if}
 
 <style>
   .tab {
