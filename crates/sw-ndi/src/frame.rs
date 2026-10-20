@@ -30,8 +30,7 @@ impl Frame {
     /// From red, green, blue, alpha bytes with straight alpha (as in a PNG).
     pub fn from_rgba(width: u32, height: u32, rgba: &[u8]) -> Self {
         let mut pixels = Vec::with_capacity(rgba.len());
-        for pixel in rgba.chunks_exact(4) {
-            let [r, g, b, a] = [pixel[0], pixel[1], pixel[2], pixel[3]];
+        for &[r, g, b, a] in rgba.as_chunks::<4>().0 {
             pixels.extend_from_slice(&[premultiply(b, a), premultiply(g, a), premultiply(r, a), a]);
         }
         Self {
@@ -84,7 +83,7 @@ impl Frame {
     pub fn write_straight(pixels: &[u8], out: &mut Vec<u8>) {
         out.clear();
         out.reserve(pixels.len());
-        for pixel in pixels.chunks_exact(4) {
+        for pixel in pixels.as_chunks::<4>().0 {
             let a = pixel[3];
             out.extend_from_slice(&[
                 unpremultiply(pixel[0], a),

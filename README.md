@@ -235,10 +235,13 @@ You need:
 - The [Tauri system dependencies](https://tauri.app/start/prerequisites/) for
   your OS. On Linux that includes WebKitGTK, and the GStreamer plugins for
   video playback.
-- [CMake](https://cmake.org), to build Whisper's speech to text for Listen
-  (`brew install cmake` on a Mac; it comes with Visual Studio's C++ tools on
-  Windows). On Linux, also the ALSA headers for microphones:
-  `sudo apt install cmake libasound2-dev`.
+- [CMake](https://cmake.org) and libclang, to build Whisper's speech to
+  text for Listen:
+  - Mac: `brew install cmake` (libclang comes with Xcode's tools).
+  - Windows: CMake comes with Visual Studio's C++ tools; for libclang,
+    `winget install LLVM.LLVM`, then open a new terminal.
+  - Linux: `sudo apt install cmake libclang-dev libasound2-dev` (the last
+    is for microphones).
 
 ```sh
 pnpm install

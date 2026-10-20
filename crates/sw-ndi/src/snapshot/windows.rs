@@ -82,8 +82,10 @@ fn decode(png_bytes: &[u8]) -> Result<Frame, String> {
     let rgba: Vec<u8> = match info.color_type {
         png::ColorType::Rgba => pixels.to_vec(),
         png::ColorType::Rgb => pixels
-            .chunks_exact(3)
-            .flat_map(|px| [px[0], px[1], px[2], 255])
+            .as_chunks::<3>()
+            .0
+            .iter()
+            .flat_map(|&[r, g, b]| [r, g, b, 255])
             .collect(),
         other => return Err(format!("unexpected picture format {other:?}")),
     };

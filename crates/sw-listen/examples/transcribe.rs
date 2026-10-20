@@ -70,8 +70,10 @@ fn read_wav(bytes: &[u8]) -> Option<(u32, usize, Vec<f32>)> {
         } else if id == b"data" {
             let data = bytes.get(body..(body + size).min(bytes.len()))?;
             let samples = data
-                .chunks_exact(2)
-                .map(|pair| f32::from(i16::from_le_bytes([pair[0], pair[1]])) / 32_768.0)
+                .as_chunks::<2>()
+                .0
+                .iter()
+                .map(|&pair| f32::from(i16::from_le_bytes(pair)) / 32_768.0)
                 .collect();
             return Some((rate, channels, samples));
         }

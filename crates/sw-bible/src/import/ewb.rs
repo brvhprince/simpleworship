@@ -98,10 +98,12 @@ pub fn read(path: &Path) -> Result<BibleData, ImportError> {
 /// Decodes the 8-byte verse records.
 fn records(verse_info: &[u8]) -> Vec<Record> {
     verse_info
-        .chunks_exact(8)
-        .map(|chunk| {
-            let position = u32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]);
-            let reference = u32::from_le_bytes([chunk[4], chunk[5], chunk[6], chunk[7]]);
+        .as_chunks::<8>()
+        .0
+        .iter()
+        .map(|&[p0, p1, p2, p3, r0, r1, r2, r3]| {
+            let position = u32::from_le_bytes([p0, p1, p2, p3]);
+            let reference = u32::from_le_bytes([r0, r1, r2, r3]);
             Record {
                 start: (position >> 10) as usize,
                 length: (position & 0x3FF) as usize,
