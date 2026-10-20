@@ -28,6 +28,8 @@ mod import_sources;
 mod launch;
 mod media;
 mod menu;
+#[cfg(all(debug_assertions, any(target_os = "macos", windows)))]
+mod ndi_spike;
 mod office;
 mod recent;
 mod remote;
@@ -82,6 +84,8 @@ pub fn run() {
             commands::themes::sync_settings(app.handle(), &state)?;
 
             remote::start_if_enabled(app.handle());
+            #[cfg(all(debug_assertions, any(target_os = "macos", windows)))]
+            ndi_spike::start_if_asked(app.handle());
 
             // Windows and Linux: started by double-clicking a schedule file.
             let args: Vec<String> = std::env::args().collect();

@@ -34,7 +34,8 @@
         "enable": true,
         "scope": ["$APPDATA/media/**", "$APPDATA/thumbnails/**"]
       }
-    }
+    },
+    "macOSPrivateApi": true
   },
   "bundle": {
     "active": true,
