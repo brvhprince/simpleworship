@@ -53,6 +53,7 @@
   import SlidePane from "./SlidePane.svelte";
   import TakeOverPrompt from "./TakeOverPrompt.svelte";
   import Toolbar from "./Toolbar.svelte";
+  import UpdateDialog from "./UpdateDialog.svelte";
   import UsageDialog from "./UsageDialog.svelte";
   import VideoControls from "./VideoControls.svelte";
 
@@ -258,6 +259,7 @@
       {/key}
     {/if}
 
+    <UpdateDialog />
     <PromptHost />
 
     {#if engine.error}

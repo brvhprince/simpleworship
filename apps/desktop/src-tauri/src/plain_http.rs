@@ -79,10 +79,12 @@ async fn send(
             ));
         }
         request.push_str("\r\n");
-        stream.write_all(request.as_bytes()).await?;
+        // In one write, so the request arrives together.
+        let mut bytes = request.into_bytes();
         if let Some(body) = &body {
-            stream.write_all(body).await?;
+            bytes.extend_from_slice(body);
         }
+        stream.write_all(&bytes).await?;
         let mut raw = Vec::new();
         stream.read_to_end(&mut raw).await?;
         parse(&raw)
@@ -146,19 +148,41 @@ mod tests {
     use tokio::net::TcpListener;
 
     /// A one-request server that answers with `response`, and hands back
-    /// what it was sent.
+    /// what it was sent. It reads the whole request first (headers and
+    /// body): closing with some of it unread makes the system reset the
+    /// connection, which the client would see instead of the answer.
     async fn serve_once(response: &'static [u8]) -> (String, tokio::task::JoinHandle<Vec<u8>>) {
         let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
         let address = format!("http://{}", listener.local_addr().unwrap());
         let task = tokio::spawn(async move {
             let (mut stream, _) = listener.accept().await.unwrap();
-            let mut request = vec![0u8; 4096];
-            let read = stream.read(&mut request).await.unwrap();
+            let mut request = Vec::new();
+            let mut buffer = [0u8; 4096];
+            while !whole_request(&request) {
+                let read = stream.read(&mut buffer).await.unwrap();
+                if read == 0 {
+                    break;
+                }
+                request.extend_from_slice(&buffer[..read]);
+            }
             stream.write_all(response).await.unwrap();
-            request.truncate(read);
             request
         });
         (address, task)
+    }
+
+    /// Whether `request` has its headers and as much body as they announce.
+    fn whole_request(request: &[u8]) -> bool {
+        let Some(end) = request.windows(4).position(|w| w == b"\r\n\r\n") else {
+            return false;
+        };
+        let head = String::from_utf8_lossy(&request[..end]).to_ascii_lowercase();
+        let length = head
+            .lines()
+            .find_map(|line| line.strip_prefix("content-length:"))
+            .and_then(|value| value.trim().parse::<usize>().ok())
+            .unwrap_or(0);
+        request.len() >= end + 4 + length
     }
 
     #[tokio::test]

@@ -21,7 +21,6 @@ import { engine } from "./engine.svelte.ts";
 import { t } from "./i18n/i18n.svelte.ts";
 import { onMenuClick } from "./menu.ts";
 import { prompts } from "./prompts.svelte.ts";
-import { plainText } from "./release-notes.ts";
 
 /** Wait this long after startup before looking, so starting up stays quick. */
 const FIRST_CHECK_DELAY_MS = 60_000;
@@ -29,12 +28,23 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 type Status = "idle" | "checking" | "downloading" | "ready" | "installing";
 
+/** The question the update window asks (see `operator/UpdateDialog.svelte`). */
+interface Offer {
+  version: string;
+  /** What is new, in Markdown. */
+  notes: string | null;
+  /** Install (`true`) or later. */
+  answer: (install: boolean) => void;
+}
+
 class Updates {
   status: Status = $state("idle");
   /** The new version, once one is found. */
   version: string | null = $state(null);
-  /** What is new in it, from the release notes. */
+  /** What is new in it: the release notes, in Markdown. */
   notes: string | null = $state(null);
+  /** The update window's question, while it is open. */
+  offer: Offer | null = $state.raw(null);
   /** Download progress, 0 to 1. */
   progress = $state(0);
 
@@ -68,6 +78,19 @@ class Updates {
    * install, unless something is live (the toolbar's Update Ready waits).
    */
   async checkNow(): Promise<void> {
+    // While developing there are no releases to find: show the update
+    // window with the newest CHANGELOG section instead, to see how it looks.
+    if (import.meta.env.DEV) {
+      const { default: changelog } = await import("../../../../CHANGELOG.md?raw");
+      const [, newest = ""] = changelog.split(/^## /m);
+      const [heading = "", ...rest] = newest.split("\n");
+      this.offer = {
+        version: heading.split(" ")[0] ?? "",
+        notes: rest.join("\n").trim(),
+        answer: () => (this.offer = null),
+      };
+      return;
+    }
     try {
       const found = await this.#look();
       if (found && this.status === "ready" && !engine.live) {
@@ -99,7 +122,7 @@ class Updates {
       }
       this.#update = update;
       this.version = update.version;
-      this.notes = update.body ? plainText(update.body) : null;
+      this.notes = update.body?.trim() || null;
       this.status = "downloading";
       let total = 0;
       let received = 0;
@@ -130,16 +153,17 @@ class Updates {
       });
       return;
     }
-    const answer = await prompts.ask({
-      title: t("updates.installTitle", { version: this.version ?? "" }),
-      message: `${this.notes ? `${this.notes}\n\n` : ""}${t("updates.installMessage")}`,
-      buttons: [
-        { id: "later", label: t("common.later") },
-        { id: "install", label: t("updates.install"), variant: "primary" },
-      ],
-      cancel: "later",
+    const install = await new Promise<boolean>((answer) => {
+      this.offer = {
+        version: this.version ?? "",
+        notes: this.notes,
+        answer: (choice) => {
+          this.offer = null;
+          answer(choice);
+        },
+      };
     });
-    if (answer !== "install") return;
+    if (!install) return;
     this.status = "installing";
     try {
       await this.#update.install();
