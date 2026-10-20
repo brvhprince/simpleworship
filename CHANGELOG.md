@@ -4,7 +4,47 @@ What changed in each release of SimpleWorship. The newest release is at
 the top. Each release's notes are also shown in the app when it offers the
 update.
 
-## 0.1.0 (unreleased)
+## 0.2.0 (20 October 2026)
+
+Phones, livestreams and cameras.
+
+- **Phone remote:** control SimpleWorship from phones and tablets on the
+  church Wi-Fi, in the browser (nothing to install). In the toolbar, click
+  Remote › Connect a Phone and scan the QR code, then choose what the phone
+  may do: full control, presenter (next, previous, Black), worship leader
+  (the songs in the schedule), alerts (for the nursery and ushers) or a
+  stage display on a tablet. Remove a phone in Settings and it is
+  disconnected at once.
+- **Livestream look:** the same slides in a look of their own for the
+  stream, like EasyWorship's Alternate Output. By default, songs and
+  scripture appear as a lower third over the camera. Black, Logo and Clear
+  Text take the words off the stream without covering the camera. Choose
+  the look for each kind of content in Settings › Stream.
+- **OBS, vMix and Streamlabs:** copy the browser-source link from Stream in
+  the toolbar; the background is see-through.
+- **NDI:** send the stream look (and, if wanted, what the projector shows)
+  to vMix, OBS, a TriCaster or any NDI receiver on the network, with
+  transparency. Needs the free NDI Tools on the computer.
+- **Stream window:** the stream look on a screen, for a capture card or a
+  video switcher (with a green background for chroma key).
+- **Cameras:** cameras and capture cards appear in Media › Cameras. Show
+  one full screen, or use one as a background behind the words.
+- **Transitions for each kind of content** (songs, scripture,
+  presentations, everything else), remembered between services, with "Cut
+  for everything".
+- **A tidier toolbar** that fits on one line on any screen: Screens (for
+  the projector, stage display and stream window), Transitions, Stream and
+  Remote on the left; Black, Logo, Clear Text, Clear Background, Alert and
+  Stage on the right.
+- **Going live shows the words:** sending something live takes off Logo and
+  Clear Text (Black stays on, as the safety net).
+- **Fonts on Windows:** every installed font now appears in the font list,
+  including those installed outside the Windows Fonts folder.
+- **Twi** translation of the whole app.
+- **Fixed:** importing EasyWorship media finds the Resources folder in more
+  places and says where it looked.
+
+## 0.1.0 (19 October 2026)
 
 The first release: everything a Sunday service needs, for churches moving
 from EasyWorship.
