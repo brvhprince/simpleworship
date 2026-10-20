@@ -293,7 +293,7 @@ projector, the stage display and every thumbnail look the same.
 | M9        | Installers, auto-update, translations (English, French, Twi), EasyWorship media import | ✅     |
 | M10       | Phone remote (roles, QR pairing, stage display on a tablet), per-content transitions | ✅     |
 | M11       | Stream output: lower-third look, browser source for OBS/vMix, stream window, NDI; camera feeds | ✅     |
-| M12       | More than one computer: second operators, mirrors, take over        | 🚧     |
+| M12       | More than one computer: second operators, mirrors, take over        | ✅     |
 
 Later: AI-assisted features.
 

@@ -4,6 +4,29 @@ What changed in each release of SimpleWorship. The newest release is at
 the top. Each release's notes are also shown in the app when it offers the
 update.
 
+## 0.3.0 (20 October 2026)
+
+More than one computer.
+
+- **Join another computer:** a second SimpleWorship computer can join the
+  one running the service, from Remote › Join Another Computer. Pick it
+  from the list, type the code shown in its Connect a Phone window, and
+  its operator allows it:
+  - as a **second operator**, with its own preview, for example scripture
+    at the pulpit desk while songs run from the booth;
+  - or as a **mirror**, which follows the service with its own screens
+    or NDI, for an overflow room or the stream booth.
+
+  Pictures and videos come from the main computer, the clocks are kept in
+  step, and the sound plays on the main computer. Both computers need the
+  same version of SimpleWorship.
+- **Take over:** if the main computer stops answering, a joined computer
+  offers to carry on the service, from the slide that was live, with the
+  same schedule, screens, timer and music.
+- **Each phone has its own preview,** so lining something up on a phone
+  never disturbs the operator's preview.
+- **What's new in each update** now shows in the update window.
+
 ## 0.2.0 (20 October 2026)
 
 Phones, livestreams and cameras.
