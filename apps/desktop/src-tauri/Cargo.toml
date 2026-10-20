@@ -43,6 +43,7 @@ sw-core.workspace = true
 sw-db.workspace = true
 sw-files.workspace = true
 sw-import.workspace = true
+sw-listen.workspace = true
 sw-ndi.workspace = true
 sw-server.workspace = true
 # protocol-asset serves media files to the webview (with range requests,
@@ -54,6 +55,11 @@ tauri-plugin-opener = "2.7"
 tauri-plugin-process = "2.4"
 tauri-plugin-updater = "2.14"
 log = "0.4"
+# Downloading Listen's speech model (listen.rs). The same HTTPS library the
+# updater uses, with the same encryption code (ring).
+reqwest = { version = "0.13", default-features = false, features = ["rustls-no-provider"] }
+rustls = { version = "0.23", default-features = false, features = ["ring"] }
+sha2 = "0.10"
 thiserror.workspace = true
 ts-rs.workspace = true
 

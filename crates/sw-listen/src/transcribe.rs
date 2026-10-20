@@ -1,0 +1,107 @@
+//! Speech to text with Whisper (whisper.cpp), on this computer.
+
+use std::path::Path;
+
+use whisper_rs::{
+    FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters, WhisperState,
+};
+
+use crate::Error;
+use crate::audio::SAMPLE_RATE;
+
+/// Nudges Whisper to write references the way the scripture finder reads
+/// them best ("John 3:16", not "John three sixteen").
+const PROMPT: &str = "The preacher reads from the Bible: John 3:16, Romans 8:28-30, \
+                      1 Corinthians 13:4-7, Psalm 23, Isaiah 40:31.";
+
+/// A segment Whisper is this sure is not speech is dropped.
+const NOT_SPEECH: f32 = 0.6;
+
+/// A loaded Whisper model, ready to turn pieces of speech into text.
+pub struct Transcriber {
+    state: WhisperState,
+    threads: i32,
+}
+
+impl Transcriber {
+    /// Loads the model at `path` (a whisper.cpp `ggml-*.bin` file). Takes
+    /// a second or two.
+    pub fn load(path: &Path) -> Result<Self, Error> {
+        whisper_rs::install_logging_hooks();
+        let context = WhisperContext::new_with_params(path, WhisperContextParameters::default())
+            .map_err(|error| Error::Model(error.to_string()))?;
+        let state = context
+            .create_state()
+            .map_err(|error| Error::Model(error.to_string()))?;
+        // Half the computer's cores (at most 4): fast, and the operator
+        // window stays responsive.
+        let cores = std::thread::available_parallelism().map_or(2, usize::from);
+        let threads = (cores / 2).clamp(1, 4) as i32;
+        Ok(Self { state, threads })
+    }
+
+    /// The words in a piece of 16 kHz speech.
+    pub fn transcribe(&mut self, audio: &[f32]) -> Result<String, Error> {
+        // Whisper needs at least a second.
+        let mut padded;
+        let audio = if audio.len() < SAMPLE_RATE as usize {
+            padded = audio.to_vec();
+            padded.resize(SAMPLE_RATE as usize + SAMPLE_RATE as usize / 10, 0.0);
+            &padded
+        } else {
+            audio
+        };
+
+        let mut params = FullParams::new(SamplingStrategy::Greedy { best_of: 1 });
+        params.set_language(Some("en"));
+        params.set_n_threads(self.threads);
+        params.set_initial_prompt(PROMPT);
+        params.set_no_context(true);
+        params.set_suppress_blank(true);
+        params.set_suppress_nst(true);
+        params.set_print_special(false);
+        params.set_print_progress(false);
+        params.set_print_realtime(false);
+        params.set_print_timestamps(false);
+        self.state
+            .full(params, audio)
+            .map_err(|error| Error::Transcribe(error.to_string()))?;
+
+        let mut text = String::new();
+        for segment in self.state.as_iter() {
+            if segment.no_speech_probability() > NOT_SPEECH {
+                continue;
+            }
+            if let Ok(words) = segment.to_str_lossy() {
+                text.push_str(&words);
+            }
+        }
+        Ok(clean(&text))
+    }
+}
+
+/// Whisper's own notes ("[BLANK_AUDIO]", "(music)") are not words.
+fn clean(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut depth = 0;
+    for c in text.chars() {
+        match c {
+            '[' | '(' => depth += 1,
+            ']' | ')' if depth > 0 => depth -= 1,
+            _ if depth == 0 => out.push(c),
+            _ => {}
+        }
+    }
+    out.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::clean;
+
+    #[test]
+    fn drops_whispers_notes() {
+        assert_eq!(clean(" [BLANK_AUDIO] "), "");
+        assert_eq!(clean(" (music) John 3:16  says"), "John 3:16 says");
+    }
+}

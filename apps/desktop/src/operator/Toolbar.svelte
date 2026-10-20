@@ -9,6 +9,7 @@
   - **Transitions**: cut or fade (and how long) for each kind of content.
   - **Stream**: the browser source for OBS or vMix.
   - **Remote**: phones and tablets.
+  - **Listen**: hears the preacher, to offer the scripture they read.
 
   On the right, what the operator reaches for during the service: Black,
   Logo, Clear Text and Clear Background, then the Alert and Stage panels.
@@ -20,12 +21,14 @@
   import { engine } from "../lib/engine.svelte.ts";
   import { t } from "../lib/i18n/i18n.svelte.ts";
   import { link } from "../lib/link.svelte.ts";
+  import { listen } from "../lib/listen.svelte.ts";
   import { ndi } from "../lib/ndi.svelte.ts";
   import { outputs } from "../lib/outputs.svelte.ts";
   import { panels } from "../lib/panels.svelte.ts";
   import { remote } from "../lib/remote.svelte.ts";
   import { updates } from "../lib/updates.svelte.ts";
   import AlertsPanel from "./AlertsPanel.svelte";
+  import ListenPanel from "./ListenPanel.svelte";
   import Popover from "./Popover.svelte";
   import RemotePanel from "./RemotePanel.svelte";
   import ScreensPanel from "./ScreensPanel.svelte";
@@ -84,6 +87,16 @@
         onclose={() => panels.close()}
       >
         <RemotePanel />
+      </Popover>
+      <Popover
+        label={listen.listening ? t("toolbar.listening") : t("toolbar.listen")}
+        align="start"
+        open={panels.open === "listen"}
+        active={listen.listening}
+        ontoggle={() => panels.toggle("listen")}
+        onclose={() => panels.close()}
+      >
+        <ListenPanel />
       </Popover>
     </div>
 

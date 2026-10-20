@@ -23,6 +23,7 @@
   import { menuLabels, t } from "../lib/i18n/i18n.svelte.ts";
   import { importer } from "../lib/importer.svelte.ts";
   import { link } from "../lib/link.svelte.ts";
+  import { listen } from "../lib/listen.svelte.ts";
   import { media } from "../lib/media.svelte.ts";
   import { connectEditMenu } from "../lib/menu.ts";
   import { ndi } from "../lib/ndi.svelte.ts";
@@ -100,6 +101,7 @@
       remote.connect(),
       outputs.connect(),
       ndi.connect(),
+      listen.connect(),
     ];
     for (const connection of connections) {
       connection.catch((error) => engine.showError(error));
@@ -151,6 +153,11 @@
     if (event.key === "a" || event.key === "A") {
       event.preventDefault();
       panels.toggle("alerts");
+      return;
+    }
+    // H shows the newest reference Listen heard in the preview.
+    if ((event.key === "h" || event.key === "H") && listen.previewNewest()) {
+      event.preventDefault();
       return;
     }
     if (event.key === "Escape" && engine.output.alert && panels.open === null) {

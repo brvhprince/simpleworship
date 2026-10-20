@@ -6,6 +6,7 @@
 -->
 <script lang="ts">
   import { t } from "../../lib/i18n/i18n.svelte.ts";
+  import { listen } from "../../lib/listen.svelte.ts";
   import MediaTab from "./MediaTab.svelte";
   import PresentationsTab from "./PresentationsTab.svelte";
   import ScriptureTab from "./ScriptureTab.svelte";
@@ -28,6 +29,11 @@
   ]);
 
   let current = $state("songs");
+
+  // The H key shows the newest reference heard: in the Scripture tab.
+  $effect(() => {
+    if (listen.request) current = "scripture";
+  });
 </script>
 
 <section class="library" aria-label={t("library.title")}>
@@ -40,6 +46,9 @@
         onclick={() => (current = tab.id)}
       >
         {tab.label}
+        {#if tab.id === "scripture" && current !== "scripture" && listen.unseen > 0}
+          <span class="badge" title={t("listen.newHeard")}>{listen.unseen}</span>
+        {/if}
       </button>
     {/each}
   </div>
@@ -99,5 +108,19 @@
   .panel {
     flex: 1;
     min-height: 0;
+  }
+
+  /* References Listen heard while another tab was showing. */
+  .badge {
+    display: inline-block;
+    min-width: 1.4em;
+    margin-left: var(--sw-space-1);
+    padding: 0 0.35em;
+    border-radius: 999px;
+    background: var(--sw-preview);
+    color: #fff;
+    font-size: var(--sw-font-size-small);
+    line-height: 1.4;
+    text-align: center;
   }
 </style>

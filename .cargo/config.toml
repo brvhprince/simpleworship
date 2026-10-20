@@ -3,3 +3,8 @@
 # (scripts/gen-bindings.mjs) overrides it to update packages/protocol.
 [env]
 TS_RS_EXPORT_DIR = { value = "target/ts-bindings", relative = true }
+
+# The oldest macOS SimpleWorship runs on (bundle.macOS.minimumSystemVersion
+# in tauri.conf.json). Without it, C and C++ built along the way (such as
+# whisper.cpp, for Listen) would only run on the Mac that built them.
+MACOSX_DEPLOYMENT_TARGET = "11.0"

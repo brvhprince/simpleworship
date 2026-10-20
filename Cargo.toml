@@ -13,6 +13,7 @@ rust-version = "1.88"
 # Internal crates
 sw-bible = { path = "crates/sw-bible" }
 sw-core = { path = "crates/sw-core" }
+sw-listen = { path = "crates/sw-listen" }
 sw-db = { path = "crates/sw-db" }
 sw-files = { path = "crates/sw-files" }
 sw-import = { path = "crates/sw-import" }
@@ -42,4 +43,9 @@ all = { level = "warn", priority = -1 }
 # NDI's pixel work (fades, alpha) is far too slow unoptimized, even while
 # developing.
 [profile.dev.package.sw-ndi]
+opt-level = 3
+
+# Speech to text (whisper.cpp, built by cmake) is far too slow unoptimized
+# for Listen to keep up with a preacher, even while developing.
+[profile.dev.package.whisper-rs-sys]
 opt-level = 3

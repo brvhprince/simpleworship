@@ -28,6 +28,7 @@ mod host_calls;
 mod import_sources;
 mod launch;
 mod link;
+mod listen;
 mod media;
 mod menu;
 mod ndi;
@@ -77,6 +78,7 @@ pub fn run() {
         .manage(launch::PendingOpen::default())
         .manage(remote::RemoteState::default())
         .manage(ndi::NdiState::default())
+        .manage(listen::ListenState::default())
         .manage(link::LinkState::default())
         .setup(|app| {
             log::info!("SimpleWorship {} starting", app.package_info().version);
@@ -211,6 +213,12 @@ pub fn run() {
             link::link_join,
             link::link_leave,
             link::link_take_over,
+            listen::listen_status,
+            listen::listen_devices,
+            listen::listen_configure,
+            listen::listen_start,
+            listen::listen_stop,
+            listen::listen_download,
         ])
         .on_window_event(windows::on_window_event)
         .build(tauri::generate_context!())

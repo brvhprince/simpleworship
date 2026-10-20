@@ -2,11 +2,14 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
   Added to SimpleWorship's Info.plist when the app is bundled. macOS shows
-  this sentence when SimpleWorship first uses a camera (Media › Cameras).
+  these sentences when SimpleWorship first uses a camera (Media › Cameras)
+  or a microphone (Listen).
 -->
 <plist version="1.0">
 <dict>
   <key>NSCameraUsageDescription</key>
   <string>SimpleWorship shows live pictures from your cameras and capture cards on the screens.</string>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>SimpleWorship listens to the preacher to offer the scripture they read. What it hears stays on this computer.</string>
 </dict>
 </plist>

@@ -113,6 +113,10 @@ pub enum AppError {
     #[error("that theme is no longer in the library")]
     ThemeNotFound,
 
+    /// Listen could not start, or its speech model could not be had.
+    #[error("{0}")]
+    Listen(String),
+
     /// A monitor index that does not exist (any more).
     #[error("monitor {0} is not connected")]
     MonitorNotFound(usize),

@@ -125,6 +125,15 @@ with EasyWorship should feel at home.
   If the main computer stops answering, a joined computer offers to **take
   over** and carries on from the slide that was live. Both computers must
   run the same version.
+- **Listen:** turn on Listen in the toolbar, choose the microphone (the
+  mixer's feed), and SimpleWorship hears the preacher: every scripture they
+  read ("John chapter three, verse sixteen", "Romans 8:28 to 30", "verse
+  seventeen") appears at the top of the Scripture tab. Click it, or press
+  **H** for the newest, to show it in the preview; double-click it to send
+  it straight live. Nothing goes live by itself. Speech to text runs on the computer (Whisper), so it works
+  offline and no sound leaves the church; the speech model is downloaded
+  once. It understands English; in a Twi sermon it catches references said
+  in English.
 - **Cameras:** cameras and capture cards connected to the computer appear
   in Media › Cameras, live. Show one full screen (Preview, Go Live, or add
   it to the schedule), or use one as the background of a theme, a schedule
@@ -226,6 +235,10 @@ You need:
 - The [Tauri system dependencies](https://tauri.app/start/prerequisites/) for
   your OS. On Linux that includes WebKitGTK, and the GStreamer plugins for
   video playback.
+- [CMake](https://cmake.org), to build Whisper's speech to text for Listen
+  (`brew install cmake` on a Mac; it comes with Visual Studio's C++ tools on
+  Windows). On Linux, also the ALSA headers for microphones:
+  `sudo apt install cmake libasound2-dev`.
 
 ```sh
 pnpm install
@@ -294,8 +307,9 @@ projector, the stage display and every thumbnail look the same.
 | M10       | Phone remote (roles, QR pairing, stage display on a tablet), per-content transitions | ✅     |
 | M11       | Stream output: lower-third look, browser source for OBS/vMix, stream window, NDI; camera feeds | ✅     |
 | M12       | More than one computer: second operators, mirrors, take over        | ✅     |
+| M13       | AI: Listen for scripture (on the computer), then an optional assistant | 🚧     |
 
-Later: AI-assisted features.
+Later: the optional AI assistant (M13b).
 
 ### Backlog
 

@@ -33,6 +33,24 @@ export type AppSettings = {
 };
 
 /**
+ * A microphone or audio input to listen to.
+ */
+export type AudioInput = {
+  /**
+   * Identifies it in [`ListenSettings::device`].
+   */
+  id: string;
+  /**
+   * Its name, as the system shows it.
+   */
+  name: string;
+  /**
+   * Whether it is the system's default input.
+   */
+  default: boolean;
+};
+
+/**
  * What is known about an autosaved schedule, shown in the restore prompt.
  */
 export type AutosaveInfo = {
@@ -106,6 +124,38 @@ export type FoundSource = {
    * For [`SourceKind::SongFiles`], the files themselves.
    */
   files: Array<string>;
+};
+
+/**
+ * A reference heard.
+ */
+export type HeardReference = {
+  /**
+   * The passage.
+   */
+  passage: Passage;
+  /**
+   * How it is written ("John 3:16").
+   */
+  reference: string;
+  /**
+   * The words it was found in ("John chapter three, verse sixteen").
+   */
+  said: string;
+};
+
+/**
+ * A sentence heard, and the references in it.
+ */
+export type HeardWords = {
+  /**
+   * What was said.
+   */
+  words: string;
+  /**
+   * The references in it (often none).
+   */
+  references: Array<HeardReference>;
 };
 
 /**
@@ -196,6 +246,50 @@ export type LinkStatus = {
 };
 
 /**
+ * What the operator chose (saved).
+ */
+export type ListenSettings = {
+  /**
+   * The microphone ([`AudioInput::id`]), or the system's default.
+   */
+  device: string | null;
+  /**
+   * The speech model.
+   */
+  model: SpeechModel;
+};
+
+/**
+ * Whether this computer is listening, and with what.
+ */
+export type ListenStatus = {
+  /**
+   * Listening now.
+   */
+  listening: boolean;
+  /**
+   * Loading the model and opening the microphone.
+   */
+  starting: boolean;
+  /**
+   * What was chosen.
+   */
+  settings: ListenSettings;
+  /**
+   * The models, and which are downloaded.
+   */
+  models: Array<ModelInfo>;
+  /**
+   * A model being downloaded.
+   */
+  download: ModelDownload | null;
+  /**
+   * Why listening stopped by itself, or a download failed.
+   */
+  problem: string | null;
+};
+
+/**
  * A media file to import, with the title to give it.
  */
 export type MediaChoice = {
@@ -239,6 +333,38 @@ export type MediaProgress = {
    * The file's size.
    */
   total: number;
+};
+
+/**
+ * A model on its way.
+ */
+export type ModelDownload = {
+  /**
+   * Which one.
+   */
+  model: SpeechModel;
+  /**
+   * How far along, 0 to 1.
+   */
+  progress: number;
+};
+
+/**
+ * A speech model, and whether it is on this computer.
+ */
+export type ModelInfo = {
+  /**
+   * Which one.
+   */
+  model: SpeechModel;
+  /**
+   * Its download size in bytes.
+   */
+  sizeBytes: number;
+  /**
+   * Whether it is downloaded.
+   */
+  ready: boolean;
 };
 
 /**
@@ -575,6 +701,12 @@ export type ScheduleFileStatus = {
  * The kind of thing that was found.
  */
 export type SourceKind = "easyWorshipSongs" | "easyWorshipBible" | "openLpSongs" | "songFiles";
+
+/**
+ * A Whisper model size. All three are the English-only models, which hear
+ * English better than the multilingual ones of the same size.
+ */
+export type SpeechModel = "fast" | "standard" | "accurate";
 
 /**
  * What the stage display shows.

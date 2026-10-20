@@ -30,6 +30,8 @@
   import { engine } from "../../lib/engine.svelte.ts";
   import { t } from "../../lib/i18n/i18n.svelte.ts";
   import { link } from "../../lib/link.svelte.ts";
+  import { type Heard, listen } from "../../lib/listen.svelte.ts";
+  import HeardStrip from "./HeardStrip.svelte";
   import ManageBibles from "./ManageBibles.svelte";
 
   /** Wait this long after the last keystroke before looking things up. */
@@ -211,13 +213,16 @@
     return JSON.stringify([shown, bibleIds, options]);
   }
 
-  async function preview(shown: Passage | null = passage) {
-    if (!shown) return;
+  /** Shows a passage in the preview. Resolves to whether it worked. */
+  async function preview(shown: Passage | null = passage): Promise<boolean> {
+    if (!shown) return false;
     try {
       await showScriptureInPreview(shown, bibleIds, options);
       previewedKey = previewKey(shown);
+      return true;
     } catch (error) {
       engine.showError(error);
+      return false;
     }
   }
 
@@ -242,6 +247,34 @@
       await preview(fresh);
     }
   }
+
+  /** A reference Listen heard: select it and show it in the preview. */
+  function showHeard(heard: Heard): Promise<boolean> {
+    query = heard.reference;
+    passage = heard.passage;
+    return preview(heard.passage);
+  }
+
+  /** A double-click on a heard reference: straight to live. (The first
+   *  click has already started the preview; showing it again first makes
+   *  sure live gets this passage, not whatever was previewed before.) */
+  async function sendHeardLive(heard: Heard) {
+    if (await showHeard(heard)) engine.dispatch({ type: "goLive" });
+  }
+
+  // The H key, pressed anywhere: the newest reference heard.
+  $effect(() => {
+    const requested = listen.request;
+    if (!requested) return;
+    listen.request = null;
+    void showHeard(requested);
+  });
+
+  // Looking at the tab sees what was heard.
+  $effect(() => {
+    void listen.heard;
+    listen.unseen = 0;
+  });
 
   async function addToSchedule() {
     if (!passage) return;
@@ -290,6 +323,7 @@
 </script>
 
 <div class="scripture-tab">
+  <HeardStrip onchoose={showHeard} ongolive={sendHeardLive} />
   <div class="toolbar">
     <select bind:value={primaryId} aria-label={t("scripture.translation")}>
       {#each bibles.list as bible (bible.id)}
