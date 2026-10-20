@@ -100,6 +100,19 @@ jobs:
           fi
           echo "SIGNING_CONFIG=$config" >> "$GITHUB_ENV"
 
+      # The release's text is this version's section of CHANGELOG.md. It is
+      # also what installed copies show when they offer the update (it goes
+      # into latest.json). Fails here if the changelog has no section for it.
+      - name: Release notes from CHANGELOG.md
+        id: notes
+        shell: bash
+        run: |
+          {
+            echo "body<<SIMPLEWORSHIP_NOTES"
+            node scripts/release-notes.mjs "$GITHUB_REF_NAME"
+            echo "SIMPLEWORSHIP_NOTES"
+          } >> "$GITHUB_OUTPUT"
+
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -112,10 +125,7 @@ jobs:
           projectPath: apps/desktop
           tagName: ${{ github.ref_name }}
           releaseName: SimpleWorship ${{ github.ref_name }}
-          releaseBody: |
-            See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for what is new.
-
-            **Which file do I need?** macOS: the `.dmg`. Windows: the `-setup.exe` (or the `.msi` for managed computers). Linux: the `.AppImage`, or the `.deb` / `.rpm` for your distribution.
+          releaseBody: ${{ steps.notes.outputs.body }}
           releaseDraft: true
           prerelease: false
           # latest.json tells installed copies about this release.

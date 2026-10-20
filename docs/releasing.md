@@ -74,9 +74,11 @@ The workflow uses whatever is configured and builds unsigned otherwise.
    pnpm set-version 0.2.0
    ```
 
-2. In `CHANGELOG.md`, give the new version a section saying what changed,
-   in words a church operator understands. These notes are what people see
-   when the update is offered.
+2. In `CHANGELOG.md`, give the new version a section (`## 0.2.0 (date)`)
+   saying what changed, in words a church operator understands. The
+   release workflow copies it into the release, which is also what
+   installed copies show when they offer the update; without it, the
+   release fails at once. Check it with `node scripts/release-notes.mjs 0.2.0`.
 3. Commit, tag and push:
 
    ```sh
@@ -88,7 +90,7 @@ The workflow uses whatever is configured and builds unsigned otherwise.
 4. Wait for the **Release** workflow to finish (about 20 minutes), then
    open the draft release on GitHub. Download and try the installer for
    your computer.
-5. Paste the CHANGELOG section into the release notes and **Publish**.
+5. Check the release notes (they are the CHANGELOG section) and **Publish**.
    Installed copies find it within a day (or straight away with
    Help › Check for Updates…).
 

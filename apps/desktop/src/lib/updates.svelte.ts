@@ -21,6 +21,7 @@ import { engine } from "./engine.svelte.ts";
 import { t } from "./i18n/i18n.svelte.ts";
 import { onMenuClick } from "./menu.ts";
 import { prompts } from "./prompts.svelte.ts";
+import { plainText } from "./release-notes.ts";
 
 /** Wait this long after startup before looking, so starting up stays quick. */
 const FIRST_CHECK_DELAY_MS = 60_000;
@@ -91,7 +92,7 @@ class Updates {
       }
       this.#update = update;
       this.version = update.version;
-      this.notes = update.body ?? null;
+      this.notes = update.body ? plainText(update.body) : null;
       this.status = "downloading";
       let total = 0;
       let received = 0;
