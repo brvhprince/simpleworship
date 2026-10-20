@@ -1,6 +1,6 @@
 {
   "name": "@simpleworship/desktop",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "description": "SimpleWorship desktop app: operator window, projector output and stage display.",
   "license": "GPL-3.0-or-later",

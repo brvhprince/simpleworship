@@ -4,6 +4,42 @@ What changed in each release of SimpleWorship. The newest release is at
 the top. Each release's notes are also shown in the app when it offers the
 update.
 
+## 0.4.0 (20 October 2026)
+
+Listen for scripture, and an assistant.
+
+- **Listen:** turn on Listen in the toolbar and choose the microphone (the
+  mixer's feed). SimpleWorship hears the preacher, and every scripture they
+  read ("John chapter three, verse sixteen", "Romans 8:28 to 30", "verse
+  seventeen") appears at the top of the Scripture tab. Click it, or press
+  **H** for the newest, to show it in the preview; double-click it to send
+  it live. Nothing goes live by itself. Speech to text runs on the
+  computer, so it works offline and no sound leaves the church; its speech
+  model is downloaded once. It understands English; in a Twi sermon it
+  catches references said in English.
+- **Assistant (optional):** with the church's own API key for Claude,
+  ChatGPT or Gemini (Settings › Assistant), an AI can help:
+  - **Ask AI** in the Songs tab finds songs from a description ("the song
+    about the blood that never loses its power"), and in the Scripture tab
+    finds passages on a theme;
+  - **Tidy Lyrics** sets out pasted lyrics in verses and choruses, without
+    chords;
+  - **Translate** drafts a song in Twi, French or English, as a new song;
+  - **From Sermon Notes** in the Text tab turns the preacher's outline into
+    slides and scripture for the schedule.
+
+  Nothing is sent until you click one of its buttons, and your library is
+  never sent. The key stays in the computer's keychain.
+- **Scripture:** clicking a verse shows it in the preview, and
+  double-clicking sends it live.
+- **Alerts** can have their own bar and text colours, and each alert
+  template keeps its own.
+- **Updates:** Check for Updates shows each step (checking, downloading,
+  then Install), the toolbar shows a download's progress, and the update
+  window shows what's new with proper headings and points.
+- Fixes: the About window's layout, the slide pictures in the song editor,
+  and the Scripture tab's reference box lining up with the rest.
+
 ## 0.3.0 (20 October 2026)
 
 More than one computer.
