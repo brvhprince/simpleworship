@@ -30,6 +30,10 @@ export type AppSettings = {
    * ever installed when the operator says so.
    */
   checkForUpdates: boolean;
+  /**
+   * Automatically put the next schedule item into preview when an item goes live.
+   */
+  autoPreviewNext: boolean;
 };
 
 /**

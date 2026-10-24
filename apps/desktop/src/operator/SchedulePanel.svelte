@@ -44,6 +44,20 @@
   import { scheduleFile } from "../lib/schedule-file.svelte.ts";
   import ItemLookEditor from "./ItemLookEditor.svelte";
 
+  type ScheduleLayout = "list" | "column" | "grid";
+  let layout = $state<ScheduleLayout>(
+    (typeof localStorage !== "undefined" &&
+      (localStorage.getItem("simpleworship.schedule_layout") as ScheduleLayout)) ||
+      "list",
+  );
+
+  function setLayout(newLayout: ScheduleLayout) {
+    layout = newLayout;
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem("simpleworship.schedule_layout", newLayout);
+    }
+  }
+
   const items = $derived(engine.schedule.items);
   const previewId = $derived(engine.preview?.scheduleItem ?? null);
   const liveId = $derived(engine.live?.scheduleItem ?? null);
@@ -225,6 +239,38 @@
 <section class="schedule" aria-label={t("schedule.title")}>
   <header>
     <span class="heading">{t("schedule.title")}</span>
+    <div class="layout-toggle" role="group" aria-label={t("schedule.layout")}>
+      <button
+        type="button"
+        class="layout-btn"
+        class:active={layout === "list"}
+        title={t("schedule.layoutList")}
+        aria-label={t("schedule.layoutList")}
+        onclick={() => setLayout("list")}
+      >
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      </button>
+      <button
+        type="button"
+        class="layout-btn"
+        class:active={layout === "column"}
+        title={t("schedule.layoutColumn")}
+        aria-label={t("schedule.layoutColumn")}
+        onclick={() => setLayout("column")}
+      >
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="5" rx="1"/><rect x="3" y="15" width="18" height="5" rx="1"/></svg>
+      </button>
+      <button
+        type="button"
+        class="layout-btn"
+        class:active={layout === "grid"}
+        title={t("schedule.layoutGrid")}
+        aria-label={t("schedule.layoutGrid")}
+        onclick={() => setLayout("grid")}
+      >
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      </button>
+    </div>
     <span class="file" title={scheduleFile.status.path ?? t("schedule.notSaved")}>
       {scheduleFile.status.path ? scheduleFile.status.name : t("schedule.untitled")}{scheduleFile
         .status.dirty
@@ -246,6 +292,9 @@
   -->
   <div
     class="items"
+    class:layout-list={layout === "list"}
+    class:layout-column={layout === "column"}
+    class:layout-grid={layout === "grid"}
     role="listbox"
     aria-label={t("schedule.items")}
     tabindex="0"
@@ -325,6 +374,37 @@
     font-weight: 600;
   }
 
+  .layout-toggle {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid var(--sw-border);
+    border-radius: var(--sw-radius);
+    overflow: hidden;
+  }
+
+  .layout-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3px 6px;
+    background: transparent;
+    border: none;
+    color: var(--sw-text-muted);
+    cursor: pointer;
+    line-height: 1;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .layout-btn:hover {
+    color: var(--sw-text);
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .layout-btn.active {
+    background: var(--sw-surface-sunken, rgba(0, 0, 0, 0.2));
+    color: var(--sw-accent);
+  }
+
   .file {
     flex: 1;
     text-align: right;
@@ -350,6 +430,86 @@
     flex: 1;
     overflow-y: auto;
     padding: var(--sw-space-1) 0;
+  }
+
+  .items.layout-column {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sw-space-1);
+    padding: var(--sw-space-2);
+  }
+
+  .items.layout-column .item {
+    border-radius: var(--sw-radius);
+    border: 1px solid var(--sw-border);
+    border-left: 4px solid transparent;
+    background: var(--sw-surface-sunken, rgba(255, 255, 255, 0.02));
+    padding: var(--sw-space-2) var(--sw-space-3);
+  }
+
+  .items.layout-column .item[aria-selected="true"] {
+    border-left-color: var(--sw-preview);
+    border-color: var(--sw-preview);
+    background: rgba(76, 110, 245, 0.12);
+  }
+
+  .items.layout-column .item.live {
+    border-left-color: var(--sw-live);
+    border-color: var(--sw-live);
+    background: var(--sw-live-soft);
+  }
+
+  .items.layout-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: var(--sw-space-2);
+    padding: var(--sw-space-2);
+    align-content: start;
+  }
+
+  .items.layout-grid .item {
+    flex-direction: column;
+    align-items: flex-start;
+    border-radius: var(--sw-radius);
+    border: 1px solid var(--sw-border);
+    border-top: 3px solid transparent;
+    border-left: none;
+    background: var(--sw-surface-sunken, rgba(255, 255, 255, 0.02));
+    padding: var(--sw-space-2);
+    min-height: 80px;
+    gap: var(--sw-space-1);
+    position: relative;
+  }
+
+  .items.layout-grid .item .title {
+    width: 100%;
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    line-height: 1.3;
+  }
+
+  .items.layout-grid .item[aria-selected="true"] {
+    border-top-color: var(--sw-preview);
+    border-color: var(--sw-preview);
+    background: rgba(76, 110, 245, 0.12);
+  }
+
+  .items.layout-grid .item.live {
+    border-top-color: var(--sw-live);
+    border-color: var(--sw-live);
+    background: var(--sw-live-soft);
+  }
+
+  .items.layout-grid .drop-before {
+    box-shadow: inset 3px 0 0 var(--sw-accent);
+  }
+
+  .items.layout-grid .drop-after {
+    box-shadow: inset -3px 0 0 var(--sw-accent);
   }
 
   .items:focus-visible {

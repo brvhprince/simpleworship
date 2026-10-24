@@ -17,6 +17,7 @@
   import { Button, Dialog } from "@simpleworship/ui";
   import { onMount, untrack } from "svelte";
   import { listFonts, saveTheme } from "../../lib/api.ts";
+  import { engine } from "../../lib/engine.svelte.ts";
   import { firstFamily, fontFamily } from "../../lib/fonts.ts";
   import { t } from "../../lib/i18n/i18n.svelte.ts";
   import { FOOTER_SPACING, REFERENCE_SPACING } from "../../lib/label-placement.ts";
@@ -34,12 +35,33 @@
 
   let { record, onclose }: Props = $props();
 
+  const initialCat = untrack(() => {
+    if (record.theme.category) return record.theme.category;
+    if (engine.themes.defaults.scripture === record.id) return "scripture";
+    if (engine.themes.defaults.presentation === record.id) return "presentation";
+    if (engine.themes.defaults.text === record.id) return "text";
+    return "song";
+  });
+
   // Work on a copy, so Cancel discards the changes.
-  let draft: ThemeRecord = $state(untrack(() => structuredClone($state.snapshot(record))));
-  let sample: "lyrics" | "scripture" = $state("lyrics");
+  let draft: ThemeRecord = $state(untrack(() => {
+    const copy = structuredClone($state.snapshot(record));
+    if (!copy.theme.category) copy.theme.category = initialCat;
+    return copy;
+  }));
+  let sample: "lyrics" | "scripture" = $state(initialCat === "scripture" ? "scripture" : "lyrics");
   let fonts: string[] = $state([]);
   let saving = $state(false);
   let error: string | null = $state(null);
+
+  function onCategoryChange(cat: "song" | "scripture" | "presentation" | "text") {
+    draft.theme.category = cat;
+    if (cat === "scripture") {
+      sample = "scripture";
+    } else {
+      sample = "lyrics";
+    }
+  }
 
   const frame = $derived(
     sample === "lyrics" ? sampleLyrics(draft.theme) : sampleScripture(draft.theme),
@@ -140,10 +162,24 @@
 
     <div class="settings">
       <section>
-        <label class="row">
-          {t("common.name")}
-          <input bind:value={draft.theme.name}>
-        </label>
+        <div class="row">
+          <label class="row" style="flex: 2;">
+            {t("common.name")}
+            <input bind:value={draft.theme.name}>
+          </label>
+          <label class="row" style="flex: 1;">
+            {t("designer.category")}
+            <select
+              value={draft.theme.category ?? "song"}
+              onchange={(e) => onCategoryChange(e.currentTarget.value as any)}
+            >
+              <option value="song">{t("designer.categorySong")}</option>
+              <option value="scripture">{t("designer.categoryScripture")}</option>
+              <option value="presentation">{t("designer.categoryPresentation")}</option>
+              <option value="text">{t("designer.categoryText")}</option>
+            </select>
+          </label>
+        </div>
       </section>
 
       <section>
@@ -349,110 +385,122 @@
             >
             {t("designer.shrink")}
           </label>
+          <label class="inline">
+            <input
+              type="checkbox"
+              checked={draft.theme.textBox.scaleUp ?? false}
+              onchange={(e) => setBox("scaleUp", e.currentTarget.checked)}
+            >
+            {t("designer.scaleUp")}
+          </label>
         </div>
       </section>
 
-      <section>
-        <h4>{t("designer.scriptureSection")}</h4>
-        <div class="row">
+      {#if draft.theme.category === "scripture" || (!draft.theme.category && sample === "scripture")}
+        <section>
+          <h4>{t("designer.scriptureSection")}</h4>
+          <div class="row">
+            <label class="inline">
+              <input
+                type="checkbox"
+                checked={draft.theme.scripture.verseNumbers.visible}
+                onchange={(e) => {
+                  sample = "scripture";
+                  setNumbers("visible", e.currentTarget.checked);
+                }}
+              >
+              {t("designer.verseNumbers")}
+            </label>
+            <label class="inline">
+              {t("designer.size")}
+              <select
+                value={draft.theme.scripture.verseNumbers.sizePercent}
+                onchange={(e) => setNumbers("sizePercent", Number(e.currentTarget.value))}
+              >
+                {#each [40, 55, 70, 85, 100] as percent (percent)}
+                  <option value={percent}>{percent}%</option>
+                {/each}
+              </select>
+            </label>
+            <label class="inline">
+              <input
+                type="checkbox"
+                checked={draft.theme.scripture.verseNumbers.superscript}
+                onchange={(e) => setNumbers("superscript", e.currentTarget.checked)}
+              >
+              {t("designer.raised")}
+            </label>
+            <label class="inline">
+              <input
+                type="checkbox"
+                checked={draft.theme.scripture.verseNumbers.bold}
+                onchange={(e) => setNumbers("bold", e.currentTarget.checked)}
+              >
+              {t("designer.bold")}
+            </label>
+          </div>
+          <div class="row">
+            <label class="inline">
+              <input
+                type="checkbox"
+                checked={draft.theme.scripture.verseNumbers.color === ""}
+                onchange={(e) => setNumbers("color", e.currentTarget.checked ? "" : "#f5c542")}
+              >
+              {t("designer.numbersTextColour")}
+            </label>
+            {#if draft.theme.scripture.verseNumbers.color !== ""}
+              <ColorField
+                label={t("designer.numberColour")}
+                value={draft.theme.scripture.verseNumbers.color}
+                onchange={(color) => setNumbers("color", color)}
+              />
+            {/if}
+          </div>
           <label class="inline">
             <input
               type="checkbox"
-              checked={draft.theme.scripture.verseNumbers.visible}
-              onchange={(e) => {
-                sample = "scripture";
-                setNumbers("visible", e.currentTarget.checked);
-              }}
+              checked={draft.theme.scripture.referenceOnEverySlide}
+              onchange={(e) =>
+                (draft.theme.scripture = {
+                  ...draft.theme.scripture,
+                  referenceOnEverySlide: e.currentTarget.checked,
+                })}
             >
-            {t("designer.verseNumbers")}
+            {t("designer.everySlide")}
           </label>
-          <label class="inline">
-            {t("designer.size")}
-            <select
-              value={draft.theme.scripture.verseNumbers.sizePercent}
-              onchange={(e) => setNumbers("sizePercent", Number(e.currentTarget.value))}
-            >
-              {#each [40, 55, 70, 85, 100] as percent (percent)}
-                <option value={percent}>{percent}%</option>
-              {/each}
-            </select>
-          </label>
-          <label class="inline">
-            <input
-              type="checkbox"
-              checked={draft.theme.scripture.verseNumbers.superscript}
-              onchange={(e) => setNumbers("superscript", e.currentTarget.checked)}
-            >
-            {t("designer.raised")}
-          </label>
-          <label class="inline">
-            <input
-              type="checkbox"
-              checked={draft.theme.scripture.verseNumbers.bold}
-              onchange={(e) => setNumbers("bold", e.currentTarget.checked)}
-            >
-            {t("designer.bold")}
-          </label>
-        </div>
-        <div class="row">
-          <label class="inline">
-            <input
-              type="checkbox"
-              checked={draft.theme.scripture.verseNumbers.color === ""}
-              onchange={(e) => setNumbers("color", e.currentTarget.checked ? "" : "#f5c542")}
-            >
-            {t("designer.numbersTextColour")}
-          </label>
-          {#if draft.theme.scripture.verseNumbers.color !== ""}
-            <ColorField
-              label={t("designer.numberColour")}
-              value={draft.theme.scripture.verseNumbers.color}
-              onchange={(color) => setNumbers("color", color)}
-            />
-          {/if}
-        </div>
-        <label class="inline">
-          <input
-            type="checkbox"
-            checked={draft.theme.scripture.referenceOnEverySlide}
-            onchange={(e) =>
-              (draft.theme.scripture = {
-                ...draft.theme.scripture,
-                referenceOnEverySlide: e.currentTarget.checked,
-              })}
-          >
-          {t("designer.everySlide")}
-        </label>
-      </section>
+        </section>
 
-      <section>
-        <h4>{t("designer.reference")}</h4>
-        <LabelEditor
-          name={t("designer.boxReference")}
-          value={draft.theme.caption}
-          spacing={REFERENCE_SPACING}
-          {fonts}
-          onchange={(caption) => {
-            sample = "scripture";
-            activeBox = "caption";
-            draft.theme.caption = caption;
-          }}
-        />
-      </section>
+        <section>
+          <h4>{t("designer.reference")}</h4>
+          <LabelEditor
+            name={t("designer.boxReference")}
+            value={draft.theme.caption}
+            spacing={REFERENCE_SPACING}
+            {fonts}
+            onchange={(caption) => {
+              sample = "scripture";
+              activeBox = "caption";
+              draft.theme.caption = caption;
+            }}
+          />
+        </section>
+      {/if}
 
-      <section>
-        <h4>{t("designer.footer")}</h4>
-        <LabelEditor
-          name={t("designer.boxFooter")}
-          value={draft.theme.footer}
-          spacing={FOOTER_SPACING}
-          {fonts}
-          onchange={(footer) => {
-            activeBox = "footer";
-            draft.theme.footer = footer;
-          }}
-        />
-      </section>
+      {#if draft.theme.category === "song" || (!draft.theme.category && sample === "lyrics")}
+        <section>
+          <h4>{t("designer.footer")}</h4>
+          <LabelEditor
+            name={t("designer.boxFooter")}
+            value={draft.theme.footer}
+            spacing={FOOTER_SPACING}
+            {fonts}
+            onchange={(footer) => {
+              activeBox = "footer";
+              draft.theme.footer = footer;
+            }}
+          />
+        </section>
+      {/if}
     </div>
   </div>
 

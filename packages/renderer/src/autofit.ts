@@ -48,6 +48,8 @@ export interface AutofitOptions {
   enabled: boolean;
   /** The theme's font size, in reference pixels. */
   maxSize: number;
+  /** Scale up beyond `maxSize` to fill the container when text is short. */
+  scaleUp?: boolean;
   /** Anything that changes the text's size (the text itself, the font…).
    *  The fit is recomputed whenever it changes. */
   content: unknown;
@@ -78,7 +80,10 @@ export const autofit: Action<HTMLElement, AutofitOptions> = (box, initial) => {
       return text.scrollHeight <= box.clientHeight && text.scrollWidth <= box.clientWidth;
     };
 
-    apply(options.enabled ? largestFittingSize(fits, options.maxSize) : options.maxSize);
+    const limit = options.scaleUp
+      ? Math.max(options.maxSize, Math.min(box.clientHeight ? box.clientHeight * 0.85 : 240, 240))
+      : options.maxSize;
+    apply(options.enabled ? largestFittingSize(fits, limit) : options.maxSize);
   }
 
   fitText();

@@ -41,6 +41,14 @@
 
   let { editor, element, clickAt }: Props = $props();
 
+  const placeholder = $derived(
+    element.role === "title" ||
+      element.frame.y < 350 ||
+      element.content.style.fontSize >= 50
+      ? t("editor.placeholderTitle")
+      : t("editor.placeholderText"),
+  );
+
   let editable: HTMLDivElement;
 
   /** Draws the words into the editable element, keeping the selection. */
@@ -122,6 +130,7 @@
         bind:this={editable}
         class="text"
         style={textStyle(element.content.style)}
+        data-placeholder={placeholder}
         contenteditable="plaintext-only"
         role="textbox"
         tabindex="0"
@@ -163,5 +172,12 @@
     outline: none;
     cursor: text;
     min-height: 1em;
+  }
+
+  .text:empty::before {
+    content: attr(data-placeholder);
+    opacity: 0.5;
+    pointer-events: none;
+    font-style: italic;
   }
 </style>

@@ -84,6 +84,10 @@
             <input bind:value={settings.ccliLicense} placeholder={t("settings.ccliPlaceholder")}>
             <span class="hint">{t("settings.ccliHint")}</span>
           </label>
+          <label class="option">
+            <input type="checkbox" bind:checked={settings.autoPreviewNext}>
+            {t("settings.autoPreviewNext")}
+          </label>
         </section>
 
         <section>
