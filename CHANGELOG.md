@@ -4,6 +4,26 @@ What changed in each release of SimpleWorship. The newest release is at
 the top. Each release's notes are also shown in the app when it offers the
 update.
 
+## 0.5.1 (24 October 2026)
+
+Camera listing scrolling and Listen audio stability fixes.
+
+- **Camera listing scrolling:** Added scrolling to the Find Cameras listing
+  cards in the Media tab so "Add to Schedule" and "Show in Preview" buttons
+  remain accessible on smaller screens and compact panels.
+- **Listen stability & responsiveness:** Decoupled speech transcription from
+  real-time audio capture into separate worker threads. Audio level metering
+  continues smoothly without freezing while Whisper transcribes, and audio
+  buffers no longer accumulate.
+- **CPU inference throttling:** Limited CPU Whisper inference to 2 worker
+  threads on Intel Mac and non-accelerated systems, preventing thread
+  starvation of CoreAudio and WebKit.
+- **Realtime safety:** Non-blocking audio stream buffer delivery, sample
+  sanitization, and rate-limited glitch warnings to prevent CoreAudio thread
+  priority inversion.
+- **Defensive scripture slicing:** Guarded UTF-8 string slicing in the spoken
+  scripture spotter to prevent boundary panics.
+
 ## 0.5.0 (24 October 2026)
 
 Testing feedback fixes, category themes, scripture auto-flow, and UI refinements.
