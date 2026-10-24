@@ -185,6 +185,20 @@
         Math.max(anchorVerse, verse),
       );
     } else {
+      // If the clicked verse is already part of a multi-verse range, preserve the range
+      // (prevents double-clicking to go live from collapsing the range to a single verse).
+      const hasRange =
+        passage &&
+        passage.ranges.some(
+          (r) =>
+            r.start.chapter !== r.end.chapter ||
+            (r.start.verse !== null && r.start.verse !== r.end.verse),
+        );
+      if (hasRange && isSelected(verse)) {
+        anchorVerse = verse;
+        void preview(passage);
+        return;
+      }
       anchorVerse = verse;
       choose(currentBook, currentChapter, verse, verse);
     }

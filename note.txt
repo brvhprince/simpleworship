@@ -34,3 +34,5 @@ Also, add a search implementation on the media section.
 Also, with colour selection, it would be great to have a preset of colours uses can click and go, as seen in word or easyworship alongside using the colour wheel picker or entering manually. If not an overhead, you can dd custom color presets settings where users can add predefined colours which shows under presets for use as well.
 
 can we also use video as logo?
+
+Also, the bible reference, it doesn't show the range on the live card e.g when I types esther 8:7-10 , only esther 8:7 shows, although the individual reference numbers update as well.

@@ -22,7 +22,12 @@
   import { t } from "../../lib/i18n/i18n.svelte.ts";
   import { FOOTER_SPACING, REFERENCE_SPACING } from "../../lib/label-placement.ts";
   import { overrideMenuItem } from "../../lib/menu.ts";
-  import { sampleLyrics, sampleScripture } from "../../lib/samples.ts";
+  import {
+    sampleLyrics,
+    samplePresentation,
+    sampleScripture,
+    sampleText,
+  } from "../../lib/samples.ts";
   import BackgroundEditor from "./BackgroundEditor.svelte";
   import ColorField from "./ColorField.svelte";
   import LabelEditor from "./LabelEditor.svelte";
@@ -63,9 +68,14 @@
     }
   }
 
-  const frame = $derived(
-    sample === "lyrics" ? sampleLyrics(draft.theme) : sampleScripture(draft.theme),
-  );
+  const frame = $derived.by(() => {
+    const cat = draft.theme.category;
+    if (cat === "scripture") return sampleScripture(draft.theme);
+    if (cat === "presentation") return samplePresentation(draft.theme);
+    if (cat === "text") return sampleText(draft.theme);
+    if (cat === "song") return sampleLyrics(draft.theme);
+    return sample === "scripture" ? sampleScripture(draft.theme) : sampleLyrics(draft.theme);
+  });
 
   /** The first family in the theme's font list, e.g. "Montserrat". */
   const currentFont = $derived(firstFamily(draft.theme.text.fontFamily));
@@ -78,11 +88,14 @@
     const list: EditableBox[] = [
       { id: "text", label: t("designer.boxText"), box: draft.theme.textBox },
     ];
-    const { caption, footer } = draft.theme;
-    if (sample === "scripture" && caption.visible && caption.placement === "box") {
+    const { caption, footer, category } = draft.theme;
+    const isScripture = category === "scripture" || (!category && sample === "scripture");
+    const isSong = category === "song" || (!category && sample === "lyrics");
+
+    if (isScripture && caption.visible && caption.placement === "box") {
       list.push({ id: "caption", label: t("designer.boxReference"), box: caption.textBox });
     }
-    if (footer.visible && footer.placement === "box") {
+    if (isSong && footer.visible && footer.placement === "box") {
       list.push({ id: "footer", label: t("designer.boxFooter"), box: footer.textBox });
     }
     return list;
@@ -147,17 +160,23 @@
           onchange={moveBox}
         />
       </div>
-      <div class="sample" role="radiogroup" aria-label={t("designer.sample")}>
-        <label
-          ><input type="radio" bind:group={sample} value="lyrics">
-          {t("designer.song")}</label
-        >
-        <label
-          ><input type="radio" bind:group={sample} value="scripture">
-          {t("designer.scripture")}</label
-        >
-        <span class="hint">{t("designer.dragHint")}</span>
-      </div>
+      {#if !draft.theme.category}
+        <div class="sample" role="radiogroup" aria-label={t("designer.sample")}>
+          <label
+            ><input type="radio" bind:group={sample} value="lyrics">
+            {t("designer.song")}</label
+          >
+          <label
+            ><input type="radio" bind:group={sample} value="scripture">
+            {t("designer.scripture")}</label
+          >
+          <span class="hint">{t("designer.dragHint")}</span>
+        </div>
+      {:else}
+        <div class="sample">
+          <span class="hint">{t("designer.dragHint")}</span>
+        </div>
+      {/if}
     </div>
 
     <div class="settings">

@@ -232,6 +232,8 @@ pub fn slides(
         })
         .collect();
     let keys: BTreeSet<(u16, u16)> = texts.iter().flat_map(|map| map.keys().copied()).collect();
+    let all_keys: Vec<(u16, u16)> = keys.iter().copied().collect();
+    let caption_passage = passage_from_keys(passage.book, &all_keys);
 
     // The longest translation's length decides how much fits.
     let length = |key: &(u16, u16)| {
@@ -248,7 +250,7 @@ pub fn slides(
     let mut flush = |chunk: &mut Vec<(u16, u16)>, chunk_length: &mut usize| {
         if !chunk.is_empty() {
             slides.extend(build_slides(
-                passage.book,
+                &caption_passage,
                 chunk,
                 translations,
                 &texts,
@@ -277,7 +279,7 @@ pub fn slides(
 /// Builds the slide(s) for one chunk of verses. A chunk is a single slide,
 /// except when auto-flow splits long verse(s).
 fn build_slides(
-    book: BookId,
+    passage: &Passage,
     chunk: &[(u16, u16)],
     translations: &[TranslationText],
     texts: &[HashMap<(u16, u16), &str>],
@@ -286,7 +288,7 @@ fn build_slides(
 ) -> Vec<Slide> {
     let caption = format!(
         "{} ({})",
-        chunk_passage(book, chunk),
+        passage,
         abbreviations(translations)
     );
 
@@ -415,23 +417,46 @@ fn plain_text(verses: &[VerseLine], numbers: bool) -> String {
         .join(" ")
 }
 
-/// The passage covered by a chunk (all in one chapter), e.g. John 3:16–17.
-fn chunk_passage(book: BookId, chunk: &[(u16, u16)]) -> Passage {
-    let first = chunk[0];
-    let last = chunk[chunk.len() - 1];
-    Passage {
-        book,
-        ranges: vec![VerseRange {
-            start: VersePoint {
-                chapter: first.0,
-                verse: Some(first.1),
-            },
-            end: VersePoint {
-                chapter: last.0,
-                verse: Some(last.1),
-            },
-        }],
+/// The passage covered by a list of verses, preserving ranges across chapters.
+fn passage_from_keys(book: BookId, keys: &[(u16, u16)]) -> Passage {
+    if keys.is_empty() {
+        return Passage {
+            book,
+            ranges: Vec::new(),
+        };
     }
+    let mut ranges = Vec::new();
+    let mut current_range: Option<VerseRange> = None;
+
+    for &(chapter, verse) in keys {
+        match current_range.as_mut() {
+            Some(range)
+                if range.end.chapter == chapter
+                    && range.end.verse.is_some_and(|v| verse == v + 1) =>
+            {
+                range.end.verse = Some(verse);
+            }
+            _ => {
+                if let Some(r) = current_range.take() {
+                    ranges.push(r);
+                }
+                current_range = Some(VerseRange {
+                    start: VersePoint {
+                        chapter,
+                        verse: Some(verse),
+                    },
+                    end: VersePoint {
+                        chapter,
+                        verse: Some(verse),
+                    },
+                });
+            }
+        }
+    }
+    if let Some(r) = current_range {
+        ranges.push(r);
+    }
+    Passage { book, ranges }
 }
 
 /// Splits a verse that is longer than `budget` characters into parts of
@@ -527,15 +552,42 @@ mod tests {
         let kjv = translation("KJV", &[(3, 16, "a"), (3, 17, "b"), (3, 18, "c")]);
         let slides = slides(&passage(), &[kjv], ScriptureOptions::default());
 
-        assert_eq!(captions(&slides), ["John 3:16–17 (KJV)", "John 3:18 (KJV)"]);
+        assert_eq!(captions(&slides), ["John 3:16–18 (KJV)", "John 3:16–18 (KJV)"]);
         assert_eq!(slides[0].text, "16 a 17 b");
     }
 
     #[test]
     fn never_mixes_chapters() {
         let kjv = translation("KJV", &[(3, 36, "a"), (4, 1, "b")]);
-        let slides = slides(&passage(), &[kjv], ScriptureOptions::default());
-        assert_eq!(captions(&slides), ["John 3:36 (KJV)", "John 4:1 (KJV)"]);
+        let p = sw_bible::reference::parse("jn 3:36; 4:1").unwrap().passage;
+        let slides = slides(&p, &[kjv], ScriptureOptions::default());
+        assert_eq!(captions(&slides), ["John 3:36; 4:1 (KJV)", "John 3:36; 4:1 (KJV)"]);
+    }
+
+    #[test]
+    fn passage_range_is_preserved_on_all_slide_captions() {
+        let esther = sw_bible::reference::parse("esther 8:7-10").unwrap().passage;
+        let kjv = translation(
+            "KJV",
+            &[
+                (8, 7, "verse 7"),
+                (8, 8, "verse 8"),
+                (8, 9, "verse 9"),
+                (8, 10, "verse 10"),
+            ],
+        );
+        let slides = slides(
+            &esther,
+            &[kjv],
+            ScriptureOptions {
+                max_verses: 1,
+                ..ScriptureOptions::default()
+            },
+        );
+        assert_eq!(slides.len(), 4);
+        for slide in &slides {
+            assert_eq!(slide.caption.as_deref(), Some("Esther 8:7–10 (KJV)"));
+        }
     }
 
     #[test]
