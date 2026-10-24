@@ -300,6 +300,7 @@ fn lower_third() -> Theme {
             left: 120.0,
             vertical_align: VerticalAlign::Bottom,
             auto_fit: true,
+            scale_up: false,
         },
         footer: FooterStyle {
             visible: false,

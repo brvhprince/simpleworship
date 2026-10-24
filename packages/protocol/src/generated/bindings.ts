@@ -472,6 +472,13 @@ export type Command =
        */
       logo: MediaRef | null;
     }
+  | {
+      type: "setAutoPreviewNext";
+      /**
+       * Whether taking an item live automatically puts the next schedule item into preview.
+       */
+      enabled: boolean;
+    }
   | { type: "playVideo" }
   | { type: "pauseVideo" }
   | {
@@ -1635,6 +1642,14 @@ export type ScriptureOptions = {
    * says (see [`VerseNumberStyle`](crate::theme::VerseNumberStyle)).
    */
   verseNumbers: boolean | null;
+  /**
+   * Automatically flow long scripture onto multiple slides.
+   */
+  autoFlow?: boolean;
+  /**
+   * Minimum font size before breaking slide.
+   */
+  minFontSize?: number;
 };
 
 /**
@@ -2159,6 +2174,10 @@ export type TextBox = {
    * Shrink the font (down from [`TextStyle::font_size`]) until the text fits.
    */
   autoFit: boolean;
+  /**
+   * Scale font up or down to auto fit container bounds.
+   */
+  scaleUp?: boolean;
 };
 
 /**
@@ -2278,6 +2297,10 @@ export type Theme = {
    * Settings that only apply to scripture.
    */
   scripture: ScriptureStyle;
+  /**
+   * Target category: "song", "scripture", "presentation", "text", or None.
+   */
+  category?: "song" | "scripture" | "presentation" | "text" | null;
 };
 
 /**

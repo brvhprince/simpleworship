@@ -21,8 +21,15 @@
 
   const urls = getMediaUrls();
   let chosen: string[] = $state([]);
+  let search = $state("");
 
-  const choices = $derived(media.list.filter((item) => item.kind !== "audio"));
+  const choices = $derived(
+    media.list
+      .filter((item) => item.kind !== "audio")
+      .filter(
+        (item) => !search.trim() || item.name.toLowerCase().includes(search.trim().toLowerCase()),
+      ),
+  );
 
   function toggle(id: string) {
     chosen = chosen.includes(id) ? chosen.filter((other) => other !== id) : [...chosen, id];
@@ -55,6 +62,15 @@
 </script>
 
 <Dialog title={t("pictures.title")} size="small" {onclose}>
+  <div class="search-bar">
+    <input
+      type="search"
+      class="search-input"
+      bind:value={search}
+      placeholder={t("media.searchPlaceholder")}
+      aria-label={t("common.search")}
+    >
+  </div>
   <div class="grid" role="listbox" aria-label={t("pictures.list")} aria-multiselectable="true">
     {#each choices as item (item.id)}
       {@const order = chosen.indexOf(item.id)}
@@ -135,6 +151,19 @@
   .empty {
     grid-column: 1 / -1;
     color: var(--sw-text-faint);
+  }
+
+  .search-bar {
+    margin-bottom: var(--sw-space-2);
+  }
+
+  .search-input {
+    width: 100%;
+    padding: var(--sw-space-1) var(--sw-space-2);
+    border: 1px solid var(--sw-border);
+    border-radius: var(--sw-radius-small);
+    background: var(--sw-surface-raised);
+    color: var(--sw-text);
   }
 
   .spacer {

@@ -36,6 +36,7 @@
     newShape,
     newTextBox,
     slideFromLayout,
+    templateSlide,
   } from "../../lib/slides/slide-ops.ts";
   import PictureChooser from "../library/PictureChooser.svelte";
   import FormatBar from "./FormatBar.svelte";
@@ -81,11 +82,10 @@
 
   onMount(() => {
     listFonts().then((list) => (fonts = list));
-    // A new presentation starts with one slide and one text box.
+    // A new presentation starts with one template slide (Title & Body placeholders).
     if (editor.deck.slides.length === 0) {
-      const first = blankSlide();
-      const style = slideTheme(engine.themes, editor.deck, first)?.text;
-      if (style) addElement(first, newTextBox(style));
+      const style = slideTheme(engine.themes, editor.deck, blankSlide())?.text;
+      const first = templateSlide(style);
       editor.deck.slides.push(first);
     }
   });
@@ -176,9 +176,11 @@
 
   function newSlide() {
     const current = editor.slide;
-    insertSlide(
-      current ? slideFromLayout($state.snapshot(current) as typeof current) : blankSlide(),
-    );
+    if (current && current.elements.length > 0) {
+      insertSlide(slideFromLayout($state.snapshot(current) as typeof current));
+    } else {
+      insertSlide(templateSlide(theme?.text));
+    }
   }
 
   function deleteSlide() {

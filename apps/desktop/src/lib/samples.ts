@@ -39,3 +39,31 @@ export function sampleScripture(theme: Theme): RenderFrame {
     theme,
   };
 }
+
+/** A sample slide for presentations (no song footer or scripture reference). */
+export function samplePresentation(theme: Theme): RenderFrame {
+  return {
+    text: "Welcome to SimpleWorship\nLet everything that has breath praise the Lord",
+    scripture: null,
+    caption: null,
+    rich: null,
+    elements: null,
+    countdown: null,
+    footer: null,
+    theme,
+  };
+}
+
+/** A sample slide for plain text announcements. */
+export function sampleText(theme: Theme): RenderFrame {
+  return {
+    text: "Sunday Worship Service\nEvery Sunday at 10:00 AM",
+    scripture: null,
+    caption: null,
+    rich: null,
+    elements: null,
+    countdown: null,
+    footer: null,
+    theme,
+  };
+}

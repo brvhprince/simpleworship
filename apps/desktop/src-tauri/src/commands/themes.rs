@@ -141,6 +141,13 @@ pub fn sync_settings(app: &AppHandle, state: &AppState) -> AppResult<()> {
     )?;
     let minutes = chrono::Local::now().offset().local_minus_utc() / 60;
     dispatch(app, state, Command::SetUtcOffset { minutes })?;
+    dispatch(
+        app,
+        state,
+        Command::SetAutoPreviewNext {
+            enabled: settings.auto_preview_next,
+        },
+    )?;
     let transitions = crate::settings::load_transitions(&state.database())?;
     dispatch(app, state, Command::SetTransitions { transitions })?;
     let settings = crate::settings::load_stream(&state.database())?;

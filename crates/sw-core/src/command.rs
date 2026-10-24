@@ -139,6 +139,11 @@ pub enum Command {
         /// The logo image, or `None` to show the background instead.
         logo: Option<MediaRef>,
     },
+    /// Whether taking an item live automatically puts the next schedule item into preview.
+    SetAutoPreviewNext {
+        /// Whether to preview the next item automatically.
+        enabled: bool,
+    },
 
     // ── Video ────────────────────────────────────────────────────────────
     /// Play the live video.

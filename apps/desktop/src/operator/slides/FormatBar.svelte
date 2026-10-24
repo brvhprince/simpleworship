@@ -24,10 +24,27 @@
   const font = $derived(firstFamily(current?.fontFamily ?? current?.boxFont ?? ""));
   const size = $derived(Math.round(current?.fontSize ?? current?.boxFontSize ?? 0));
   const color = $derived(current?.color ?? current?.boxColor ?? "#ffffff");
+  const fontWeight = $derived(
+    box?.content.style.fontWeight ?? (current?.bold ? 700 : 400),
+  );
 
   /** Keeps the caret in the text box when a toolbar button is pressed. */
   function keepFocus(event: MouseEvent) {
     event.preventDefault();
+  }
+
+  function setFontWeight(weight: number) {
+    const target = box;
+    if (!target) return;
+    editor.checkpoint("format:fontWeight");
+    target.content.style = {
+      ...target.content.style,
+      fontWeight: weight,
+    };
+    if (editor.stylingWords) {
+      editor.formatText({ bold: weight >= 700 });
+    }
+    editor.textVersion += 1;
   }
 
   function setAlign(align: HorizontalAlign) {
@@ -64,6 +81,19 @@
     {#each fonts as family (family)}
       <option value={family}>{family}</option>
     {/each}
+  </select>
+  <select
+    value={String(fontWeight)}
+    disabled={!box}
+    aria-label={t("designer.weight")}
+    title={t("designer.weight")}
+    onchange={(e) => setFontWeight(Number(e.currentTarget.value))}
+  >
+    <option value="300">{t("designer.light")}</option>
+    <option value="400">{t("designer.regular")}</option>
+    <option value="600">{t("designer.semibold")}</option>
+    <option value="700">{t("designer.bold")}</option>
+    <option value="900">{t("designer.black")}</option>
   </select>
   <input
     class="size"

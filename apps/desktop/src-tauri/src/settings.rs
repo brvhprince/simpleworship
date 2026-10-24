@@ -52,6 +52,8 @@ pub struct AppSettings {
     /// Look for a new version at startup and once a day. Updates are only
     /// ever installed when the operator says so.
     pub check_for_updates: bool,
+    /// Automatically put the next schedule item into preview when an item goes live.
+    pub auto_preview_next: bool,
 }
 
 impl Default for AppSettings {
@@ -62,6 +64,7 @@ impl Default for AppSettings {
             alert_templates: starter_templates(),
             stage: StageOptions::default(),
             check_for_updates: true,
+            auto_preview_next: true,
         }
     }
 }

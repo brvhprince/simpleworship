@@ -32,6 +32,9 @@ pub struct Theme {
     pub caption: FooterStyle,
     /// Settings that only apply to scripture.
     pub scripture: ScriptureStyle,
+    /// Target category: "song", "scripture", "presentation", "text", or None.
+    #[serde(default)]
+    pub category: Option<String>,
 }
 
 impl Default for Theme {
@@ -39,6 +42,7 @@ impl Default for Theme {
     fn default() -> Self {
         Self {
             name: "Default".into(),
+            category: None,
             background: Background::LinearGradient {
                 from: "#0b1a33".into(),
                 to: "#000000".into(),
@@ -274,6 +278,9 @@ pub struct TextBox {
     pub vertical_align: VerticalAlign,
     /// Shrink the font (down from [`TextStyle::font_size`]) until the text fits.
     pub auto_fit: bool,
+    /// Scale font up or down to auto fit container bounds.
+    #[serde(default)]
+    pub scale_up: bool,
 }
 
 impl Default for TextBox {
@@ -285,6 +292,7 @@ impl Default for TextBox {
             left: 120.0,
             vertical_align: VerticalAlign::Middle,
             auto_fit: true,
+            scale_up: false,
         }
     }
 }
@@ -335,6 +343,7 @@ impl Default for FooterStyle {
                 left: 120.0,
                 vertical_align: VerticalAlign::Bottom,
                 auto_fit: true,
+                scale_up: false,
             },
         }
     }
