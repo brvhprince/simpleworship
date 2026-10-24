@@ -24,9 +24,7 @@
   const font = $derived(firstFamily(current?.fontFamily ?? current?.boxFont ?? ""));
   const size = $derived(Math.round(current?.fontSize ?? current?.boxFontSize ?? 0));
   const color = $derived(current?.color ?? current?.boxColor ?? "#ffffff");
-  const fontWeight = $derived(
-    box?.content.style.fontWeight ?? (current?.bold ? 700 : 400),
-  );
+  const fontWeight = $derived(box?.content.style.fontWeight ?? (current?.bold ? 700 : 400));
 
   /** Keeps the caret in the text box when a toolbar button is pressed. */
   function keepFocus(event: MouseEvent) {

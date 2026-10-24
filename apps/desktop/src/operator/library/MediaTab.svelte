@@ -242,14 +242,16 @@
         >
       {/if}
       {#if selected && selected.kind !== "audio"}
-        {@const currentFit = (void fitRevision, getMediaFitPreference(selected.id))}
+        {@const currentFit = fitRevision >= 0 ? getMediaFitPreference(selected.id) : "contain"}
         <label class="fit-option" title={t("media.fitHint")}>
           {t("media.aspectRatio")}
           <select
             value={currentFit}
             onchange={(e) => {
-              setMediaFitPreference(selected!.id, e.currentTarget.value as MediaFitPreference);
-              fitRevision += 1;
+              if (selected) {
+                setMediaFitPreference(selected.id, e.currentTarget.value as MediaFitPreference);
+                fitRevision += 1;
+              }
             }}
           >
             <option value="automatic">{t("media.fitAutomatic")}</option>

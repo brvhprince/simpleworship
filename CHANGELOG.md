@@ -4,7 +4,7 @@ What changed in each release of SimpleWorship. The newest release is at
 the top. Each release's notes are also shown in the app when it offers the
 update.
 
-## 0.5.0-beta.1 (24 October 2026)
+## 0.5.0 (24 October 2026)
 
 Testing feedback fixes, category themes, scripture auto-flow, and UI refinements.
 

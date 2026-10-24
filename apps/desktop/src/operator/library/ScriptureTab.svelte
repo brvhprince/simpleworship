@@ -187,13 +187,11 @@
     } else {
       // If the clicked verse is already part of a multi-verse range, preserve the range
       // (prevents double-clicking to go live from collapsing the range to a single verse).
-      const hasRange =
-        passage &&
-        passage.ranges.some(
-          (r) =>
-            r.start.chapter !== r.end.chapter ||
-            (r.start.verse !== null && r.start.verse !== r.end.verse),
-        );
+      const hasRange = passage?.ranges.some(
+        (r) =>
+          r.start.chapter !== r.end.chapter ||
+          (r.start.verse !== null && r.start.verse !== r.end.verse),
+      );
       if (hasRange && isSelected(verse)) {
         anchorVerse = verse;
         void preview(passage);
@@ -461,13 +459,7 @@
     {#if autoFlow}
       <label class="option" title={t("scripture.minFontSizeHint")}>
         {t("scripture.minFontSize")}
-        <input
-          type="number"
-          min="16"
-          max="120"
-          class="min-font-size"
-          bind:value={minFontSize}
-        >
+        <input type="number" min="16" max="120" class="min-font-size" bind:value={minFontSize}>
       </label>
     {/if}
 

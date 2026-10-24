@@ -17,9 +17,9 @@
     CANVAS_HEIGHT,
     CANVAS_WIDTH,
     ElementsLayer,
-    ScaledCanvas,
     elementBoxStyle,
     frameStyle,
+    ScaledCanvas,
     textStyle,
     verticalJustify,
   } from "@simpleworship/renderer";
@@ -199,14 +199,8 @@
       {#if content.type === "text" && content.runs.every((r) => !r.text || r.text.trim() === "")}
         <div class="element placeholder-frame" style={frameStyle(element.frame, 0.45)}>
           <div class="placeholder-box" style={elementBoxStyle(content)}>
-            <div
-              class="placeholder-fit"
-              style:justify-content={verticalJustify(content)}
-            >
-              <div
-                class="placeholder-text"
-                style={textStyle(content.style)}
-              >
+            <div class="placeholder-fit" style:justify-content={verticalJustify(content)}>
+              <div class="placeholder-text" style={textStyle(content.style)}>
                 {placeholderFor(element)}
               </div>
             </div>

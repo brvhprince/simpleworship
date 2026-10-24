@@ -42,9 +42,7 @@
   let { editor, element, clickAt }: Props = $props();
 
   const placeholder = $derived(
-    element.role === "title" ||
-      element.frame.y < 350 ||
-      element.content.style.fontSize >= 50
+    element.role === "title" || element.frame.y < 350 || element.content.style.fontSize >= 50
       ? t("editor.placeholderTitle")
       : t("editor.placeholderText"),
   );

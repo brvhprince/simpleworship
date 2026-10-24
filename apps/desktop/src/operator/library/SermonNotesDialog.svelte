@@ -47,7 +47,13 @@
       saved.secondaryId && ids.includes(saved.secondaryId) ? saved.secondaryId : null;
     return {
       bibleIds: [primary, secondary].filter((id): id is string => !!id),
-      options: { maxVerses: saved.maxVerses ?? 2, maxChars: 300, verseNumbers: null },
+      options: {
+        maxVerses: saved.maxVerses ?? 2,
+        maxChars: 300,
+        verseNumbers: null,
+        autoFlow: true,
+        minFontSize: 36,
+      },
     };
   }
 

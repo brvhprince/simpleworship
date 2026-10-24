@@ -54,13 +54,13 @@
     {:else if background.type === "video" && still}
       <img src={urls.thumbnail(background.media)} class={fit} alt="">
     {:else if background.type === "camera" && cameras.live && !still}
-      <CameraLayer camera={background.camera} fit={fit} />
+      <CameraLayer camera={background.camera} {fit} />
     {:else if background.type === "camera" && cameras.placeholder}
       <CameraPlaceholder camera={background.camera} />
     {:else if background.type === "video"}
       <VideoLayer
         media={background.media}
-        fit={fit}
+        {fit}
         {playback}
         muted={muted || (playback === null && !background.playAudio)}
       />

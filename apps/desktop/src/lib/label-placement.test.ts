@@ -10,7 +10,15 @@ const label: FooterStyle = {
   bold: true,
   align: null,
   placement: "box",
-  textBox: { top: 880, right: 120, bottom: 70, left: 120, verticalAlign: "bottom", autoFit: true },
+  textBox: {
+    top: 880,
+    right: 120,
+    bottom: 70,
+    left: 120,
+    verticalAlign: "bottom",
+    autoFit: true,
+    scaleUp: false,
+  },
 };
 
 describe("label presets", () => {

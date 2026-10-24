@@ -475,7 +475,7 @@ export type Command =
   | {
       type: "setAutoPreviewNext";
       /**
-       * Whether taking an item live automatically puts the next schedule item into preview.
+       * Whether to preview the next item automatically.
        */
       enabled: boolean;
     }
@@ -1645,11 +1645,11 @@ export type ScriptureOptions = {
   /**
    * Automatically flow long scripture onto multiple slides.
    */
-  autoFlow?: boolean;
+  autoFlow: boolean;
   /**
    * Minimum font size before breaking slide.
    */
-  minFontSize?: number;
+  minFontSize: number;
 };
 
 /**
@@ -2177,7 +2177,7 @@ export type TextBox = {
   /**
    * Scale font up or down to auto fit container bounds.
    */
-  scaleUp?: boolean;
+  scaleUp: boolean;
 };
 
 /**
@@ -2300,7 +2300,7 @@ export type Theme = {
   /**
    * Target category: "song", "scripture", "presentation", "text", or None.
    */
-  category?: "song" | "scripture" | "presentation" | "text" | null;
+  category: string | null;
 };
 
 /**

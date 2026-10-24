@@ -213,7 +213,7 @@ pub fn slides(
 ) -> Vec<Slide> {
     let columns = translations.len().max(1);
     let per_column_budget = if options.auto_flow {
-        let scaled = (36 * options.max_chars as u32) / options.min_font_size.max(12);
+        let scaled = (36 * options.max_chars) / options.min_font_size.max(12);
         (scaled as usize / columns).max(40)
     } else {
         usize::MAX / 2
@@ -286,11 +286,7 @@ fn build_slides(
     budget: usize,
     options: ScriptureOptions,
 ) -> Vec<Slide> {
-    let caption = format!(
-        "{} ({})",
-        passage,
-        abbreviations(translations)
-    );
+    let caption = format!("{} ({})", passage, abbreviations(translations));
 
     let splittable = options.auto_flow && chunk.len() == 1;
     if splittable {
@@ -319,10 +315,8 @@ fn build_slides(
                         .iter()
                         .enumerate()
                         .map(|(t_idx, translation)| {
-                            let part_text = all_parts[t_idx]
-                                .get(part_idx)
-                                .cloned()
-                                .unwrap_or_default();
+                            let part_text =
+                                all_parts[t_idx].get(part_idx).cloned().unwrap_or_default();
                             let line = VerseLine {
                                 number: key.1,
                                 text: part_text,
@@ -371,7 +365,7 @@ fn split_verse_into_n(text: &str, n: usize) -> Vec<String> {
         return res;
     }
 
-    let words_per_part = (words.len() + n - 1) / n;
+    let words_per_part = words.len().div_ceil(n);
     let mut parts = Vec::new();
     for chunk in words.chunks(words_per_part) {
         parts.push(chunk.join(" "));
@@ -552,7 +546,10 @@ mod tests {
         let kjv = translation("KJV", &[(3, 16, "a"), (3, 17, "b"), (3, 18, "c")]);
         let slides = slides(&passage(), &[kjv], ScriptureOptions::default());
 
-        assert_eq!(captions(&slides), ["John 3:16–18 (KJV)", "John 3:16–18 (KJV)"]);
+        assert_eq!(
+            captions(&slides),
+            ["John 3:16–18 (KJV)", "John 3:16–18 (KJV)"]
+        );
         assert_eq!(slides[0].text, "16 a 17 b");
     }
 
@@ -561,7 +558,10 @@ mod tests {
         let kjv = translation("KJV", &[(3, 36, "a"), (4, 1, "b")]);
         let p = sw_bible::reference::parse("jn 3:36; 4:1").unwrap().passage;
         let slides = slides(&p, &[kjv], ScriptureOptions::default());
-        assert_eq!(captions(&slides), ["John 3:36; 4:1 (KJV)", "John 3:36; 4:1 (KJV)"]);
+        assert_eq!(
+            captions(&slides),
+            ["John 3:36; 4:1 (KJV)", "John 3:36; 4:1 (KJV)"]
+        );
     }
 
     #[test]
@@ -651,7 +651,10 @@ mod tests {
             ..ScriptureOptions::default()
         };
         let slides = slides(&passage(), &[kjv, web], options);
-        assert!(slides.len() >= 2, "Parallel long verse was split into multiple slides");
+        assert!(
+            slides.len() >= 2,
+            "Parallel long verse was split into multiple slides"
+        );
         for slide in &slides {
             let cols = &slide.scripture.as_ref().unwrap().columns;
             assert_eq!(cols.len(), 2);

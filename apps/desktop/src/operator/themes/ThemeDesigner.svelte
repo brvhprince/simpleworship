@@ -49,11 +49,13 @@
   });
 
   // Work on a copy, so Cancel discards the changes.
-  let draft: ThemeRecord = $state(untrack(() => {
-    const copy = structuredClone($state.snapshot(record));
-    if (!copy.theme.category) copy.theme.category = initialCat;
-    return copy;
-  }));
+  let draft: ThemeRecord = $state(
+    untrack(() => {
+      const copy = structuredClone($state.snapshot(record));
+      if (!copy.theme.category) copy.theme.category = initialCat;
+      return copy;
+    }),
+  );
   let sample: "lyrics" | "scripture" = $state(initialCat === "scripture" ? "scripture" : "lyrics");
   let fonts: string[] = $state([]);
   let saving = $state(false);
@@ -190,7 +192,10 @@
             {t("designer.category")}
             <select
               value={draft.theme.category ?? "song"}
-              onchange={(e) => onCategoryChange(e.currentTarget.value as any)}
+              onchange={(e) =>
+                onCategoryChange(
+                  e.currentTarget.value as "song" | "scripture" | "presentation" | "text",
+                )}
             >
               <option value="song">{t("designer.categorySong")}</option>
               <option value="scripture">{t("designer.categoryScripture")}</option>
@@ -415,7 +420,8 @@
         </div>
       </section>
 
-      {#if draft.theme.category === "scripture" || (!draft.theme.category && sample === "scripture")}
+      {#if draft.theme.category === "scripture" ||
+        (!draft.theme.category && sample === "scripture")}
         <section>
           <h4>{t("designer.scriptureSection")}</h4>
           <div class="row">

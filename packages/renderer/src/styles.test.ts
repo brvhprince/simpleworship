@@ -35,7 +35,7 @@ describe("textStyle", () => {
 
 describe("textBoxStyle", () => {
   it("maps vertical alignment to flex justification", () => {
-    const box = { top: 1, right: 2, bottom: 3, left: 4, autoFit: true };
+    const box = { top: 1, right: 2, bottom: 3, left: 4, autoFit: true, scaleUp: false };
     expect(textBoxStyle({ ...box, verticalAlign: "bottom" })).toContain(
       "justify-content: flex-end",
     );
@@ -71,6 +71,7 @@ describe("labelStyle", () => {
       left: 0,
       verticalAlign: "bottom" as const,
       autoFit: true,
+      scaleUp: false,
     },
   };
 

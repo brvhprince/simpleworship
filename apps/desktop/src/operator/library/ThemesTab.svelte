@@ -128,10 +128,16 @@
       <Button active={categoryFilter === "song"} onclick={() => (categoryFilter = "song")}>
         {t("library.songs")}
       </Button>
-      <Button active={categoryFilter === "scripture"} onclick={() => (categoryFilter = "scripture")}>
+      <Button
+        active={categoryFilter === "scripture"}
+        onclick={() => (categoryFilter = "scripture")}
+      >
         {t("library.scripture")}
       </Button>
-      <Button active={categoryFilter === "presentation"} onclick={() => (categoryFilter = "presentation")}>
+      <Button
+        active={categoryFilter === "presentation"}
+        onclick={() => (categoryFilter = "presentation")}
+      >
         {t("library.presentations")}
       </Button>
       <Button active={categoryFilter === "text"} onclick={() => (categoryFilter = "text")}>
