@@ -11,7 +11,12 @@
   import { engine } from "../../lib/engine.svelte.ts";
   import { t } from "../../lib/i18n/i18n.svelte.ts";
   import { prompts } from "../../lib/prompts.svelte.ts";
-  import { sampleLyrics, sampleScripture } from "../../lib/samples.ts";
+  import {
+    sampleLyrics,
+    samplePresentation,
+    sampleScripture,
+    sampleText,
+  } from "../../lib/samples.ts";
   import ThemeDesigner from "../themes/ThemeDesigner.svelte";
 
   /** The kinds of content with a default theme, and their labels. */
@@ -169,7 +174,11 @@
             <SlideView
               frame={themeCategory(theme) === "scripture"
                 ? sampleScripture(theme.theme)
-                : sampleLyrics(theme.theme)}
+                : themeCategory(theme) === "presentation"
+                  ? samplePresentation(theme.theme)
+                  : themeCategory(theme) === "text"
+                    ? sampleText(theme.theme)
+                    : sampleLyrics(theme.theme)}
             />
           </ScaledCanvas>
           <span class="caption">
