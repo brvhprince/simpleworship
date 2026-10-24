@@ -28,6 +28,7 @@ const SPEECH_OVER_ROOM: f32 = 3.0;
 
 /// Mixes interleaved samples (`channels` per frame) down to one channel.
 pub fn to_mono(samples: &[f32], channels: usize) -> Vec<f32> {
+    let channels = channels.max(1);
     if channels <= 1 {
         return samples.to_vec();
     }
@@ -57,6 +58,7 @@ pub struct Resampler {
 impl Resampler {
     /// A resampler from `rate` samples a second.
     pub fn new(rate: u32) -> Self {
+        let rate = rate.max(1);
         Self {
             step: f64::from(rate) / f64::from(SAMPLE_RATE),
             position: 0.0,

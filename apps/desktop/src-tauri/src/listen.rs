@@ -284,7 +284,10 @@ pub async fn listen_configure(app: AppHandle, settings: ListenSettings) -> AppRe
         let database = state.database();
         database.settings().set(SETTINGS_KEY, &settings)?;
     }
-    let was_listening = lock(&app).listener.take().is_some();
+    let was_listening = {
+        let mut listening = lock(&app);
+        listening.listener.take().is_some()
+    };
     if was_listening && is_ready(&app, settings.model) {
         start(&app).await?;
     }
@@ -303,11 +306,12 @@ pub async fn listen_start(app: AppHandle) -> AppResult<ListenStatus> {
 /// Stops listening.
 #[tauri::command]
 pub fn listen_stop(app: AppHandle) -> ListenStatus {
-    {
+    let listener = {
         let mut listening = lock(&app);
-        listening.listener = None;
         listening.spotter.forget();
-    }
+        listening.listener.take()
+    };
+    drop(listener);
     announce(&app);
     status(&app)
 }

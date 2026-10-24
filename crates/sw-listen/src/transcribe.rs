@@ -33,10 +33,14 @@ impl Transcriber {
         let state = context
             .create_state()
             .map_err(|error| Error::Model(error.to_string()))?;
-        // Half the computer's cores (at most 4): fast, and the operator
-        // window stays responsive.
+        // Thread count for Whisper: on Apple Silicon, Metal uses GPU;
+        // on Intel Macs or other CPUs, keep it to 2 threads max so CoreAudio
+        // and the operator UI are not starved of CPU time.
         let cores = std::thread::available_parallelism().map_or(2, usize::from);
+        #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
         let threads = (cores / 2).clamp(1, 4) as i32;
+        #[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
+        let threads = (cores / 3).clamp(1, 2) as i32;
         Ok(Self { state, threads })
     }
 

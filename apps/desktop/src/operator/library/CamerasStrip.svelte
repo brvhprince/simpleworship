@@ -122,14 +122,20 @@
 
 <style>
   .cameras {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
     padding: var(--sw-space-2) var(--sw-space-3);
     border-top: 1px solid var(--sw-border);
+    display: flex;
+    flex-direction: column;
   }
 
   header {
     display: flex;
     align-items: center;
     gap: var(--sw-space-2);
+    flex-shrink: 0;
   }
 
   h3 {
@@ -150,16 +156,21 @@
   ul {
     list-style: none;
     margin: var(--sw-space-2) 0 0;
-    padding: 0;
+    padding: 0 0 var(--sw-space-3);
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: var(--sw-space-3);
+    align-content: start;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
   }
 
   li {
     display: flex;
     flex-direction: column;
     gap: var(--sw-space-1);
+    min-width: 0;
   }
 
   .picture {
@@ -185,5 +196,6 @@
   .actions {
     display: flex;
     gap: var(--sw-space-1);
+    flex-wrap: wrap;
   }
 </style>

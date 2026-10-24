@@ -98,7 +98,7 @@ pub enum Event {
 /// How often to report the level.
 const LEVEL_EVERY: Duration = Duration::from_millis(100);
 /// How long a device may take to start.
-const START_TIMEOUT: Duration = Duration::from_secs(5);
+const START_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Listening to a microphone. Stops when dropped.
 pub struct Listener {
@@ -118,7 +118,8 @@ impl Listener {
         let on_event = std::sync::Arc::new(on_event);
 
         let (stop, stopped) = mpsc::channel::<()>();
-        let (sound, heard) = mpsc::channel::<Vec<f32>>();
+        // Bounded channel so capture thread never leaks memory or hangs:
+        let (sound, heard) = mpsc::sync_channel::<Vec<f32>>(128);
         let (ready, started) = mpsc::channel::<Result<u32, Error>>();
         let device = device.map(str::to_owned);
         let failed = on_event.clone();
@@ -145,10 +146,21 @@ impl Listener {
         let rate = started
             .recv_timeout(START_TIMEOUT)
             .map_err(|_| Error::Device("it did not start".into()))??;
+
+        // Bounded speech queue: if whisper takes time, don't lag behind real-time.
+        let (speech_tx, speech_rx) = mpsc::sync_channel::<Vec<f32>>(2);
+        let on_event_transcribe = on_event.clone();
+
         std::thread::Builder::new()
-            .name("listen-words".into())
-            .spawn(move || work(rate, heard, transcriber, &*on_event))
+            .name("listen-transcribe".into())
+            .spawn(move || transcribe_worker(speech_rx, transcriber, on_event_transcribe))
             .map_err(|error| Error::Device(error.to_string()))?;
+
+        std::thread::Builder::new()
+            .name("listen-audio".into())
+            .spawn(move || audio_worker(rate, heard, speech_tx, on_event))
+            .map_err(|error| Error::Device(error.to_string()))?;
+
         Ok(Self { stop: Some(stop) })
     }
 }
@@ -165,7 +177,7 @@ impl Drop for Listener {
 /// channel) to `sound`. Returns the stream and its sample rate.
 fn open(
     device: Option<&str>,
-    sound: mpsc::Sender<Vec<f32>>,
+    sound: mpsc::SyncSender<Vec<f32>>,
     on_error: impl Fn(String) + Send + 'static,
 ) -> Result<(cpal::Stream, u32), Error> {
     let host = cpal::default_host();
@@ -182,8 +194,8 @@ fn open(
     let config = device
         .default_input_config()
         .map_err(|error| Error::Device(error.to_string()))?;
-    let channels = usize::from(config.channels());
-    let rate = config.sample_rate();
+    let channels = usize::from(config.channels()).max(1);
+    let rate = config.sample_rate().max(16_000);
     let format = config.sample_format();
     let config = config.config();
 
@@ -210,25 +222,49 @@ fn build<T>(
     device: &cpal::Device,
     config: cpal::StreamConfig,
     channels: usize,
-    sound: mpsc::Sender<Vec<f32>>,
+    sound: mpsc::SyncSender<Vec<f32>>,
     on_error: impl Fn(String) + Send + 'static,
 ) -> Result<cpal::Stream, Error>
 where
     T: SizedSample,
     f32: FromSample<T>,
 {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static LAST_GLITCH: AtomicU64 = AtomicU64::new(0);
+
+    let channels = channels.max(1);
     device
         .build_input_stream::<T, _, _>(
             config,
             move |data: &[T], _| {
-                let samples: Vec<f32> = data.iter().map(|&s| s.to_sample::<f32>()).collect();
-                let _ = sound.send(audio::to_mono(&samples, channels));
+                if data.is_empty() {
+                    return;
+                }
+                let samples: Vec<f32> = data
+                    .iter()
+                    .map(|&s| {
+                        let f = s.to_sample::<f32>();
+                        if f.is_finite() {
+                            f.clamp(-1.0, 1.0)
+                        } else {
+                            0.0
+                        }
+                    })
+                    .collect();
+                let _ = sound.try_send(audio::to_mono(&samples, channels));
             },
             move |error| {
                 let msg = error.to_string();
                 let lower = msg.to_lowercase();
                 if lower.contains("underrun") || lower.contains("overrun") {
-                    log::warn!("listen: transient buffer glitch ignored: {msg}");
+                    let now = std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .map_or(0, |d| d.as_secs());
+                    let last = LAST_GLITCH.load(Ordering::Relaxed);
+                    if now.saturating_sub(last) >= 5 {
+                        LAST_GLITCH.store(now, Ordering::Relaxed);
+                        log::warn!("listen: transient buffer glitch ignored: {msg}");
+                    }
                 } else {
                     on_error(msg);
                 }
@@ -238,12 +274,12 @@ where
         .map_err(|error| Error::Device(error.to_string()))
 }
 
-/// The worker: sound in, levels and words out, until the sound stops.
-fn work(
+/// The audio worker: sound in, levels out, cuts into pieces of speech.
+fn audio_worker(
     rate: u32,
     heard: mpsc::Receiver<Vec<f32>>,
-    mut transcriber: Transcriber,
-    on_event: &dyn Fn(Event),
+    speech_tx: mpsc::SyncSender<Vec<f32>>,
+    on_event: std::sync::Arc<dyn Fn(Event) + Send + Sync>,
 ) {
     let mut resampler = Resampler::new(rate);
     let mut segmenter = Segmenter::default();
@@ -260,13 +296,26 @@ fn work(
             last_level = Instant::now();
         }
         for piece in segmenter.push(&samples) {
-            match transcriber.transcribe(&piece) {
-                Ok(words) if !words.is_empty() => on_event(Event::Words(words)),
-                Ok(_) => {}
-                Err(error) => {
-                    on_event(Event::Failed(error.to_string()));
-                    return;
-                }
+            // If the transcriber is still busy with previous speech and queue is full,
+            // try_send will drop this piece to avoid falling behind real-time.
+            let _ = speech_tx.try_send(piece);
+        }
+    }
+}
+
+/// The transcription worker: pieces of speech in, words out via Whisper.
+fn transcribe_worker(
+    speech_rx: mpsc::Receiver<Vec<f32>>,
+    mut transcriber: Transcriber,
+    on_event: std::sync::Arc<dyn Fn(Event) + Send + Sync>,
+) {
+    while let Ok(piece) = speech_rx.recv() {
+        match transcriber.transcribe(&piece) {
+            Ok(words) if !words.is_empty() => on_event(Event::Words(words)),
+            Ok(_) => {}
+            Err(error) => {
+                on_event(Event::Failed(error.to_string()));
+                return;
             }
         }
     }

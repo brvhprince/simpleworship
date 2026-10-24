@@ -81,7 +81,10 @@ impl Spotter {
         while index < tokens.len() {
             match self.reference_at(&tokens, index) {
                 Some((passage, last, end)) => {
-                    let said = text[tokens[index].start..tokens[end - 1].end].to_owned();
+                    let said = text
+                        .get(tokens[index].start..tokens[end - 1].end)
+                        .unwrap_or("")
+                        .to_owned();
                     self.last = Some(last);
                     heard.push(Heard { passage, said });
                     index = end;
