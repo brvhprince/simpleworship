@@ -4,6 +4,40 @@ What changed in each release of SimpleWorship. The newest release is at
 the top. Each release's notes are also shown in the app when it offers the
 update.
 
+## 0.5.0-beta.1 (24 October 2026)
+
+Testing feedback fixes, category themes, scripture auto-flow, and UI refinements.
+
+- **Theme categories:** Default themes can now be chosen separately for
+  Songs, Scripture, Presentations, and Quick Text (Settings › Themes). The
+  Theme Designer adapts to the selected category, hiding song-specific
+  elements for non-song themes.
+- **Color presets:** A quick color palette picker in the Theme Designer
+  makes selecting high-contrast and worship-friendly colors easy.
+- **Media fit modes:** Choose whether image and video backgrounds contain,
+  cover, or stretch to fill the screen, previewed immediately on thumbnail
+  cards.
+- **Scripture reference preservation & auto-flow:** Entering scripture
+  verse ranges (e.g. Esther 8:7-10) now preserves the entire range in the
+  slide caption across preview and live displays. Multi-verse passages are
+  automatically flowed into readable slides dynamically sized to the
+  chosen font. The Scripture tab preserves search state and translations
+  when switching tabs.
+- **Media search:** Fast instant search bar added to the Videos and Images
+  tabs in the media library.
+- **Quick Text button:** Dedicated Quick Text launcher icon in the operator
+  navigation bar for rapidly sending announcements or urgent notes.
+- **Configurable preview advancement:** An option in Settings allows
+  toggling whether triggering a live slide automatically advances the
+  preview to the next slide.
+- **Schedule layout switcher:** Switch between list, grid, and compact view
+  modes in the schedule panel.
+- **Presentation editor refinements:** Added clear placeholders and bold
+  text toggle in the presentation formatting toolbar.
+- **Audio stability & mirror synchronization:** Audio overrun and underrun
+  handling with automatic protection against buffer accumulation; keep
+  joined computers' lists and schedule names in sync.
+
 ## 0.4.0 (20 October 2026)
 
 Listen for scripture, and an assistant.
