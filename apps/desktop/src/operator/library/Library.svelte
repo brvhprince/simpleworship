@@ -5,6 +5,8 @@
   so the layout already matches what operators know from EasyWorship.
 -->
 <script lang="ts">
+  import { showTextInPreview } from "../../lib/api.ts";
+  import { engine } from "../../lib/engine.svelte.ts";
   import { t } from "../../lib/i18n/i18n.svelte.ts";
   import { listen } from "../../lib/listen.svelte.ts";
   import MediaTab from "./MediaTab.svelte";
@@ -29,6 +31,29 @@
   ]);
 
   let current = $state("songs");
+  let quickText = $state("");
+  let quickTextOpen = $state(false);
+
+  async function previewQuickText() {
+    if (!quickText.trim()) return;
+    try {
+      await showTextInPreview(t("library.quickText"), quickText.trim());
+    } catch (error) {
+      engine.showError(error);
+    }
+  }
+
+  async function sendQuickTextLive() {
+    if (!quickText.trim()) return;
+    try {
+      await showTextInPreview(t("library.quickText"), quickText.trim());
+      engine.dispatch({ type: "goLive" });
+      quickText = "";
+      quickTextOpen = false;
+    } catch (error) {
+      engine.showError(error);
+    }
+  }
 
   // The H key shows the newest reference heard: in the Scripture tab.
   $effect(() => {
@@ -51,6 +76,61 @@
         {/if}
       </button>
     {/each}
+
+    <span class="tab-spacer"></span>
+
+    <div class="quick-text-tool">
+      <button
+        type="button"
+        class="quick-text-btn"
+        class:open={quickTextOpen}
+        onclick={() => (quickTextOpen = !quickTextOpen)}
+        title={t("library.quickTextHint")}
+      >
+        ⚡ {t("library.quickText")}
+      </button>
+
+      {#if quickTextOpen}
+        <div class="quick-text-popover">
+          <textarea
+            bind:value={quickText}
+            placeholder={t("library.quickTextPlaceholder")}
+            rows="2"
+            onkeydown={(e) => {
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                void sendQuickTextLive();
+              }
+            }}
+          ></textarea>
+          <div class="quick-actions">
+            <button
+              type="button"
+              class="quick-action-btn"
+              disabled={!quickText.trim()}
+              onclick={previewQuickText}
+            >
+              {t("common.showInPreview")}
+            </button>
+            <button
+              type="button"
+              class="quick-action-btn primary"
+              disabled={!quickText.trim()}
+              onclick={sendQuickTextLive}
+            >
+              {t("pane.goLive")}
+            </button>
+            <button
+              type="button"
+              class="quick-action-btn close"
+              onclick={() => (quickTextOpen = false)}
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      {/if}
+    </div>
   </div>
 
   <div class="panel" role="tabpanel">
@@ -81,9 +161,102 @@
 
   .tabs {
     display: flex;
+    align-items: center;
     gap: var(--sw-space-1);
     padding: var(--sw-space-1) var(--sw-space-2) 0;
     border-bottom: 1px solid var(--sw-border);
+    position: relative;
+  }
+
+  .tab-spacer {
+    flex: 1;
+  }
+
+  .quick-text-tool {
+    position: relative;
+    display: flex;
+    align-items: center;
+    margin-bottom: 2px;
+  }
+
+  .quick-text-btn {
+    padding: var(--sw-space-1) var(--sw-space-2);
+    border: 1px solid var(--sw-border);
+    border-radius: var(--sw-radius-small);
+    background: var(--sw-surface-raised);
+    color: var(--sw-text);
+    font-size: var(--sw-font-size-small);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: var(--sw-space-1);
+  }
+
+  .quick-text-btn:hover,
+  .quick-text-btn.open {
+    border-color: var(--sw-accent);
+    color: var(--sw-accent);
+  }
+
+  .quick-text-popover {
+    position: absolute;
+    bottom: 100%;
+    right: 0;
+    margin-bottom: var(--sw-space-2);
+    width: 320px;
+    padding: var(--sw-space-2);
+    background: var(--sw-surface-raised);
+    border: 1px solid var(--sw-border);
+    border-radius: var(--sw-radius);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sw-space-1);
+  }
+
+  .quick-text-popover textarea {
+    width: 100%;
+    resize: vertical;
+    padding: var(--sw-space-1);
+    background: var(--sw-surface);
+    border: 1px solid var(--sw-border);
+    border-radius: var(--sw-radius-small);
+    color: var(--sw-text);
+    font-family: inherit;
+    font-size: var(--sw-font-size-small);
+  }
+
+  .quick-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--sw-space-1);
+  }
+
+  .quick-action-btn {
+    padding: var(--sw-space-1) var(--sw-space-2);
+    border: 1px solid var(--sw-border);
+    border-radius: var(--sw-radius-small);
+    background: var(--sw-surface);
+    color: var(--sw-text);
+    font-size: var(--sw-font-size-small);
+    cursor: pointer;
+  }
+
+  .quick-action-btn.primary {
+    background: var(--sw-live);
+    border-color: var(--sw-live);
+    color: #fff;
+    font-weight: 600;
+  }
+
+  .quick-action-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .quick-action-btn.close {
+    padding: var(--sw-space-1) var(--sw-space-2);
   }
 
   [role="tab"] {

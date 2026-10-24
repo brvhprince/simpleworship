@@ -141,6 +141,8 @@ pub struct Engine {
     flags: DisplayFlags,
     /// The transition for each kind of content.
     transitions: TransitionSettings,
+    /// Whether going live puts the next schedule item into preview.
+    pub auto_preview_next: bool,
     /// How the stream output shows each kind of content.
     stream: StreamSettings,
     /// The themes and defaults everything is styled with.
@@ -215,6 +217,7 @@ impl Engine {
             live: None,
             flags: DisplayFlags::default(),
             transitions: TransitionSettings::default(),
+            auto_preview_next: true,
             stream: StreamSettings::default(),
             themes: ThemeLibrary::default(),
             logo: None,
@@ -468,6 +471,7 @@ impl Engine {
             Command::SetTransitions { transitions } => self.transitions = transitions,
             Command::SetStreamSettings { settings } => self.stream = settings,
             Command::SetLogoImage { logo } => self.logo = logo,
+            Command::SetAutoPreviewNext { enabled } => self.auto_preview_next = enabled,
 
             // ── Video ─────────────────────────────────────────────────────
             Command::PlayVideo => self.update_video(|video, now| {
@@ -799,12 +803,14 @@ impl Engine {
     /// A playlist item does not change the screen: "going live" with it
     /// starts the music, and what is on screen stays.
     fn go_live(&mut self, pane: PaneState) {
-        let next = pane
-            .schedule_item
-            .and_then(|id| self.schedule.after(id))
-            .map(|item| self.pane_for(item, StartAt::First));
-        if let Some(next) = next {
-            self.set_preview(next);
+        if self.auto_preview_next {
+            let next = pane
+                .schedule_item
+                .and_then(|id| self.schedule.after(id))
+                .map(|item| self.pane_for(item, StartAt::First));
+            if let Some(next) = next {
+                self.set_preview(next);
+            }
         }
 
         let playlist = pane
@@ -1382,6 +1388,20 @@ mod tests {
         engine.dispatch(Command::GoLive).unwrap();
         assert_eq!(live_text(&engine).as_deref(), Some("b1"));
         assert_eq!(preview_title(&engine).as_deref(), Some("C"));
+    }
+
+    #[test]
+    fn going_live_respects_auto_preview_next_toggle() {
+        let (mut engine, [a, _, _]) = scheduled_engine();
+        engine
+            .dispatch(Command::SetAutoPreviewNext { enabled: false })
+            .unwrap();
+
+        engine
+            .dispatch(Command::ShowScheduleItem { id: a })
+            .unwrap();
+        assert_eq!(live_text(&engine).as_deref(), Some("a1"));
+        assert_eq!(engine.snapshot().preview, None);
     }
 
     #[test]

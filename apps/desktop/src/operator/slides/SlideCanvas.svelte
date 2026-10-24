@@ -18,8 +18,13 @@
     CANVAS_WIDTH,
     ElementsLayer,
     ScaledCanvas,
+    elementBoxStyle,
+    frameStyle,
+    textStyle,
+    verticalJustify,
   } from "@simpleworship/renderer";
   import { engine } from "../../lib/engine.svelte.ts";
+  import { t } from "../../lib/i18n/i18n.svelte.ts";
   import type { SlideEditor } from "../../lib/slides/editor.svelte.ts";
   import { slideTheme } from "../../lib/slides/look.ts";
   import { type Guide, snapMove, snapResize } from "../../lib/slides/snapping.ts";
@@ -172,6 +177,14 @@
     editor.select(null);
     editor.stopEditing();
   }
+
+  function placeholderFor(element: SlideElement): string {
+    const isTitle =
+      element.role === "title" ||
+      (element.content.type === "text" &&
+        (element.frame.y < 350 || element.content.style.fontSize >= 50));
+    return isTitle ? t("editor.placeholderTitle") : t("editor.placeholderText");
+  }
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions: pointer selection; keys are handled by the editor -->
@@ -181,6 +194,26 @@
       <BackgroundLayer {background} still />
     {/if}
     <ElementsLayer elements={shown} still muted />
+    {#each shown as element (element.id)}
+      {@const content = element.content}
+      {#if content.type === "text" && content.runs.every((r) => !r.text || r.text.trim() === "")}
+        <div class="element placeholder-frame" style={frameStyle(element.frame, 0.45)}>
+          <div class="placeholder-box" style={elementBoxStyle(content)}>
+            <div
+              class="placeholder-fit"
+              style:justify-content={verticalJustify(content)}
+            >
+              <div
+                class="placeholder-text"
+                style={textStyle(content.style)}
+              >
+                {placeholderFor(element)}
+              </div>
+            </div>
+          </div>
+        </div>
+      {/if}
+    {/each}
     {#if editing}
       {#key editing.id}
         <TextEditing {editor} element={editing} {clickAt} />
@@ -227,6 +260,35 @@
 </div>
 
 <style>
+  .placeholder-frame {
+    position: absolute;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .placeholder-box {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    box-sizing: border-box;
+    border: 2px dashed rgba(255, 255, 255, 0.35);
+    border-radius: 6px;
+  }
+
+  .placeholder-fit {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  .placeholder-text {
+    width: 100%;
+    opacity: 0.6;
+    pointer-events: none;
+    font-style: italic;
+  }
+
   .stage {
     position: relative;
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);

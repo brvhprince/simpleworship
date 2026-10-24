@@ -13,6 +13,7 @@
   import CameraPlaceholder from "./CameraPlaceholder.svelte";
   import { getCameraUse } from "./camera.ts";
   import { getMediaUrls } from "./media.ts";
+  import { resolveFitClass } from "./media-fit.ts";
   import { backgroundCss } from "./styles.ts";
   import VideoLayer from "./VideoLayer.svelte";
 
@@ -28,6 +29,16 @@
   const urls = getMediaUrls();
   const cameras = getCameraUse();
 
+  const fit = $derived.by(() => {
+    if (background.type === "image" || background.type === "video") {
+      return resolveFitClass(background.media.id, background.fit);
+    }
+    if (background.type === "camera") {
+      return background.fit;
+    }
+    return "cover";
+  });
+
   /** Pictures and videos can be faded into the black behind them. */
   const opacity = $derived(
     background.type === "image" || background.type === "video" || background.type === "camera"
@@ -39,17 +50,17 @@
 <div class="background" style:background={backgroundCss(background)}>
   <div class="media" style:opacity={opacity < 1 ? opacity : null}>
     {#if background.type === "image"}
-      <img src={urls.file(background.media)} class={background.fit} alt="">
+      <img src={urls.file(background.media)} class={fit} alt="">
     {:else if background.type === "video" && still}
-      <img src={urls.thumbnail(background.media)} class={background.fit} alt="">
+      <img src={urls.thumbnail(background.media)} class={fit} alt="">
     {:else if background.type === "camera" && cameras.live && !still}
-      <CameraLayer camera={background.camera} fit={background.fit} />
+      <CameraLayer camera={background.camera} fit={fit} />
     {:else if background.type === "camera" && cameras.placeholder}
       <CameraPlaceholder camera={background.camera} />
     {:else if background.type === "video"}
       <VideoLayer
         media={background.media}
-        fit={background.fit}
+        fit={fit}
         {playback}
         muted={muted || (playback === null && !background.playAudio)}
       />

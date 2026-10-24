@@ -34,6 +34,13 @@ pub fn settings_save(
     dispatch(
         &app,
         &state,
+        Command::SetAutoPreviewNext {
+            enabled: settings.auto_preview_next,
+        },
+    )?;
+    dispatch(
+        &app,
+        &state,
         Command::SetCcliLicense {
             license: settings::license(&settings),
         },

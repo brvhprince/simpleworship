@@ -1,0 +1,36 @@
+So a couple of issues and fixes needed while testing.
+Images and videos. Most media doesn't have a 16x9 or perfect landscape aspect ratio, easyworship has an option you can set
+for each media with a right (Automatic, Stretch, Maintain, Zoom) by default it's set to automatic, and it's respected wherever the file is used. Let's work on something like that.
+
+On the theme editor, when you click onn edit theme, I don't think some confiugrations are respected. I have a scripture theme when I click on edit
+it by default sets the type to song and I have to switch to scripture. I think the reason is one theme can be assigned to multiple cats like scripture, song, text, presentation, etc
+I mean is that ideal? or we can take a look at that and group  themes like how easyworship does, so only related features needed for that theme category shows on add or edit, cuz at th moment,
+when your are editing a scripture them you also see configs for songs which are not needed, samee for text theme where you see scripture configs and other configs unrelated.
+
+Also, there's one problem, easyworship has a feature call "Automatically Flow Scripture on Multiple Slides" when enabled, it has an accompanying "Minimum
+font size before breaking slide" number input option. Currently, with shrink long text to fit or let me say with our current implementation, text is resized down to fit in the bounding box,
+so for a very long verse, all will be cramed unto one slide and the font size will appear very small on display. let's fix that. you'll need to think through on how this affects parallel scripture display.
+
+Also, one implementation we had on the schedule is auto putting the next item in preview, which is great, but feedback has come that, they would want that to be configurable
+from settings, so users can decide to toggle on or off. It's on by default.
+
+Also, I want use to implement a media search on places that uses media for background or others. e.g is theme and presentation, when I want to set an image or video as a background, it displays a nice scrollable horizontal grid,
+however if I have a lot of media, I would  have to drag the slider and be looking for what I want. If I can search by name and it filters according to that, it would be great.
+
+I would also like you to add a quick text option on tabs navbar (Songs, Text, Scripture, Media, Presentation, Themes) at the far end so I can send a quick text to live without explicitly navigating to the Text Tab.
+Also, I would want a nice feature which easyworship has, scale to auto fit font size, that could be practically useful for text themes because, Any text I enter can automatically scale to fit the elements container, I witnessed a situation where, when I entered a small text e.g "Call To Worship", the font
+size appear small when displayed. it's understandable for full long text.
+
+Also, I want us to implement the layout style easyworship has for it's schedule, preview and live tab, where you can switch between list, column and grid, but I think we should only do it on the Schedule section.
+
+I experienced this error when I enabled the listening feature during service. audio source was from the mixer line out. (A buffer underrun or overrun occurred).
+
+Also, I noticed when you start a new presentation editor, there's already an empty text canvas added for you automatically, but it's not visible since there's n placeholder indication. Is stumbled upon it accidentally. we can add 2 like powerpoint or how easyworship has it. Text and Body with said placeholders, like enter something here, etc. Use whichever
+wording is great.
+Also, I noticed that if you want to override the default font set for a presentation Or not even override adding a new text, the font weight option isn't available as it is in the theme editor. we should have that here, you can select specific text and apply a desired font weight when available and other filters just like it exists already.
+
+Also, one thing to note, It'll be very great to preserve the state of entered scripture, for e.g if I enter 1 sam 2:10 and I switch tab to maybe show a quick image then switch back, it resets to empty state.
+Also, add a search implementation on the media section.
+Also, with colour selection, it would be great to have a preset of colours uses can click and go, as seen in word or easyworship alongside using the colour wheel picker or entering manually. If not an overhead, you can dd custom color presets settings where users can add predefined colours which shows under presets for use as well.
+
+can we also use video as logo?

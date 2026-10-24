@@ -104,6 +104,20 @@ pub struct ScriptureOptions {
     /// says (see [`VerseNumberStyle`](crate::theme::VerseNumberStyle)).
     #[serde(default)]
     pub verse_numbers: Option<bool>,
+    /// Automatically flow long scripture onto multiple slides.
+    #[serde(default = "default_auto_flow")]
+    pub auto_flow: bool,
+    /// Minimum font size before breaking slide.
+    #[serde(default = "default_min_font_size")]
+    pub min_font_size: u32,
+}
+
+pub(crate) fn default_auto_flow() -> bool {
+    true
+}
+
+pub(crate) fn default_min_font_size() -> u32 {
+    36
 }
 
 impl Default for ScriptureOptions {
@@ -112,6 +126,8 @@ impl Default for ScriptureOptions {
             max_verses: 2,
             max_chars: 300,
             verse_numbers: None,
+            auto_flow: true,
+            min_font_size: 36,
         }
     }
 }
@@ -196,7 +212,12 @@ pub fn slides(
     options: ScriptureOptions,
 ) -> Vec<Slide> {
     let columns = translations.len().max(1);
-    let per_column_budget = (options.max_chars as usize / columns).max(40);
+    let per_column_budget = if options.auto_flow {
+        let scaled = (36 * options.max_chars as u32) / options.min_font_size.max(12);
+        (scaled as usize / columns).max(40)
+    } else {
+        usize::MAX / 2
+    };
     let max_verses = (options.max_verses as usize).max(1);
 
     // Each translation's text by (chapter, verse), and every verse any of
@@ -254,7 +275,7 @@ pub fn slides(
 }
 
 /// Builds the slide(s) for one chunk of verses. A chunk is a single slide,
-/// except a lone over-long verse in a one-translation passage, which is split.
+/// except when auto-flow splits long verse(s).
 fn build_slides(
     book: BookId,
     chunk: &[(u16, u16)],
@@ -269,29 +290,49 @@ fn build_slides(
         abbreviations(translations)
     );
 
-    let splittable = chunk.len() == 1 && translations.len() == 1;
+    let splittable = options.auto_flow && chunk.len() == 1;
     if splittable {
         let key = chunk[0];
-        let text = texts[0].get(&key).copied().unwrap_or("");
-        let parts = split_long_verse(text, budget);
-        if parts.len() > 1 {
-            return parts
-                .into_iter()
-                .enumerate()
-                .map(|(index, part)| {
-                    let line = VerseLine {
-                        number: key.1,
-                        text: part,
-                        continued: index > 0,
-                    };
-                    scripture_slide(
-                        vec![ScriptureColumn {
-                            translation: translations[0].abbreviation.clone(),
-                            verses: vec![line],
-                        }],
-                        caption.clone(),
-                        options,
-                    )
+        let mut all_parts: Vec<Vec<String>> = translations
+            .iter()
+            .enumerate()
+            .map(|(i, _)| {
+                let text = texts[i].get(&key).copied().unwrap_or("");
+                split_long_verse(text, budget)
+            })
+            .collect();
+
+        let num_parts = all_parts.iter().map(|p| p.len()).max().unwrap_or(1);
+        if num_parts > 1 {
+            for (i, parts) in all_parts.iter_mut().enumerate() {
+                if parts.len() < num_parts {
+                    let text = texts[i].get(&key).copied().unwrap_or("");
+                    *parts = split_verse_into_n(text, num_parts);
+                }
+            }
+
+            return (0..num_parts)
+                .map(|part_idx| {
+                    let columns = translations
+                        .iter()
+                        .enumerate()
+                        .map(|(t_idx, translation)| {
+                            let part_text = all_parts[t_idx]
+                                .get(part_idx)
+                                .cloned()
+                                .unwrap_or_default();
+                            let line = VerseLine {
+                                number: key.1,
+                                text: part_text,
+                                continued: part_idx > 0,
+                            };
+                            ScriptureColumn {
+                                translation: translation.abbreviation.clone(),
+                                verses: vec![line],
+                            }
+                        })
+                        .collect();
+                    scripture_slide(columns, caption.clone(), options)
                 })
                 .collect();
         }
@@ -313,6 +354,30 @@ fn build_slides(
         })
         .collect();
     vec![scripture_slide(columns, caption, options)]
+}
+
+fn split_verse_into_n(text: &str, n: usize) -> Vec<String> {
+    if n <= 1 || text.is_empty() {
+        return vec![text.to_owned()];
+    }
+    let words: Vec<&str> = text.split(' ').collect();
+    if words.len() <= n {
+        let mut res: Vec<String> = words.iter().map(|&w| w.to_owned()).collect();
+        while res.len() < n {
+            res.push(String::new());
+        }
+        return res;
+    }
+
+    let words_per_part = (words.len() + n - 1) / n;
+    let mut parts = Vec::new();
+    for chunk in words.chunks(words_per_part) {
+        parts.push(chunk.join(" "));
+    }
+    while parts.len() < n {
+        parts.push(String::new());
+    }
+    parts
 }
 
 fn scripture_slide(
@@ -519,6 +584,28 @@ mod tests {
         let columns = &slides[0].scripture.as_ref().unwrap().columns;
         assert_eq!(columns[1].translation, "WEB");
         assert_eq!(columns[1].verses[1].text, "", "WEB lacks verse 17");
+    }
+
+    #[test]
+    fn parallel_translations_split_long_verse_across_slides() {
+        let long_verse_1 = "First clause in KJV, second clause in KJV; third clause in KJV.";
+        let long_verse_2 = "First clause in WEB, second clause in WEB; third clause in WEB.";
+        let kjv = translation("KJV", &[(3, 16, long_verse_1)]);
+        let web = translation("WEB", &[(3, 16, long_verse_2)]);
+        let options = ScriptureOptions {
+            max_chars: 40,
+            auto_flow: true,
+            min_font_size: 36,
+            ..ScriptureOptions::default()
+        };
+        let slides = slides(&passage(), &[kjv, web], options);
+        assert!(slides.len() >= 2, "Parallel long verse was split into multiple slides");
+        for slide in &slides {
+            let cols = &slide.scripture.as_ref().unwrap().columns;
+            assert_eq!(cols.len(), 2);
+            assert_eq!(cols[0].verses.len(), 1);
+            assert_eq!(cols[1].verses.len(), 1);
+        }
     }
 
     #[test]

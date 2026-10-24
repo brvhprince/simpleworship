@@ -14,7 +14,12 @@
 -->
 <script lang="ts">
   import type { MediaItem } from "@simpleworship/protocol";
-  import { getMediaUrls } from "@simpleworship/renderer";
+  import {
+    getMediaFitPreference,
+    getMediaUrls,
+    type MediaFitPreference,
+    setMediaFitPreference,
+  } from "@simpleworship/renderer";
   import { Button } from "@simpleworship/ui";
   import { open } from "@tauri-apps/plugin-dialog";
   import { SvelteSet } from "svelte/reactivity";
@@ -51,6 +56,8 @@
 
   const urls = getMediaUrls();
   let filter = $state<Filter>("all");
+  let searchQuery = $state("");
+  let fitRevision = $state(0);
   /** The item last clicked: the one the single-item buttons act on. */
   let selectedId: string | null = $state(null);
   /** Every picked item (more than one with ⌘/Ctrl- or Shift-click). */
@@ -59,7 +66,13 @@
   const shown = $derived(
     filter === "camera"
       ? []
-      : media.list.filter((item) => filter === "all" || item.kind === filter),
+      : media.list
+          .filter((item) => filter === "all" || item.kind === filter)
+          .filter(
+            (item) =>
+              !searchQuery.trim() ||
+              item.name.toLowerCase().includes(searchQuery.trim().toLowerCase()),
+          ),
   );
   const selected = $derived(media.list.find((item) => item.id === selectedId) ?? null);
   /** The picked items, in the order they are shown. */
@@ -199,6 +212,14 @@
       </span>
     {/if}
 
+    <input
+      type="search"
+      class="search-bar"
+      bind:value={searchQuery}
+      placeholder={t("media.searchPlaceholder")}
+      aria-label={t("common.search")}
+    >
+
     <span class="spacer"></span>
 
     {#if pickedItems.length > 1}
@@ -219,6 +240,24 @@
           aria-label={t("common.name")}
           onchange={(e) => onSelected((item) => renameMedia(item.id, e.currentTarget.value))}
         >
+      {/if}
+      {#if selected && selected.kind !== "audio"}
+        {@const currentFit = (void fitRevision, getMediaFitPreference(selected.id))}
+        <label class="fit-option" title={t("media.fitHint")}>
+          {t("media.aspectRatio")}
+          <select
+            value={currentFit}
+            onchange={(e) => {
+              setMediaFitPreference(selected!.id, e.currentTarget.value as MediaFitPreference);
+              fitRevision += 1;
+            }}
+          >
+            <option value="automatic">{t("media.fitAutomatic")}</option>
+            <option value="stretch">{t("media.fitStretch")}</option>
+            <option value="maintain">{t("media.fitMaintain")}</option>
+            <option value="zoom">{t("media.fitZoom")}</option>
+          </select>
+        </label>
       {/if}
       {#if selected?.kind === "image"}
         {#if selected.id === logoId}
@@ -341,6 +380,31 @@
 
   .spacer {
     flex: 1;
+  }
+
+  .search-bar {
+    width: 180px;
+    padding: var(--sw-space-1) var(--sw-space-2);
+    border: 1px solid var(--sw-border);
+    border-radius: var(--sw-radius-small);
+    background: var(--sw-surface-raised);
+    color: var(--sw-text);
+  }
+
+  .fit-option {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sw-space-1);
+    font-size: var(--sw-font-size-small);
+    color: var(--sw-text-muted);
+  }
+
+  .fit-option select {
+    padding: var(--sw-space-1);
+    background: var(--sw-surface-raised);
+    border: 1px solid var(--sw-border);
+    border-radius: var(--sw-radius-small);
+    color: var(--sw-text);
   }
 
   .name {

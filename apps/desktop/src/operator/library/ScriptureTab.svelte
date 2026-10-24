@@ -34,39 +34,27 @@
   import { t } from "../../lib/i18n/i18n.svelte.ts";
   import { link } from "../../lib/link.svelte.ts";
   import { type Heard, listen } from "../../lib/listen.svelte.ts";
+  import { scriptureState } from "../../lib/scripture-state.svelte.ts";
   import HeardStrip from "./HeardStrip.svelte";
   import ManageBibles from "./ManageBibles.svelte";
 
   /** Wait this long after the last keystroke before looking things up. */
   const TYPING_DELAY_MS = 120;
 
-  /** Remembered between sessions on this computer (a convenience only). */
-  const SETTINGS_KEY = "simpleworship.scripture";
+  let primaryId: string | null = $state(scriptureState.primaryId);
+  let secondaryId: string | null = $state(scriptureState.secondaryId);
+  let maxVerses = $state(scriptureState.maxVerses);
+  let autoFlow = $state(scriptureState.autoFlow);
+  let minFontSize = $state(scriptureState.minFontSize);
+  let verseNumbers = $state<boolean | null>(scriptureState.verseNumbers);
 
-  interface Settings {
-    primaryId: string | null;
-    secondaryId: string | null;
-    maxVerses: number;
-  }
-
-  const saved = loadSettings();
-  let primaryId: string | null = $state(saved.primaryId);
-  let secondaryId: string | null = $state(saved.secondaryId);
-  let maxVerses = $state(saved.maxVerses);
-  /**
-   * The quick verse-number switch: `null` follows the scripture theme
-   * (set in the theme designer); a click overrides it until the theme's
-   * setting is changed.
-   */
-  let verseNumbers = $state<boolean | null>(null);
-
-  let query = $state("");
-  let feedback = $state<ReferenceFeedback | null>(null);
+  let query = $state(scriptureState.query);
+  let feedback = $state<ReferenceFeedback | null>(scriptureState.feedback);
   /** The selected passage, from typing or from the picker. */
-  let passage = $state<Passage | null>(null);
-  let outline: BookOutline[] = $state.raw([]);
-  let chapterVerses: Verse[] = $state.raw([]);
-  let searchResults: Verse[] = $state.raw([]);
+  let passage = $state<Passage | null>(scriptureState.passage);
+  let outline: BookOutline[] = $state.raw(scriptureState.outline);
+  let chapterVerses: Verse[] = $state.raw(scriptureState.chapterVerses);
+  let searchResults: Verse[] = $state.raw(scriptureState.searchResults);
   /** The verse a shift-click range starts from. */
   let anchorVerse: number | null = null;
   let managing = $state(false);
@@ -74,9 +62,33 @@
   let ideas: {
     about: string;
     list: { reference: string; why: string; passage: Passage }[];
-  } | null = $state(null);
+  } | null = $state(scriptureState.ideas);
 
-  const options: ScriptureOptions = $derived({ maxVerses, maxChars: 300, verseNumbers });
+  // Sync to persistent singleton store so tab switches retain state.
+  $effect(() => {
+    scriptureState.primaryId = primaryId;
+    scriptureState.secondaryId = secondaryId;
+    scriptureState.maxVerses = maxVerses;
+    scriptureState.autoFlow = autoFlow;
+    scriptureState.minFontSize = minFontSize;
+    scriptureState.verseNumbers = verseNumbers;
+    scriptureState.query = query;
+    scriptureState.feedback = feedback;
+    scriptureState.passage = passage;
+    scriptureState.outline = outline;
+    scriptureState.chapterVerses = chapterVerses;
+    scriptureState.searchResults = searchResults;
+    scriptureState.ideas = ideas;
+    scriptureState.saveSettings();
+  });
+
+  const options: ScriptureOptions = $derived({
+    maxVerses,
+    maxChars: 300,
+    verseNumbers,
+    autoFlow,
+    minFontSize,
+  });
 
   /** Whether the scripture theme shows verse numbers. */
   const themeShowsNumbers = $derived.by(() => {
@@ -107,8 +119,6 @@
     if (!primaryId || !ids.includes(primaryId)) primaryId = ids[0] ?? null;
     if (secondaryId && !ids.includes(secondaryId)) secondaryId = null;
   });
-
-  $effect(() => saveSettings({ primaryId, secondaryId, maxVerses }));
 
   // Load the book list of the main translation.
   $effect(() => {
@@ -342,30 +352,6 @@
     }
   }
 
-  // ── Settings ───────────────────────────────────────────────────────────
-
-  function loadSettings(): Settings {
-    const defaults: Settings = {
-      primaryId: null,
-      secondaryId: null,
-      maxVerses: 2,
-    };
-    try {
-      const stored = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? "{}");
-      return { ...defaults, ...stored };
-    } catch {
-      return defaults;
-    }
-  }
-
-  function saveSettings(settings: Settings) {
-    try {
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-    } catch {
-      // Storage can be unavailable; the settings just won't be remembered.
-    }
-  }
-
   function reference(verse: Verse): string {
     const name = outline.find((book) => book.book === verse.book)?.name ?? "";
     return `${name} ${verse.chapter}:${verse.verse}`;
@@ -454,6 +440,22 @@
       >
       {t("scripture.verseNumbers")}
     </label>
+    <label class="option" title={t("scripture.autoFlowHint")}>
+      <input type="checkbox" bind:checked={autoFlow}>
+      {t("scripture.autoFlow")}
+    </label>
+    {#if autoFlow}
+      <label class="option" title={t("scripture.minFontSizeHint")}>
+        {t("scripture.minFontSize")}
+        <input
+          type="number"
+          min="16"
+          max="120"
+          class="min-font-size"
+          bind:value={minFontSize}
+        >
+      </label>
+    {/if}
 
     <span class="spacer"></span>
     {#if !link.joined}
@@ -721,5 +723,14 @@
   .hint {
     padding: var(--sw-space-3);
     color: var(--sw-text-faint);
+  }
+
+  .min-font-size {
+    width: 52px;
+    padding: 2px 4px;
+    background: var(--sw-surface-raised);
+    border: 1px solid var(--sw-border);
+    border-radius: var(--sw-radius-small);
+    color: var(--sw-text);
   }
 </style>

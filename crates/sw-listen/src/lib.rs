@@ -224,7 +224,15 @@ where
                 let samples: Vec<f32> = data.iter().map(|&s| s.to_sample::<f32>()).collect();
                 let _ = sound.send(audio::to_mono(&samples, channels));
             },
-            move |error| on_error(error.to_string()),
+            move |error| {
+                let msg = error.to_string();
+                let lower = msg.to_lowercase();
+                if lower.contains("underrun") || lower.contains("overrun") {
+                    log::warn!("listen: transient buffer glitch ignored: {msg}");
+                } else {
+                    on_error(msg);
+                }
+            },
             None,
         )
         .map_err(|error| Error::Device(error.to_string()))

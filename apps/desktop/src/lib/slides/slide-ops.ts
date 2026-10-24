@@ -248,3 +248,40 @@ export function blankSlide(): DeckSlide {
     style: { fontSize: null, color: null, align: null },
   };
 }
+
+/** A default template slide with a Title text box and a Body text box. */
+export function templateSlide(style?: TextStyle): DeckSlide {
+  const slide = blankSlide();
+  const baseStyle: TextStyle = style ?? {
+    fontFamily: "Inter",
+    fontSize: 60,
+    fontWeight: 400,
+    color: "#ffffff",
+    align: "center",
+    lineHeight: 1.2,
+    italic: false,
+    uppercase: false,
+    shadow: null,
+    outline: null,
+  };
+
+  // Title box
+  const titleBox = newTextBox(
+    { ...baseStyle, fontSize: Math.max(baseStyle.fontSize, 72), fontWeight: 700 },
+    "",
+  );
+  titleBox.frame = { x: 260, y: 180, width: 1400, height: 200 };
+  titleBox.role = "title";
+  addElement(slide, titleBox);
+
+  // Body box
+  const bodyBox = newTextBox(
+    { ...baseStyle, fontSize: Math.min(baseStyle.fontSize, 40), fontWeight: 400 },
+    "",
+  );
+  bodyBox.frame = { x: 260, y: 440, width: 1400, height: 420 };
+  bodyBox.role = "body";
+  addElement(slide, bodyBox);
+
+  return slide;
+}

@@ -44,6 +44,7 @@
   use:autofit={{
     enabled: theme.textBox.autoFit,
     maxSize: theme.text.fontSize,
+    scaleUp: theme.textBox.scaleUp,
     content: [frame.text, frame.rich, frame.scripture, frame.countdown, theme, afterText],
   }}
 >
