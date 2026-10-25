@@ -4,6 +4,15 @@ What changed in each release of SimpleWorship. The newest release is at
 the top. Each release's notes are also shown in the app when it offers the
 update.
 
+## 0.5.2 (25 October 2026)
+
+Presentation saving and element role identifier fix.
+
+- **Presentation saving stability:** Fixed an issue where saving a presentation
+  containing template slides failed with a UUID parsing error on element roles.
+  Template roles now use standard UUIDs, and record identifier deserialization
+  gracefully and deterministically handles legacy string identifiers.
+
 ## 0.5.1 (24 October 2026)
 
 Camera listing scrolling and Listen audio stability fixes.
