@@ -249,6 +249,10 @@ export function blankSlide(): DeckSlide {
   };
 }
 
+/** Well-known role IDs for template elements so slides share roles across the deck. */
+export const TITLE_ROLE = "00000000-0000-7000-8000-000000000010";
+export const BODY_ROLE = "00000000-0000-7000-8000-000000000011";
+
 /** A default template slide with a Title text box and a Body text box. */
 export function templateSlide(style?: TextStyle): DeckSlide {
   const slide = blankSlide();
@@ -271,7 +275,7 @@ export function templateSlide(style?: TextStyle): DeckSlide {
     "",
   );
   titleBox.frame = { x: 260, y: 180, width: 1400, height: 200 };
-  titleBox.role = "title";
+  titleBox.role = TITLE_ROLE;
   addElement(slide, titleBox);
 
   // Body box
@@ -280,7 +284,7 @@ export function templateSlide(style?: TextStyle): DeckSlide {
     "",
   );
   bodyBox.frame = { x: 260, y: 440, width: 1400, height: 420 };
-  bodyBox.role = "body";
+  bodyBox.role = BODY_ROLE;
   addElement(slide, bodyBox);
 
   return slide;
