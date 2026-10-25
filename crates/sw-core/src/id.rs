@@ -48,6 +48,9 @@ impl FromStr for Id {
     type Err = std::convert::Infallible;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.trim().is_empty() {
+            return Ok(Self::nil());
+        }
         let uuid =
             Uuid::parse_str(s).unwrap_or_else(|_| Uuid::new_v5(&Uuid::NAMESPACE_OID, s.as_bytes()));
         Ok(Self(uuid))
@@ -82,5 +85,10 @@ mod tests {
         // Must be deterministic
         let parsed_title_again: Id = serde_json::from_str(title_str).unwrap();
         assert_eq!(parsed_title, parsed_title_again);
+
+        // Empty string deserializes to nil
+        let empty_str = "\"\"";
+        let parsed_empty: Id = serde_json::from_str(empty_str).expect("empty string");
+        assert_eq!(parsed_empty, Id::nil());
     }
 }
