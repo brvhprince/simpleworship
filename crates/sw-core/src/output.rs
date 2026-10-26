@@ -13,7 +13,7 @@ use crate::countdown::CountdownFrame;
 use crate::deck::SlideElement;
 use crate::id::Id;
 use crate::markup::TextRun;
-use crate::media::MediaRef;
+use crate::media::Logo;
 use crate::scripture::ScriptureSlide;
 use crate::stream::StreamOutput;
 use crate::theme::Theme;
@@ -128,7 +128,7 @@ pub struct OutputState {
     pub video: Option<VideoPlayback>,
     /// The church logo, shown when [`DisplayFlags::logo`] is on. Without
     /// one, the Logo button shows the background with no text.
-    pub logo: Option<MediaRef>,
+    pub logo: Option<Logo>,
     /// An alert over the slides, if one is showing.
     pub alert: Option<Alert>,
     /// What the stream output shows (see [`crate::stream`]).

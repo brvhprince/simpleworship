@@ -14,7 +14,8 @@
   both on screen for the length of the transition.
 
   The Logo button shows the church logo on black, or, if no logo is set,
-  the background without any text.
+  the background without any text. A video logo plays on a loop, without
+  sound (on `still` outputs, its thumbnail).
 
   - `muted`: silence videos (the operator's live pane), so only the
     projector plays sound.
@@ -115,8 +116,15 @@
 {/each}
 
 {#if showLogo && output.logo}
+  {@const logo = output.logo}
   <div class="layer logo" transition:fade={{ duration }}>
-    <img src={urls.file(output.logo)} alt="">
+    {#if logo.kind === "video" && !still}
+      <video src={urls.file(logo.media)} autoplay loop muted playsinline preload="auto"></video>
+    {:else if logo.kind === "video"}
+      <img src={urls.thumbnail(logo.media)} alt="">
+    {:else}
+      <img src={urls.file(logo.media)} alt="">
+    {/if}
   </div>
 {/if}
 
@@ -143,7 +151,8 @@
     background: #000;
   }
 
-  .logo img {
+  .logo img,
+  .logo video {
     width: 100%;
     height: 100%;
     object-fit: contain;

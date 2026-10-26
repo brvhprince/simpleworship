@@ -60,6 +60,10 @@ pub enum AppError {
     #[error("that media file is no longer in the library")]
     MediaNotFound,
 
+    /// A sound file was chosen as the logo, which must be seen.
+    #[error("the logo must be a picture or a video")]
+    NotALogo,
+
     /// A presentation could not be converted to PDF.
     #[error("{0}")]
     Conversion(String),

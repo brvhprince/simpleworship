@@ -41,7 +41,7 @@ pub use command::{Command, EngineEvent};
 pub use deck::{AutoAdvance, DeckSlide, SlideDeck, SlideStyle};
 pub use engine::{Engine, EngineError, EngineSnapshot, LOCAL_OPERATOR, PaneState};
 pub use id::Id;
-pub use media::{CameraRef, FileFits, MediaItem, MediaKind, MediaRef, MediaScaling};
+pub use media::{CameraRef, FileFits, Logo, MediaItem, MediaKind, MediaRef, MediaScaling};
 pub use output::{
     DisplayFlags, OutputState, RenderFrame, Transition, TransitionKind, VideoPlayback,
 };
