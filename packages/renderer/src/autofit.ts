@@ -47,17 +47,32 @@ export function largestFittingSize(
 }
 
 /**
- * The largest font size to try. Without `scaleUp` it is `maxSize`; with it,
- * the box's height, since even one line cannot be taller than that (the
- * width check in {@link autofit} stops long words from growing too far).
+ * The font sizes to choose from, or `null` to use `maxSize` as it is.
+ *
+ * - `shrink` lets long text go down to {@link MIN_FONT_SIZE}.
+ * - `grow` lets short text go up to the box's height (one line cannot be
+ *   taller than that; the width check in {@link autofit} stops long words
+ *   from growing too far).
+ *
+ * Each only moves the size its own way: with `grow` alone, text that does
+ * not fit at `maxSize` stays at `maxSize`, as the shrink option is off.
  */
-export function fitLimit(maxSize: number, scaleUp: boolean, boxHeight: number): number {
-  return scaleUp ? Math.max(maxSize, Math.floor(boxHeight)) : maxSize;
+export function fitRange(
+  maxSize: number,
+  shrink: boolean,
+  grow: boolean,
+  boxHeight: number,
+): { min: number; max: number } | null {
+  if (!shrink && !grow) return null;
+  return {
+    min: shrink ? MIN_FONT_SIZE : maxSize,
+    max: grow ? Math.max(maxSize, Math.floor(boxHeight)) : maxSize,
+  };
 }
 
 /** Options for the {@link autofit} action. */
 export interface AutofitOptions {
-  /** Shrink to fit. When `false` (and not `scaleUp`), the text is always `maxSize`. */
+  /** Shrink long text to fit (never below {@link MIN_FONT_SIZE}). */
   enabled: boolean;
   /** The font size it was given, in reference pixels. */
   maxSize: number;
@@ -93,10 +108,13 @@ export const autofit: Action<HTMLElement, AutofitOptions> = (box, initial) => {
       return text.scrollHeight <= box.clientHeight && text.scrollWidth <= box.clientWidth;
     };
 
-    const scaleUp = options.scaleUp ?? false;
-    const fitting = options.enabled || scaleUp;
-    const limit = fitLimit(options.maxSize, scaleUp, box.clientHeight);
-    apply(fitting ? largestFittingSize(fits, limit) : options.maxSize);
+    const range = fitRange(
+      options.maxSize,
+      options.enabled,
+      options.scaleUp ?? false,
+      box.clientHeight,
+    );
+    apply(range ? largestFittingSize(fits, range.max, range.min) : options.maxSize);
   }
 
   fitText();
