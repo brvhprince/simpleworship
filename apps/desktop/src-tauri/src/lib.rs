@@ -57,7 +57,7 @@ use crate::state::AppState;
 /// in a message box, and quits. Without this, the app would close at once
 /// with the reason only in the log.
 #[cfg(desktop)]
-fn cannot_start(error: &(dyn std::error::Error + 'static)) -> ! {
+fn cannot_start(app: &tauri::AppHandle, error: &(dyn std::error::Error + 'static)) -> ! {
     log::error!("cannot start: {error}");
     let newer = error
         .downcast_ref::<sw_db::DbError>()
@@ -76,9 +76,15 @@ fn cannot_start(error: &(dyn std::error::Error + 'static)) -> ! {
              as you left it. Nothing has been changed."
         )
     } else {
+        // Where `logging()` writes (the system's log folder, not the data one).
+        let logs = app
+            .path()
+            .app_log_dir()
+            .map(|folder| folder.display().to_string())
+            .unwrap_or_else(|_| "SimpleWorship's log folder".into());
         format!(
             "SimpleWorship could not open its library of songs, Bibles and settings:\n\n\
-             {error}\n\nThe log in SimpleWorship's data folder has the details."
+             {error}\n\nThe log has the details: {logs}"
         )
     };
     rfd::MessageDialog::new()
@@ -91,7 +97,7 @@ fn cannot_start(error: &(dyn std::error::Error + 'static)) -> ! {
 }
 
 #[cfg(mobile)]
-fn cannot_start(error: &(dyn std::error::Error + 'static)) -> ! {
+fn cannot_start(_app: &tauri::AppHandle, error: &(dyn std::error::Error + 'static)) -> ! {
     panic!("cannot start: {error}");
 }
 
@@ -146,7 +152,7 @@ pub fn run() {
             log::info!("SimpleWorship {} starting", app.package_info().version);
             let state = match AppState::load(app.handle()) {
                 Ok(state) => state,
-                Err(error) => cannot_start(&*error),
+                Err(error) => cannot_start(app.handle(), &*error),
             };
             let recent = state.recent().list();
             app.manage(state);
