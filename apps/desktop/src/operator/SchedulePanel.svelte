@@ -403,20 +403,31 @@
         ondblclick={() => show(item)}
       >
         {#if layout === "grid"}
+          <!-- A card: the first slide, then the number and title under it. -->
           {@const thumbnail = thumbnails.get(item.id)}
-          <div class="thumbnail">
-            {#if thumbnail}
+          {#if thumbnail}
+            <div class="thumbnail">
               <ScaledCanvas><SlideView frame={thumbnail} /></ScaledCanvas>
-            {:else}
+            </div>
+          {:else}
+            <div class="thumbnail empty-thumbnail">
               <span class="kind">{itemKind(item)}</span>
+            </div>
+          {/if}
+          <div class="caption">
+            <span class="number">{index + 1}</span>
+            <span class="title">{itemTitle(item)}</span>
+            {#if item.notes}
+              <span class="has-notes" title={item.notes}>✎</span>
             {/if}
           </div>
-        {/if}
-        <span class="number">{index + 1}</span>
-        <span class="kind">{itemKind(item)}</span>
-        <span class="title">{itemTitle(item)}</span>
-        {#if item.notes}
-          <span class="has-notes" title={item.notes}>✎</span>
+        {:else}
+          <span class="number">{index + 1}</span>
+          <span class="kind">{itemKind(item)}</span>
+          <span class="title">{itemTitle(item)}</span>
+          {#if item.notes}
+            <span class="has-notes" title={item.notes}>✎</span>
+          {/if}
         {/if}
       </div>
     {:else}
@@ -620,41 +631,44 @@
     align-content: start;
   }
 
-  /* A card: the first slide across the top, then the number and title. */
+  /* A card, in plain block layout: WebKit does not always grow a grid
+     or flex card to fit a 16:9 picture sized by aspect-ratio. */
   .items.layout-grid .item {
-    display: grid;
-    grid-template-columns: auto 1fr auto;
-    align-items: start;
+    display: block;
     border-radius: var(--sw-radius);
     border: 1px solid var(--sw-border);
     border-top: 3px solid transparent;
-    border-left: none;
+    border-left: 1px solid var(--sw-border);
     background: var(--sw-surface-sunken, rgba(255, 255, 255, 0.02));
-    padding: var(--sw-space-2);
-    min-height: 80px;
-    gap: var(--sw-space-1);
-    position: relative;
-  }
-
-  .items.layout-grid .item > .kind {
-    display: none;
+    padding: var(--sw-space-1);
   }
 
   .items.layout-grid .thumbnail {
-    grid-column: 1 / -1;
-    width: 100%;
-    aspect-ratio: 16 / 9;
     border-radius: var(--sw-radius-small);
     overflow: hidden;
     background: #000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
     pointer-events: none;
   }
 
+  /* Background music: its label where the picture would be. */
+  .items.layout-grid .empty-thumbnail {
+    aspect-ratio: 16 / 9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .items.layout-grid .caption {
+    display: flex;
+    align-items: baseline;
+    gap: var(--sw-space-1);
+    padding: var(--sw-space-1) var(--sw-space-1) 0;
+    min-width: 0;
+  }
+
   .items.layout-grid .item .title {
-    width: 100%;
+    flex: 1;
+    min-width: 0;
     white-space: normal;
     display: -webkit-box;
     -webkit-line-clamp: 2;
