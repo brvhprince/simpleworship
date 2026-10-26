@@ -19,11 +19,20 @@ import { listen } from "@tauri-apps/api/event";
 import * as api from "./api.ts";
 import { engine } from "./engine.svelte.ts";
 import { link } from "./link.svelte.ts";
-import { audioDetails, imageDetails, videoDetails } from "./thumbnails.ts";
+import { audioDetails, imageDetails, TimedOut, videoDetails } from "./thumbnails.ts";
 
 /** Must match `MEDIA_EVENT` and `MEDIA_PROGRESS_EVENT` in `src-tauri/src/media.rs`. */
 const MEDIA_EVENT = "media://changed";
 const MEDIA_PROGRESS_EVENT = "media://progress";
+
+/**
+ * How many files are prepared (thumbnail and measurements) at once. WebKit
+ * decodes only a few videos together; importing twenty at once left most
+ * of them waiting for ever, without thumbnails.
+ */
+const AT_ONCE = 2;
+/** How many times a file is tried in one session before giving up. */
+const MAX_TRIES = 2;
 
 class MediaStore {
   /** Every media item, newest first. */
@@ -47,8 +56,14 @@ class MediaStore {
     ),
   );
 
-  /** Items whose thumbnail is being made, so it is only made once. */
-  #preparing = new Set<string>();
+  /** Items waiting for or having their thumbnail made, and when it is done. */
+  #queued = new Map<string, Promise<void>>();
+  /** What is waiting its turn (see {@link AT_ONCE}). */
+  #waiting: { item: MediaItem; done: () => void }[] = [];
+  /** How many are being prepared right now. */
+  #running = 0;
+  /** How many times each item was tried this session (see {@link MAX_TRIES}). */
+  #tries = new Map<string, number>();
   #urls: { file(media: MediaRef): string } | null = null;
 
   /** Starts following changes. `urls` builds file URLs (from `App.svelte`). */
@@ -119,19 +134,61 @@ class MediaStore {
   }
 
   /**
-   * Makes a thumbnail and measures the item. Safe to call repeatedly; each
-   * item is prepared once per session. Problems (a video the webview cannot
-   * play) are shown to the operator.
+   * Makes a thumbnail and measures the item, in a queue: at most
+   * {@link AT_ONCE} at a time, as WebKit decodes only a few videos together
+   * and leaves the rest waiting. Resolves when this item is done. Safe to
+   * call repeatedly (a thumbnail that fails to load asks again); an item is
+   * tried at most {@link MAX_TRIES} times a session.
    */
-  async prepare(item: MediaItem): Promise<void> {
+  prepare(item: MediaItem): Promise<void> {
     // A joined computer shows the main computer's media, which makes its
     // own thumbnails.
-    if (link.joined) return;
-    if (!this.#urls || this.#preparing.has(item.id)) return;
-    this.#preparing.add(item.id);
+    if (link.joined || !this.#urls) return Promise.resolve();
+    const queued = this.#queued.get(item.id);
+    if (queued) return queued;
+    if ((this.#tries.get(item.id) ?? 0) >= MAX_TRIES) return Promise.resolve();
 
+    const done = new Promise<void>((resolve) => this.#waiting.push({ item, done: resolve }));
+    this.#queued.set(item.id, done);
+    this.#next();
+    return done;
+  }
+
+  /**
+   * Makes the item's thumbnail again, e.g. one that came out black before
+   * thumbnails waited for the frame. Resolves when it is done.
+   */
+  remake(item: MediaItem): Promise<void> {
+    if (!this.#queued.has(item.id)) this.#tries.delete(item.id);
+    return this.prepare(item);
+  }
+
+  /** Starts the next waiting items, while fewer than {@link AT_ONCE} run. */
+  #next(): void {
+    while (this.#running < AT_ONCE) {
+      const next = this.#waiting.shift();
+      if (!next) return;
+      this.#running += 1;
+      void this.#prepareNow(next.item).finally(() => {
+        this.#running -= 1;
+        this.#queued.delete(next.item.id);
+        next.done();
+        this.#next();
+      });
+    }
+  }
+
+  /**
+   * Prepares one item. A file the webview cannot play is reported at once
+   * and not tried again; one that took too long is tried once more later,
+   * and reported only if it fails again.
+   */
+  async #prepareNow(item: MediaItem): Promise<void> {
+    const tries = (this.#tries.get(item.id) ?? 0) + 1;
+    this.#tries.set(item.id, tries);
     try {
-      const url = this.#urls.file({ id: item.id, file: item.file });
+      const url = this.#urls?.file({ id: item.id, file: item.file });
+      if (!url) return;
       if (item.kind === "audio") {
         // Sound has no picture; only its length is worth knowing.
         const { durationMs } = await audioDetails(url);
@@ -145,9 +202,15 @@ class MediaStore {
         height: details.height,
         durationMs: details.durationMs,
       });
+      // Done: not prepared again this session.
+      this.#tries.set(item.id, MAX_TRIES);
       this.thumbnailVersion += 1;
     } catch (error) {
-      engine.showError(`${item.name}: ${error instanceof Error ? error.message : error}`);
+      const retry = error instanceof TimedOut && tries < MAX_TRIES;
+      if (!retry) {
+        this.#tries.set(item.id, MAX_TRIES);
+        engine.showError(`${item.name}: ${error instanceof Error ? error.message : error}`);
+      }
     }
   }
 }

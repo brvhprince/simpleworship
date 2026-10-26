@@ -264,6 +264,14 @@
           >
         {/if}
       {/if}
+      {#if selected && selected.kind !== "audio" && !link.joined}
+        <Button
+          title={t("media.newThumbnailHint")}
+          onclick={() => onSelected((item) => media.remake(item))}
+        >
+          {t("media.newThumbnail")}
+        </Button>
+      {/if}
       {#if !link.joined}
         <Button disabled={!selected} onclick={() => onSelected(remove)}
           >{t("common.delete")}</Button
