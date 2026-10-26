@@ -20,6 +20,7 @@
   import type { RenderFrame, ScheduleItem } from "@simpleworship/protocol";
   import { ScaledCanvas, SlideView } from "@simpleworship/renderer";
   import { Button } from "@simpleworship/ui";
+  import { listen } from "@tauri-apps/api/event";
   import {
     addMediaToSchedule,
     addMissingScheduleSongs,
@@ -79,10 +80,19 @@
   const liveId = $derived(engine.live?.scheduleItem ?? null);
   const previewed = $derived(items.find((item) => item.id === previewId) ?? null);
 
+  /** Must match `SETTINGS_EVENT` in `src-tauri/src/commands/settings.rs`. */
+  const SETTINGS_EVENT = "settings://changed";
+  /** Bumped when settings are saved: the CCLI licence is in song footers. */
+  let settingsSaved = $state(0);
+  $effect(() => {
+    const stop = listen(SETTINGS_EVENT, () => (settingsSaved += 1));
+    return () => void stop.then((unlisten) => unlisten());
+  });
+
   /**
    * Each item's first slide, for the grid (`null` for background music).
    * Only fetched while the grid shows, and again when the schedule, the
-   * themes or the files' own fits change.
+   * themes, the files' own fits or the settings (the CCLI licence) change.
    */
   let thumbnails = $state.raw(new Map<string, RenderFrame | null>());
   $effect(() => {
@@ -90,6 +100,7 @@
     const list = items;
     void engine.themes;
     void media.fileFits;
+    void settingsSaved;
     let current = true;
     void Promise.all(
       list.map(
@@ -406,11 +417,13 @@
           <!-- A card: the first slide, then the number and title under it. -->
           {@const thumbnail = thumbnails.get(item.id)}
           {#if thumbnail}
-            <div class="thumbnail">
+            <!-- Hidden from screen readers: the slide's words would come
+                 before the item's number and title. -->
+            <div class="thumbnail" aria-hidden="true">
               <ScaledCanvas><SlideView frame={thumbnail} /></ScaledCanvas>
             </div>
           {:else}
-            <div class="thumbnail empty-thumbnail">
+            <div class="thumbnail empty-thumbnail" aria-hidden="true">
               <span class="kind">{itemKind(item)}</span>
             </div>
           {/if}
