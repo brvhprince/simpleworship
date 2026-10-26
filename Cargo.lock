@@ -4430,7 +4430,7 @@ checksum = "e3a9fe34e3e7a50316060351f37187a3f546bce95496156754b601a5fa71b76e"
 
 [[package]]
 name = "simpleworship-desktop"
-version = "0.5.3"
+version = "0.6.0"
 dependencies = [
  "chrono",
  "dwrote",
@@ -4638,7 +4638,7 @@ checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
 
 [[package]]
 name = "sw-bible"
-version = "0.5.3"
+version = "0.6.0"
 dependencies = [
  "flate2",
  "quick-xml 0.42.0",
@@ -4652,7 +4652,7 @@ dependencies = [
 
 [[package]]
 name = "sw-core"
-version = "0.5.3"
+version = "0.6.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -4664,7 +4664,7 @@ dependencies = [
 
 [[package]]
 name = "sw-db"
-version = "0.5.3"
+version = "0.6.0"
 dependencies = [
  "rusqlite",
  "rusqlite_migration",
@@ -4677,7 +4677,7 @@ dependencies = [
 
 [[package]]
 name = "sw-files"
-version = "0.5.3"
+version = "0.6.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -4689,7 +4689,7 @@ dependencies = [
 
 [[package]]
 name = "sw-import"
-version = "0.5.3"
+version = "0.6.0"
 dependencies = [
  "base64 0.23.1",
  "quick-xml 0.42.0",
@@ -4703,7 +4703,7 @@ dependencies = [
 
 [[package]]
 name = "sw-listen"
-version = "0.5.3"
+version = "0.6.0"
 dependencies = [
  "cpal",
  "log",
@@ -4714,7 +4714,7 @@ dependencies = [
 
 [[package]]
 name = "sw-ndi"
-version = "0.5.3"
+version = "0.6.0"
 dependencies = [
  "block2",
  "libloading 0.8.9",
@@ -4734,7 +4734,7 @@ dependencies = [
 
 [[package]]
 name = "sw-server"
-version = "0.5.3"
+version = "0.6.0"
 dependencies = [
  "axum",
  "futures-util",

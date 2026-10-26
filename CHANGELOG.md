@@ -4,6 +4,53 @@ What changed in each release of SimpleWorship. The newest release is at
 the top. Each release's notes are also shown in the app when it offers the
 update.
 
+## 0.6.0 (26 October 2026)
+
+More Bibles, a steadier and faster Listen, and many fixes from our first
+services.
+
+**Please note:** the copyright line under songs and scripture ("John
+Newton · Public Domain", "King James Version · Public Domain") is now off
+unless a theme turns it on, and this update turns it off in your existing
+themes. If your CCLI licence needs each song's copyright and licence number
+on screen, open the song theme and tick **Show** under Footer.
+
+- **Get More Bibles** (Scripture › Bibles…): search over a thousand Bibles
+  that may be shared freely, in more than 130 languages, including Akuapem
+  Twi, and download one with a click. The **Asante Twi Bible** and the
+  French **Louis Segond** are now included, alongside the KJV and WEB. A
+  Bible that came with SimpleWorship stays deleted if you delete it.
+- **Listen** runs speech to text in a helper of its own, so a problem there
+  can never close SimpleWorship during a service: it starts again by itself
+  and keeps listening. It is also about three times faster, so references
+  appear while the preacher is still on the verse.
+- **Long passages** move on to the next slide instead of shrinking below
+  the minimum font size you set in the Scripture tab (48 to start with),
+  measured against your scripture theme's text box.
+- **Pictures and videos** keep their own Aspect Ratio (Automatic, Stretch,
+  Maintain, Zoom) wherever they are used, on every screen, the stream and
+  computers that join, and a change shows straight away.
+- **Thumbnails:** importing many videos at once gives every one a
+  thumbnail, and none come out black. Black thumbnails from before are made
+  again by themselves; **New Thumbnail** in the Media tab redoes any one.
+- **A video can be the logo:** select it in the Media tab and click Set as
+  Logo. It plays on a loop, without sound.
+- **Presentations:** text keeps the size you gave it (turn on **Scale to
+  fit** in the Inspector for a box that should grow to fill its space), and
+  selected words can have their own font weight.
+- **Themes:** Scale to fit no longer shrinks long text when Shrink is off,
+  and scripture themes can now turn the copyright line on or off.
+- **Schedule:** the grid layout shows a picture of each item's first slide.
+- **Phone remote:** side by side scripture is readable on iPhones with
+  iOS 27, where it came out tiny.
+- **Microsoft Store:** SimpleWorship is coming to the Store. Copies from
+  the Store are updated by the Store.
+- If SimpleWorship cannot open its library (for example, after installing
+  an older version over a newer one), it now says why and what to do,
+  instead of closing.
+- The [privacy policy](https://brvhprince.github.io/simpleworship/privacy.html)
+  now says exactly what SimpleWorship keeps and which services it talks to.
+
 ## 0.5.3 (26 October 2026)
 
 Speech transcription hardening and Microsoft Store MSIX packaging.
