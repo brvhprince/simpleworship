@@ -144,6 +144,11 @@ pub enum ElementContent {
         vertical_align: VerticalAlign,
         /// Shrink the text (from `style.font_size`) until it fits the box.
         auto_fit: bool,
+        /// Grow short text past `style.font_size` until it fills the box
+        /// (EasyWorship's "scale to fit"). Off unless the operator turns it
+        /// on, so text keeps the size it was given.
+        #[serde(default)]
+        scale_up: bool,
         /// Space between the box's edge and its text, in canvas pixels.
         #[serde(default)]
         padding: f32,
@@ -317,6 +322,7 @@ impl DeckSlide {
                 style,
                 vertical_align: area.vertical_align,
                 auto_fit: area.auto_fit,
+                scale_up: area.scale_up,
                 padding: 0.0,
                 fill: None,
                 corner_radius: 0.0,
@@ -465,6 +471,7 @@ mod tests {
                     style: TextStyle::default(),
                     vertical_align: VerticalAlign::Middle,
                     auto_fit: true,
+                    scale_up: false,
                     padding: 0.0,
                     fill: None,
                     corner_radius: 0.0,

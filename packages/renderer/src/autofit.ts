@@ -1,9 +1,13 @@
 /**
- * Shrinks slide text until it fits its text box.
+ * Sizes slide text to its text box.
  *
- * The theme's font size is the *largest* size to use. When the text is too
- * long for the box at that size, the size is reduced (never below
+ * Normally the given font size is the *largest* size to use: when the text
+ * is too long for the box at that size, the size is reduced (never below
  * {@link MIN_FONT_SIZE}) until it fits.
+ *
+ * With `scaleUp` (EasyWorship's "scale to fit"), short text also grows past
+ * that size until it fills the box, so "Call to Worship" is not left small
+ * in the middle of the screen. It is opt-in, per theme or per text box.
  */
 
 import { tick } from "svelte";
@@ -42,13 +46,37 @@ export function largestFittingSize(
   return best;
 }
 
+/**
+ * The font sizes to choose from, or `null` to use `maxSize` as it is.
+ *
+ * - `shrink` lets long text go down to {@link MIN_FONT_SIZE}.
+ * - `grow` lets short text go up to the box's height (one line cannot be
+ *   taller than that; the width check in {@link autofit} stops long words
+ *   from growing too far).
+ *
+ * Each only moves the size its own way: with `grow` alone, text that does
+ * not fit at `maxSize` stays at `maxSize`, as the shrink option is off.
+ */
+export function fitRange(
+  maxSize: number,
+  shrink: boolean,
+  grow: boolean,
+  boxHeight: number,
+): { min: number; max: number } | null {
+  if (!shrink && !grow) return null;
+  return {
+    min: shrink ? MIN_FONT_SIZE : maxSize,
+    max: grow ? Math.max(maxSize, Math.floor(boxHeight)) : maxSize,
+  };
+}
+
 /** Options for the {@link autofit} action. */
 export interface AutofitOptions {
-  /** Shrink to fit. When `false`, the text is always `maxSize`. */
+  /** Shrink long text to fit (never below {@link MIN_FONT_SIZE}). */
   enabled: boolean;
-  /** The theme's font size, in reference pixels. */
+  /** The font size it was given, in reference pixels. */
   maxSize: number;
-  /** Scale up beyond `maxSize` to fill the container when text is short. */
+  /** Also grow short text past `maxSize` until it fills the box. */
   scaleUp?: boolean;
   /** Anything that changes the text's size (the text itself, the font…).
    *  The fit is recomputed whenever it changes. */
@@ -80,10 +108,13 @@ export const autofit: Action<HTMLElement, AutofitOptions> = (box, initial) => {
       return text.scrollHeight <= box.clientHeight && text.scrollWidth <= box.clientWidth;
     };
 
-    const limit = options.scaleUp
-      ? Math.max(options.maxSize, Math.min(box.clientHeight ? box.clientHeight * 0.85 : 240, 240))
-      : options.maxSize;
-    apply(options.enabled ? largestFittingSize(fits, limit) : options.maxSize);
+    const range = fitRange(
+      options.maxSize,
+      options.enabled,
+      options.scaleUp ?? false,
+      box.clientHeight,
+    );
+    apply(range ? largestFittingSize(fits, range.max, range.min) : options.maxSize);
   }
 
   fitText();

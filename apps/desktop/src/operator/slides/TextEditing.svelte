@@ -119,6 +119,8 @@
       use:autofit={{
         enabled: element.content.autoFit,
         maxSize: element.content.style.fontSize,
+        // As on the screens (ElementsLayer), so what you edit is what shows.
+        scaleUp: element.content.scaleUp,
         content: [element.content.runs, element.content.style, element.frame],
       }}
     >

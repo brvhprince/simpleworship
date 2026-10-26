@@ -377,6 +377,7 @@
   "inspector.fillColour": "Couleur de remplissage",
   "inspector.fit": "Ajustement",
   "inspector.forward": "Avancer",
+  "inspector.grow": "Ajuster à la taille (agrandir le texte court)",
   "inspector.height": "Hauteur",
   "inspector.line": "Ligne",
   "inspector.lineColour": "Couleur de la ligne",

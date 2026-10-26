@@ -377,6 +377,7 @@
   "inspector.fillColour": "Fill colour",
   "inspector.fit": "Fit",
   "inspector.forward": "Forward",
+  "inspector.grow": "Scale to fit (expand small text)",
   "inspector.height": "Height",
   "inspector.line": "Line",
   "inspector.lineColour": "Line colour",

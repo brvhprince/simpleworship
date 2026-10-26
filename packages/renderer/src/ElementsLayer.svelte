@@ -49,7 +49,7 @@
             use:autofit={{
               enabled: content.autoFit,
               maxSize: content.style.fontSize,
-              scaleUp: true,
+              scaleUp: content.scaleUp,
               content: [content.runs, content.style, element.frame, content.padding],
             }}
           >

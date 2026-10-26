@@ -893,6 +893,12 @@ export type ElementContent =
        */
       autoFit: boolean;
       /**
+       * Grow short text past `style.font_size` until it fills the box
+       * (EasyWorship's "scale to fit"). Off unless the operator turns it
+       * on, so text keeps the size it was given.
+       */
+      scaleUp: boolean;
+      /**
        * Space between the box's edge and its text, in canvas pixels.
        */
       padding: number;

@@ -168,6 +168,17 @@
         <label class="check">
           <input
             type="checkbox"
+            checked={content.scaleUp}
+            onchange={(e) => {
+              const on = e.currentTarget.checked;
+              updateContent("text", (text) => (text.scaleUp = on));
+            }}
+          >
+          {t("inspector.grow")}
+        </label>
+        <label class="check">
+          <input
+            type="checkbox"
             checked={content.fill !== null}
             onchange={(e) => {
               const on = e.currentTarget.checked;
