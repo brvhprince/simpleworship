@@ -4,6 +4,22 @@ What changed in each release of SimpleWorship. The newest release is at
 the top. Each release's notes are also shown in the app when it offers the
 update.
 
+## 0.5.3 (26 October 2026)
+
+Speech transcription hardening and Microsoft Store MSIX packaging.
+
+- **Listen audio stability on Windows:** Increased Whisper transcription thread
+  stack size to 16 MiB, resolving instant process crashes caused by Windows'
+  1 MiB default thread stack limit during GGML matrix operations.
+- **Defensive audio sample sanitization:** Sanitized non-finite audio samples
+  (NaN/Inf) to prevent GGML C++ assertion aborts during transient buffer glitches.
+- **Panic isolation and crash logging:** Wrapped audio and transcription workers
+  in unwind-safe boundaries and installed a global panic hook in Tauri to capture
+  and log any unhandled GUI panics into simpleworship.log.
+- **Microsoft Store MSIX distribution:** Added MSIX packaging scripts, Store
+  manifest templates, and automated release pipeline steps for Microsoft
+  Partner Center distribution.
+
 ## 0.5.2 (25 October 2026)
 
 Presentation saving and element role identifier fix.

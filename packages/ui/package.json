@@ -1,6 +1,6 @@
 {
   "name": "@simpleworship/ui",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "private": true,
   "description": "Shared Svelte components and design tokens for SimpleWorship apps.",
   "license": "GPL-3.0-or-later",

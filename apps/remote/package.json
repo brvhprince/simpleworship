@@ -1,6 +1,6 @@
 {
   "name": "@simpleworship/remote",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "private": true,
   "description": "SimpleWorship's phone remote: a web app served by SimpleWorship to phones and tablets on the church's network.",
   "license": "GPL-3.0-or-later",
