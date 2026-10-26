@@ -30,6 +30,9 @@ fn migrations() -> Migrations<'static> {
         )),
         M::up(include_str!("../migrations/0006_media_scaling.sql")),
         M::up(include_str!("../migrations/0007_bible_sources.sql")),
+        M::up(include_str!(
+            "../migrations/0008_removed_bundled_bibles.sql"
+        )),
     ])
 }
 
