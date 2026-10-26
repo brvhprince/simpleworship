@@ -333,9 +333,14 @@ async fn start(app: &AppHandle) -> AppResult<()> {
     announce(app);
 
     let path = model_path(app, settings.model)?;
+    // Whisper runs in a helper process: this same app, started with
+    // `--listen-helper` (see `main.rs`), so a crash in it cannot close the
+    // app during a service.
+    let helper = sw_listen::worker::HelperCommand::this_executable(&path)
+        .map_err(|error| AppError::Listen(error.to_string()))?;
     let events = app.clone();
     let started = tauri::async_runtime::spawn_blocking(move || {
-        sw_listen::Listener::start(settings.device.as_deref(), &path, move |event| {
+        sw_listen::Listener::start(settings.device.as_deref(), &helper, move |event| {
             on_event(&events, event);
         })
     })
