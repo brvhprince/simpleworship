@@ -262,6 +262,17 @@ impl Engine {
         &self.schedule
     }
 
+    /// The first slide of a schedule item, drawn as the screens would draw
+    /// it (its theme, the files' own fits, the licence footer), for the
+    /// schedule's thumbnails. `None` for an item that is not in the
+    /// schedule or has nothing to show (background music).
+    pub fn item_thumbnail(&self, id: Id) -> Option<RenderFrame> {
+        let item = self.schedule.get(id)?;
+        let mut presentation = self.finish(item.presentation(&self.themes));
+        presentation.apply_file_fits(&self.file_fits);
+        presentation.frame(0)
+    }
+
     /// The theme library.
     pub fn themes(&self) -> &ThemeLibrary {
         &self.themes
@@ -1723,6 +1734,16 @@ mod tests {
             .unwrap();
         engine.dispatch(Command::GoLive).unwrap();
         assert_eq!(live_file_fit(&engine), Some(MediaFit::Stretch));
+    }
+
+    #[test]
+    fn a_schedule_item_has_a_thumbnail_of_its_first_slide() {
+        let item = text_item("Welcome", "first\n\nsecond");
+        let id = item.id;
+        let engine = themed_engine(vec![item]);
+        let thumbnail = engine.item_thumbnail(id).expect("a thumbnail");
+        assert_eq!(thumbnail.text, "first");
+        assert_eq!(engine.item_thumbnail(Id::new()), None);
     }
 
     #[test]

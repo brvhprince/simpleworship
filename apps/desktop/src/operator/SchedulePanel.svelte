@@ -12,9 +12,13 @@
 
   The previewed item is marked blue and the live item red, like the panes.
   Notes for the previewed item can be edited at the bottom.
+
+  Three layouts, remembered on this computer: a list, cards, and a grid
+  with a picture of each item's first slide (← and → move along it too).
 -->
 <script lang="ts">
-  import type { ScheduleItem } from "@simpleworship/protocol";
+  import type { RenderFrame, ScheduleItem } from "@simpleworship/protocol";
+  import { ScaledCanvas, SlideView } from "@simpleworship/renderer";
   import { Button } from "@simpleworship/ui";
   import {
     addMediaToSchedule,
@@ -26,6 +30,7 @@
     appendMediaToItem,
     appendPresentationToItem,
     missingScheduleSongs,
+    scheduleItemThumbnail,
   } from "../lib/api.ts";
   import {
     dropTarget,
@@ -45,16 +50,27 @@
   import ItemLookEditor from "./ItemLookEditor.svelte";
 
   type ScheduleLayout = "list" | "column" | "grid";
-  let layout = $state<ScheduleLayout>(
-    (typeof localStorage !== "undefined" &&
-      (localStorage.getItem("simpleworship.schedule_layout") as ScheduleLayout)) ||
-      "list",
-  );
+  const LAYOUT_KEY = "simpleworship.schedule_layout";
+  const LAYOUTS: ScheduleLayout[] = ["list", "column", "grid"];
+
+  /** The layout chosen last on this computer (a convenience only). */
+  function savedLayout(): ScheduleLayout {
+    try {
+      const saved = localStorage.getItem(LAYOUT_KEY) as ScheduleLayout | null;
+      return saved && LAYOUTS.includes(saved) ? saved : "list";
+    } catch {
+      return "list";
+    }
+  }
+
+  let layout = $state<ScheduleLayout>(savedLayout());
 
   function setLayout(newLayout: ScheduleLayout) {
     layout = newLayout;
-    if (typeof localStorage !== "undefined") {
-      localStorage.setItem("simpleworship.schedule_layout", newLayout);
+    try {
+      localStorage.setItem(LAYOUT_KEY, newLayout);
+    } catch {
+      // Storage can be unavailable; the layout just won't be remembered.
     }
   }
 
@@ -62,6 +78,30 @@
   const previewId = $derived(engine.preview?.scheduleItem ?? null);
   const liveId = $derived(engine.live?.scheduleItem ?? null);
   const previewed = $derived(items.find((item) => item.id === previewId) ?? null);
+
+  /**
+   * Each item's first slide, for the grid (`null` for background music).
+   * Only fetched while the grid shows, and again when the schedule, the
+   * themes or the files' own fits change.
+   */
+  let thumbnails = $state.raw(new Map<string, RenderFrame | null>());
+  $effect(() => {
+    if (layout !== "grid") return;
+    const list = items;
+    void engine.themes;
+    void media.fileFits;
+    let current = true;
+    void Promise.all(
+      list.map(
+        async (item) => [item.id, await scheduleItemThumbnail(item.id).catch(() => null)] as const,
+      ),
+    ).then((pairs) => {
+      if (current) thumbnails = new Map(pairs);
+    });
+    return () => {
+      current = false;
+    };
+  });
 
   /** Where a drag in progress would drop, as an insertion index. */
   let dropAt: number | null = $state(null);
@@ -107,7 +147,7 @@
   /** Keyboard control while the list has focus. */
   function handleKeys(event: KeyboardEvent) {
     const index = items.findIndex((item) => item.id === previewId);
-    const step = { ArrowDown: 1, ArrowUp: -1 }[event.key];
+    const step = { ArrowDown: 1, ArrowUp: -1, ArrowRight: 1, ArrowLeft: -1 }[event.key];
 
     if (step !== undefined) {
       const next = items[index === -1 ? 0 : index + step];
@@ -362,6 +402,16 @@
         onclick={() => preview(item)}
         ondblclick={() => show(item)}
       >
+        {#if layout === "grid"}
+          {@const thumbnail = thumbnails.get(item.id)}
+          <div class="thumbnail">
+            {#if thumbnail}
+              <ScaledCanvas><SlideView frame={thumbnail} /></ScaledCanvas>
+            {:else}
+              <span class="kind">{itemKind(item)}</span>
+            {/if}
+          </div>
+        {/if}
         <span class="number">{index + 1}</span>
         <span class="kind">{itemKind(item)}</span>
         <span class="title">{itemTitle(item)}</span>
@@ -564,15 +614,17 @@
 
   .items.layout-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     gap: var(--sw-space-2);
     padding: var(--sw-space-2);
     align-content: start;
   }
 
+  /* A card: the first slide across the top, then the number and title. */
   .items.layout-grid .item {
-    flex-direction: column;
-    align-items: flex-start;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: start;
     border-radius: var(--sw-radius);
     border: 1px solid var(--sw-border);
     border-top: 3px solid transparent;
@@ -582,6 +634,23 @@
     min-height: 80px;
     gap: var(--sw-space-1);
     position: relative;
+  }
+
+  .items.layout-grid .item > .kind {
+    display: none;
+  }
+
+  .items.layout-grid .thumbnail {
+    grid-column: 1 / -1;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border-radius: var(--sw-radius-small);
+    overflow: hidden;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
   }
 
   .items.layout-grid .item .title {

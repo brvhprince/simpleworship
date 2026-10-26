@@ -142,6 +142,7 @@ pub fn run() {
             commands::schedule::schedule_missing_songs,
             commands::schedule::schedule_add_missing_songs,
             commands::schedule::schedule_file_status,
+            commands::schedule::schedule_item_thumbnail,
             commands::schedule::schedule_new,
             commands::schedule::schedule_open,
             commands::schedule::schedule_save,

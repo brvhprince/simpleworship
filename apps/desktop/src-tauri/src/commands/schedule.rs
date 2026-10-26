@@ -7,6 +7,7 @@
 use std::path::PathBuf;
 
 use sw_core::countdown::CountdownSlide;
+use sw_core::output::RenderFrame;
 use sw_core::{CameraRef, Command, Id, ItemContent, Schedule, ScheduleItem};
 use tauri::{AppHandle, Manager, State};
 
@@ -169,6 +170,14 @@ fn prefer_library_songs(state: &AppState, schedule: &mut Schedule) -> AppResult<
 // ── Files ────────────────────────────────────────────────────────────────
 
 /// The current file name and unsaved-changes flag.
+/// The first slide of a schedule item, as the screens would draw it, for
+/// the schedule's grid of thumbnails. `None` for background music, which
+/// has nothing to show.
+#[tauri::command]
+pub fn schedule_item_thumbnail(state: State<'_, AppState>, id: Id) -> Option<RenderFrame> {
+    state.engine().item_thumbnail(id)
+}
+
 #[tauri::command]
 pub fn schedule_file_status(state: State<'_, AppState>) -> ScheduleFileStatus {
     state.schedule_file().status()
