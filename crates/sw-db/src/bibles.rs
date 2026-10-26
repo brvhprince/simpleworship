@@ -55,6 +55,15 @@ impl<'db> Bibles<'db> {
         Ok(statement.exists([key])?)
     }
 
+    /// Whether the operator deleted the bundled Bible with this key, so it
+    /// must not be installed again (see [`Bibles::delete`]).
+    pub fn was_removed(&self, key: &str) -> Result<bool, DbError> {
+        let mut statement = self
+            .conn
+            .prepare_cached("SELECT 1 FROM removed_bundled_bibles WHERE key = ?1")?;
+        Ok(statement.exists([key])?)
+    }
+
     /// Stores an imported Bible and returns it. Everything happens in one
     /// transaction: if anything fails, nothing is stored.
     ///
@@ -164,12 +173,21 @@ impl<'db> Bibles<'db> {
     }
 
     /// Deletes a Bible and all its verses. Returns `false` if there was no
-    /// such Bible.
+    /// such Bible. A bundled Bible is remembered as removed, so it is not
+    /// installed again on the next start (see [`Bibles::was_removed`]); it
+    /// can still be downloaded again from Get More Bibles.
     pub fn delete(&self, id: Id) -> Result<bool, DbError> {
-        let changed = self
-            .conn
+        let transaction = self.conn.unchecked_transaction()?;
+        transaction
+            .prepare_cached(
+                "INSERT OR IGNORE INTO removed_bundled_bibles (key, removed_at)
+                 SELECT bundled_key, ?2 FROM bibles WHERE id = ?1 AND bundled_key IS NOT NULL",
+            )?
+            .execute(params![id.to_string(), time::now()])?;
+        let changed = transaction
             .prepare_cached("DELETE FROM bibles WHERE id = ?1")?
             .execute([id.to_string()])?;
+        transaction.commit()?;
         Ok(changed > 0)
     }
 
@@ -344,6 +362,28 @@ mod tests {
 
         bibles.delete(info.id).unwrap();
         assert!(bibles.sources().unwrap().is_empty(), "deleting forgets it");
+    }
+
+    #[test]
+    fn a_deleted_bundled_bible_stays_deleted() {
+        let db = Database::open_in_memory().unwrap();
+        let bibles = db.bibles();
+        let bundled = bibles.import(&sample(), Some("kjv")).unwrap();
+        let imported = bibles.import(&sample(), None).unwrap();
+        assert!(!bibles.was_removed("kjv").unwrap());
+
+        bibles.delete(imported.id).unwrap();
+        assert!(
+            !bibles.was_removed("kjv").unwrap(),
+            "only bundled Bibles count"
+        );
+
+        bibles.delete(bundled.id).unwrap();
+        assert!(!bibles.has_bundled("kjv").unwrap());
+        assert!(
+            bibles.was_removed("kjv").unwrap(),
+            "remembered, not brought back"
+        );
     }
 
     #[test]
