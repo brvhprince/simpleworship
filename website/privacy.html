@@ -6,12 +6,12 @@
     <title>Privacy Policy · SimpleWorship</title>
     <meta
       name="description"
-      content="SimpleWorship's Privacy Policy: We do not collect, transmit, or share your personal information. Offline-first and private by design."
+      content="SimpleWorship's privacy policy: no accounts, analytics or advertising, and nothing about you sent to us. What the app keeps, and which services it talks to and when."
     >
     <meta property="og:title" content="Privacy Policy · SimpleWorship">
     <meta
       property="og:description"
-      content="SimpleWorship respects your privacy. All audio processing, presentation data, and media stay completely on your device."
+      content="SimpleWorship works offline and collects nothing about you. What it keeps, and which services it talks to and when."
     >
     <meta property="og:type" content="website">
     <meta name="theme-color" content="#0a0b0e">
@@ -95,123 +95,170 @@
     <main id="main">
       <article class="policy-container">
         <h1>Privacy Policy</h1>
-        <p class="policy-date">Effective Date: October 26, 2026</p>
+        <p class="policy-date">Effective date: 26 October 2026</p>
 
         <div class="policy-highlight">
           <p>
-            <strong>Summary:</strong>
-            SimpleWorship is offline-first, open-source software. We do not collect, track, store,
-            or transmit your personal data. All audio transcription and presentation media remain
-            strictly on your local computer.
+            <strong>In short:</strong>
+            SimpleWorship works offline and has no accounts, analytics or advertising. Nothing about
+            you or your church is sent to us. Below is exactly what the app keeps, and which
+            services it talks to and when, so you can check it for yourself.
           </p>
         </div>
 
-        <h2>1. Overview</h2>
-        <p>
-          SimpleWorship (“we”, “our”, or “us”) is developed by Prince Takyi Akomea as free,
-          open-source software for churches. This Privacy Policy outlines our commitment to
-          protecting your privacy when using the SimpleWorship desktop application and website.
-        </p>
-
-        <h2>2. Data Collection and Processing</h2>
-        <p>
-          SimpleWorship does not collect, sell, rent, or monetize personal information.
-          Specifically:
-        </p>
+        <h2>1. What stays on your computer</h2>
         <ul>
           <li>
-            <strong>No Personal Identifiers:</strong>
-            We do not require you to create an account, register, or provide your name, email
-            address, or payment details.
+            Your songs, Bibles, schedules, themes, presentations, pictures, videos, sound files,
+            settings and the CCLI song usage log are stored on the computer SimpleWorship runs on.
+            Nothing is uploaded anywhere.
           </li>
           <li>
-            <strong>No Telemetry or Analytics:</strong>
-            The application does not contain tracking scripts, usage telemetry, or third-party
-            advertising SDKs.
+            The app keeps logs on the computer, to help find problems. They are never sent
+            automatically; <strong>Help › Report a Problem</strong> only opens GitHub in your
+            browser, and you choose what to write there.
+          </li>
+          <li>There are no accounts, no sign-in, no analytics, no telemetry and no advertising.</li>
+        </ul>
+
+        <h2>2. Microphone (Listen)</h2>
+        <ul>
+          <li>
+            Only when you turn on <strong>Listen</strong> does SimpleWorship hear the input you
+            choose (usually the mixer's feed), to find the scripture the preacher reads.
           </li>
           <li>
-            <strong>Local Storage:</strong>
-            All church presentations, songs, scripture selections, schedules, themes, and
-            configuration files are stored locally on your device.
+            Speech to text (Whisper) runs <strong>on the computer</strong>, in a helper program of
+            SimpleWorship's own. Sound is never saved to disk and never sent over the internet or
+            to any AI service.
+          </li>
+          <li>The speech model is downloaded once (see section 6).</li>
+        </ul>
+
+        <h2>3. Cameras</h2>
+        <ul>
+          <li>
+            SimpleWorship opens a camera or capture card only when you show it, in
+            <strong>Media › Cameras</strong> or as a background.
+          </li>
+          <li>
+            Camera pictures are shown on the screens of that computer only. They are deliberately
+            left out of the stream output and NDI, are not shown on phones or on another computer
+            that joins this one, and are never sent to the internet.
           </li>
         </ul>
 
-        <h2>3. Device Capabilities and Hardware Access</h2>
+        <h2>4. Your church's network</h2>
         <p>
-          To provide church presentation features, SimpleWorship may request access to specific
-          hardware permissions:
+          When you turn these on, SimpleWorship serves them to other devices on your church's own
+          network (Wi-Fi or cable), never over the internet:
         </p>
         <ul>
           <li>
-            <strong>Microphone (Listen Feature):</strong>
-            When you explicitly turn on the "Listen" feature, SimpleWorship accesses your audio
-            input to recognize spoken scripture passages.
-            <strong>Audio is transcribed 100% locally on your computer</strong>
-            using embedded Whisper AI models. Your audio is never recorded, never sent over the
-            internet, and never shared with any cloud service.
+            <strong>Phone remote:</strong> phones and tablets in their web browser. A phone must be
+            paired with a code shown on the computer, which you approve, and each phone can only
+            do what its role allows. Remove a phone in Settings › Phone Remote and it is
+            disconnected at once.
           </li>
           <li>
-            <strong>Camera and Video Feeds:</strong>
-            SimpleWorship accesses connected webcams or video capture cards only when you view or
-            display them under Media › Cameras. Camera feeds are processed locally for live
-            projection and are never transmitted to external cloud servers.
+            <strong>Another SimpleWorship computer</strong> that joins this one (as a second
+            operator or a mirror) receives the service, its pictures and videos.
           </li>
           <li>
-            <strong>Local Network (Phone Remote):</strong>
-            The phone remote feature operates exclusively over your local Wi-Fi / Local Area Network
-            (LAN) via a local web server (port 7270). No data leaves your local network.
+            <strong>The stream output</strong> for OBS, vMix or Streamlabs, and
+            <strong>NDI</strong>, carry the slides shown, on the network.
           </li>
         </ul>
+        <p>The server uses port 7270 by default; you can change it in Settings.</p>
 
-        <h2>4. External Network Connections</h2>
+        <h2>5. The AI assistant (optional, off unless you turn it on)</h2>
         <p>
-          The desktop application makes internet connections only for the following user-facing
-          functions:
+          SimpleWorship can use an AI service with <strong>your church's own API key</strong> for
+          Claude (Anthropic), ChatGPT (OpenAI) or Gemini (Google). It is off until you turn it on in
+          Settings › Assistant and give a key, which is kept in the computer's keychain (macOS
+          Keychain, Windows Credential Manager, or the Secret Service on Linux), never in the
+          library.
+        </p>
+        <p>
+          Nothing is sent until you click one of its buttons, and then only what that button needs
+          goes to the service you chose:
         </p>
         <ul>
           <li>
-            <strong>Software Updates:</strong>
-            The app periodically queries the public GitHub Releases API to verify if a newer version
-            of SimpleWorship is available. No user data is sent during update checks.
+            <strong>Ask AI:</strong> the description you type (a song or a theme to find passages
+            for). Your song library is never sent.
+          </li>
+          <li><strong>Tidy Lyrics</strong> and <strong>Translate:</strong> the lyrics in front of you.</li>
+          <li><strong>From Sermon Notes:</strong> the notes you paste.</li>
+        </ul>
+        <p>
+          That text is then handled by the service under its own terms and privacy policy
+          (<a href="https://www.anthropic.com/legal/privacy">Anthropic</a>,
+          <a href="https://openai.com/policies/privacy-policy">OpenAI</a>,
+          <a href="https://policies.google.com/privacy">Google</a>), as part of your church's
+          account with it. Do not paste anything into the assistant that you would not share with
+          that service.
+        </p>
+
+        <h2>6. Internet connections the app makes</h2>
+        <p>
+          SimpleWorship connects to the internet only for these. Each service sees the computer's
+          IP address, as with any download; no personal information is sent.
+        </p>
+        <ul>
+          <li>
+            <strong>Updates:</strong> at start-up and once a day, if allowed in Settings, and when
+            you click Check for Updates, the app asks GitHub whether there is a newer version, and
+            downloads it in the background. It is only installed when you say so. Copies installed
+            from the <strong>Microsoft Store</strong> never do this: the Store updates them.
           </li>
           <li>
-            <strong>Speech Model Downloads:</strong>
-            When you choose to download speech recognition models, the file is retrieved directly
-            from public release repositories.
+            <strong>Speech model for Listen:</strong> downloaded once, when you choose to, from
+            Hugging Face.
           </li>
           <li>
-            <strong>Bible Translations:</strong>
-            Public-domain USFM Bible translations are downloaded directly upon user request.
+            <strong>More Bibles:</strong> when you open <strong>Get More Bibles</strong>, the list
+            of translations is fetched from eBible.org (and again when it is a week old), and a
+            Bible you choose is downloaded from there. The Bibles included with SimpleWorship need
+            no download.
+          </li>
+          <li><strong>The AI assistant</strong>, only as described in section 5.</li>
+          <li>
+            <strong>Links</strong> you click (the website, the guide, Report a Problem) open in
+            your browser.
           </li>
         </ul>
 
-        <h2>5. Children's Privacy</h2>
+        <h2>7. This website</h2>
         <p>
-          SimpleWorship does not collect any personal information from anyone, including children
-          under the age of 13.
+          This website is hosted by GitHub Pages. It uses no cookies, analytics or advertising. To
+          show its fonts it loads them from Google Fonts, and to link to the newest download it
+          asks GitHub's API which version is newest, so those services see your IP address, as
+          GitHub does for hosting the page.
         </p>
 
-        <h2>6. Open Source Transparency</h2>
+        <h2>8. Microsoft Store</h2>
         <p>
-          SimpleWorship is free software licensed under the GNU General Public License v3.0 or
-          later. Its complete source code is publicly accessible on GitHub at
-          <a href="https://github.com/brvhprince/simpleworship"
-            >github.com/brvhprince/simpleworship</a
-          >, allowing anyone to inspect and audit our security and privacy practices.
+          If you install SimpleWorship from the Microsoft Store, Microsoft's own privacy policy
+          covers the Store, your download and the Store's updates. SimpleWorship itself behaves as
+          described here.
         </p>
 
-        <h2>7. Changes to this Policy</h2>
+        <h2>9. Children</h2>
+        <p>SimpleWorship collects no personal information from anyone, including children.</p>
+
+        <h2>10. Changes to this policy</h2>
         <p>
-          We may update this Privacy Policy from time to time. Any modifications will be reflected
-          on this page with an updated effective date.
+          If what SimpleWorship does with data changes, this page changes with it and gets a new
+          effective date. Each version is kept in the project's history on
+          <a href="https://github.com/brvhprince/simpleworship/commits/main/PRIVACY.md">GitHub</a>.
         </p>
 
-        <h2>8. Contact Us</h2>
+        <h2>11. Contact</h2>
         <p>
-          If you have any questions or feedback regarding this Privacy Policy, you can reach us by
-          creating an issue on our
-          <a href="https://github.com/brvhprince/simpleworship/issues">GitHub Issues page</a>
-          or by contacting Prince Takyi Akomea.
+          Questions about this policy: open an issue on
+          <a href="https://github.com/brvhprince/simpleworship/issues">GitHub</a>. The maintainer
+          is Prince Takyi Akomea.
         </p>
       </article>
     </main>
