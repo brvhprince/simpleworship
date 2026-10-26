@@ -273,7 +273,13 @@ async function downloads() {
   const yours = system();
   if (yours) {
     document.querySelector(`[data-system="${yours}"]`)?.classList.add("yours");
-    document.getElementById("hero-download-label").textContent = `Download for ${NAMES[yours]}`;
+    document.getElementById("hero-download-label").textContent =
+      yours === "windows" ? "Get it from Microsoft Store" : `Download for ${NAMES[yours]}`;
+    // The Store link needs nothing from GitHub, so it works offline too.
+    if (yours === "windows") {
+      document.getElementById("hero-download").href =
+        document.getElementById("microsoft-store").href;
+    }
   }
 
   let release;

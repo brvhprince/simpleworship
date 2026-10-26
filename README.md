@@ -23,6 +23,7 @@
 
 <p align="center">
   <a href="https://github.com/brvhprince/simpleworship/releases/latest"><img alt="Download SimpleWorship for Mac, Windows and Linux" src="https://img.shields.io/badge/Download-Mac%20%C2%B7%20Windows%20%C2%B7%20Linux-e03131?style=for-the-badge" height="40"></a>
+  <a href="https://apps.microsoft.com/detail/9nkcxlcjnt8b"><img alt="Get SimpleWorship from the Microsoft Store" src="https://img.shields.io/badge/Microsoft%20Store-Get%20it-0078d4?style=for-the-badge" height="40"></a>
 </p>
 
 <p align="center">
@@ -273,7 +274,11 @@ the words off the stream without covering the camera. Use it as:
 
 ## Download
 
-Get the installer for your computer from the
+**On Windows**, get it from the
+[Microsoft Store](https://apps.microsoft.com/detail/9nkcxlcjnt8b): it installs
+without warnings and the Store keeps it up to date.
+
+Or get the installer for your computer from the
 [latest release](https://github.com/brvhprince/simpleworship/releases/latest):
 
 | Computer | File |
@@ -285,10 +290,12 @@ Get the installer for your computer from the
 > [!NOTE]
 > Until the installers are signed, the system warns the first time: on a Mac,
 > right-click SimpleWorship and choose **Open**; on Windows, click
-> **More info › Run anyway**.
+> **More info › Run anyway**. The Store and the installer each keep their own
+> library, so use one or the other on a computer.
 
 SimpleWorship looks for new versions and downloads them quietly, but only
-installs when you click, and never while something is live. Double-clicking a
+installs when you click, and never while something is live. (The Microsoft
+Store version is updated by the Store.) Double-clicking a
 `.sws` schedule opens it.
 
 <details>
