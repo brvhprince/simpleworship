@@ -53,6 +53,48 @@ use tauri::Manager;
 
 use crate::state::AppState;
 
+/// Says why SimpleWorship cannot start (the library could not be opened)
+/// in a message box, and quits. Without this, the app would close at once
+/// with the reason only in the log.
+#[cfg(desktop)]
+fn cannot_start(error: &(dyn std::error::Error + 'static)) -> ! {
+    log::error!("cannot start: {error}");
+    let newer = error
+        .downcast_ref::<sw_db::DbError>()
+        .is_some_and(|error| matches!(error, sw_db::DbError::NewerLibrary));
+    let message = if newer {
+        // A Store copy is updated from the Store (see `distribution`).
+        let source = if distribution::installed_from_store() {
+            "the Microsoft Store"
+        } else {
+            "github.com/brvhprince/simpleworship/releases"
+        };
+        format!(
+            "Your songs, Bibles and settings were last used by a newer version of \
+             SimpleWorship, so this older version cannot open them.\n\n\
+             Install the newest version from {source} and everything will be there, \
+             as you left it. Nothing has been changed."
+        )
+    } else {
+        format!(
+            "SimpleWorship could not open its library of songs, Bibles and settings:\n\n\
+             {error}\n\nThe log in SimpleWorship's data folder has the details."
+        )
+    };
+    rfd::MessageDialog::new()
+        .set_level(rfd::MessageLevel::Error)
+        .set_title("SimpleWorship cannot start")
+        .set_description(message)
+        .set_buttons(rfd::MessageButtons::Ok)
+        .show();
+    std::process::exit(1);
+}
+
+#[cfg(mobile)]
+fn cannot_start(error: &(dyn std::error::Error + 'static)) -> ! {
+    panic!("cannot start: {error}");
+}
+
 /// Builds and runs the application. Returns when the last window closes.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -102,7 +144,10 @@ pub fn run() {
             }));
 
             log::info!("SimpleWorship {} starting", app.package_info().version);
-            let state = AppState::load(app.handle())?;
+            let state = match AppState::load(app.handle()) {
+                Ok(state) => state,
+                Err(error) => cannot_start(&*error),
+            };
             let recent = state.recent().list();
             app.manage(state);
             app.manage(windows::OutputPlacements::default());

@@ -9,6 +9,11 @@ pub enum DbError {
     #[error("database error: {0}")]
     Sqlite(#[from] rusqlite::Error),
 
+    /// The library was last used by a newer SimpleWorship, whose changes
+    /// to it this version does not know: it must not be touched.
+    #[error("the library was last used by a newer version of SimpleWorship")]
+    NewerLibrary,
+
     /// The schema could not be created or upgraded.
     #[error("could not upgrade the database schema: {0}")]
     Migration(#[from] rusqlite_migration::Error),
