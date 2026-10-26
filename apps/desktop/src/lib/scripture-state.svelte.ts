@@ -2,6 +2,21 @@ import type { BookOutline, Passage, ReferenceFeedback, Verse } from "@simplewors
 
 const SETTINGS_KEY = "simpleworship.scripture";
 
+/** The default smallest font size before scripture flows on to another
+ *  slide. Matches `DEFAULT_MIN_FONT_SIZE` in `crates/sw-core/src/scripture.rs`. */
+export const DEFAULT_MIN_FONT_SIZE = 48;
+
+/**
+ * A usable minimum font size from what was typed or remembered: a whole
+ * number from 16 to 120, or the default for an empty or odd value (an
+ * emptied number box gives `null`, which the core cannot read).
+ */
+export function validMinFontSize(value: unknown): number {
+  const size = Math.round(Number(value));
+  if (!Number.isFinite(size) || size <= 0) return DEFAULT_MIN_FONT_SIZE;
+  return Math.max(16, Math.min(120, size));
+}
+
 export interface ScriptureSettings {
   primaryId: string | null;
   secondaryId: string | null;
@@ -14,7 +29,13 @@ function loadSettings(): ScriptureSettings {
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
     if (!raw) {
-      return { primaryId: null, secondaryId: null, maxVerses: 2, autoFlow: true, minFontSize: 36 };
+      return {
+        primaryId: null,
+        secondaryId: null,
+        maxVerses: 2,
+        autoFlow: true,
+        minFontSize: DEFAULT_MIN_FONT_SIZE,
+      };
     }
     const parsed = JSON.parse(raw);
     return {
@@ -22,10 +43,16 @@ function loadSettings(): ScriptureSettings {
       secondaryId: typeof parsed.secondaryId === "string" ? parsed.secondaryId : null,
       maxVerses: Math.max(1, Math.min(10, Number(parsed.maxVerses) || 2)),
       autoFlow: parsed.autoFlow !== undefined ? Boolean(parsed.autoFlow) : true,
-      minFontSize: Math.max(12, Math.min(120, Number(parsed.minFontSize) || 36)),
+      minFontSize: validMinFontSize(parsed.minFontSize),
     };
   } catch {
-    return { primaryId: null, secondaryId: null, maxVerses: 2, autoFlow: true, minFontSize: 36 };
+    return {
+      primaryId: null,
+      secondaryId: null,
+      maxVerses: 2,
+      autoFlow: true,
+      minFontSize: DEFAULT_MIN_FONT_SIZE,
+    };
   }
 }
 
@@ -34,7 +61,7 @@ class ScriptureStateStore {
   secondaryId: string | null = $state(null);
   maxVerses: number = $state(2);
   autoFlow: boolean = $state(true);
-  minFontSize: number = $state(36);
+  minFontSize: number = $state(DEFAULT_MIN_FONT_SIZE);
   verseNumbers: boolean | null = $state(null);
 
   query: string = $state("");

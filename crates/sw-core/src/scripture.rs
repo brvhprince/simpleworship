@@ -5,11 +5,15 @@
 //!
 //! 1. A slide never mixes chapters.
 //! 2. A slide holds at most [`ScriptureOptions::max_verses`] verses.
-//! 3. A slide holds at most about [`ScriptureOptions::max_chars`] characters
-//!    of text per column, so long verses do not end up tiny on screen.
-//! 4. A single verse that is too long on its own (in a one-translation
-//!    passage) is split at punctuation into several slides; the later parts
-//!    are marked as continued and show no verse number.
+//! 3. With [`ScriptureOptions::auto_flow`] (EasyWorship's "Automatically
+//!    flow scripture on multiple slides"), a slide holds only as much text
+//!    as the theme's text box fits at [`ScriptureOptions::min_font_size`]
+//!    (see [`chars_per_column`]), so long passages move on to the next slide
+//!    instead of shrinking below that size.
+//! 4. A single verse that is too long on its own is then split at
+//!    punctuation into several slides; the later parts are marked as
+//!    continued and show no verse number. Side by side translations are
+//!    split into the same number of parts, so the columns stay together.
 //!
 //! Translations are matched verse by verse using each one's own numbering.
 //! A verse that one translation lacks shows as blank in that column.
@@ -22,6 +26,7 @@ use ts_rs::TS;
 
 use crate::id::Id;
 use crate::slides::Slide;
+use crate::theme::{CANVAS_HEIGHT, CANVAS_WIDTH, Placement, Theme};
 
 /// A Bible translation installed in the library.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
@@ -98,26 +103,34 @@ pub struct TranslationText {
 pub struct ScriptureOptions {
     /// The most verses on one slide.
     pub max_verses: u32,
-    /// Roughly the most characters on one slide (per column).
+    /// No longer used: how much fits now comes from the theme (see
+    /// [`chars_per_column`]). Kept so schedules saved before still load.
     pub max_chars: u32,
     /// Show verse numbers before each verse, or `None` to do as the theme
     /// says (see [`VerseNumberStyle`](crate::theme::VerseNumberStyle)).
     #[serde(default)]
     pub verse_numbers: Option<bool>,
-    /// Automatically flow long scripture onto multiple slides.
+    /// Move text that does not fit the theme's text box at
+    /// `min_font_size` on to more slides. Without it, everything up to
+    /// `max_verses` goes on one slide and shrinks as far as it must.
     #[serde(default = "default_auto_flow")]
     pub auto_flow: bool,
-    /// Minimum font size before breaking slide.
+    /// The smallest font size, in canvas pixels (1920 × 1080), the text may
+    /// shrink to before the rest goes on the next slide. EasyWorship's
+    /// "Minimum font size before breaking slide".
     #[serde(default = "default_min_font_size")]
     pub min_font_size: u32,
 }
 
-pub(crate) fn default_auto_flow() -> bool {
+fn default_auto_flow() -> bool {
     true
 }
 
-pub(crate) fn default_min_font_size() -> u32 {
-    36
+/// Large enough to read from the back of a church on most screens.
+const DEFAULT_MIN_FONT_SIZE: u32 = 48;
+
+fn default_min_font_size() -> u32 {
+    DEFAULT_MIN_FONT_SIZE
 }
 
 impl Default for ScriptureOptions {
@@ -127,7 +140,7 @@ impl Default for ScriptureOptions {
             max_chars: 300,
             verse_numbers: None,
             auto_flow: true,
-            min_font_size: 36,
+            min_font_size: DEFAULT_MIN_FONT_SIZE,
         }
     }
 }
@@ -205,19 +218,89 @@ pub fn footer(translations: &[TranslationText]) -> Option<String> {
     })
 }
 
-/// Splits a passage into slides. See the [module docs](self) for the rules.
+/// Splits a passage into slides drawn with `theme`. See the
+/// [module docs](self) for the rules.
 pub fn slides(
     passage: &Passage,
     translations: &[TranslationText],
     options: ScriptureOptions,
+    theme: &Theme,
 ) -> Vec<Slide> {
-    let columns = translations.len().max(1);
-    let per_column_budget = if options.auto_flow {
-        let scaled = (36 * options.max_chars) / options.min_font_size.max(12);
-        (scaled as usize / columns).max(40)
+    let budget = if options.auto_flow {
+        chars_per_column(theme, options.min_font_size as f32, translations.len())
     } else {
-        usize::MAX / 2
+        // Everything up to `max_verses` on one slide, shrunk to fit.
+        usize::MAX
     };
+    slides_with_budget(passage, translations, options, budget)
+}
+
+/// About how many characters of verse text fit in one column of the
+/// theme's text box with the font at `min_font_size` (or the theme's own
+/// size, if that is smaller or the theme never shrinks text).
+///
+/// This is an estimate from the box's size, the font size, the line height
+/// and an average letter width, made in the core so every screen splits a
+/// passage the same way. It errs towards less text per slide: a slide that
+/// is a little emptier is better than words below the minimum size. The
+/// screens still shrink a slide that turns out too full.
+pub fn chars_per_column(theme: &Theme, min_font_size: f32, columns: usize) -> usize {
+    /// Average letter width, as a share of the font size (wide fonts such
+    /// as Montserrat are about 0.55; most are narrower).
+    const LETTER_WIDTH: f32 = 0.55;
+    /// Lines rarely end exactly at the edge: words wrap early.
+    const WRAP_LOSS: f32 = 0.85;
+    /// The space between side by side columns (`.columns` in the renderer).
+    const COLUMN_GAP: f32 = 1.2;
+    /// The translation's name above each side by side column (`.translation`).
+    const COLUMN_HEADING: f32 = 0.45 * 1.2 + 0.45 * 0.4;
+
+    let text = &theme.text;
+    let font = if theme.text_box.auto_fit {
+        min_font_size.clamp(12.0, text.font_size.max(12.0))
+    } else {
+        text.font_size.max(12.0)
+    };
+    let columns = columns.max(1) as f32;
+
+    let area = &theme.text_box;
+    let width = CANVAS_WIDTH - area.left - area.right;
+    let mut height = CANVAS_HEIGHT - area.top - area.bottom;
+    // The reference and the copyright line can sit under the verses, in
+    // the same box.
+    for label in [&theme.caption, &theme.footer] {
+        if label.visible && label.placement == Placement::AfterText {
+            height -= label.font_size * 1.6;
+        }
+    }
+    if columns > 1.0 {
+        height -= COLUMN_HEADING * font;
+    }
+
+    let column_width = (width - (columns - 1.0) * COLUMN_GAP * font) / columns;
+    let mut letter = LETTER_WIDTH * font;
+    if text.uppercase {
+        letter *= 1.15;
+    }
+    if text.font_weight >= 600 {
+        letter *= 1.06;
+    }
+    let per_line = (column_width / letter).floor().max(0.0);
+    let lines = (height / (font * text.line_height.max(0.8)))
+        .floor()
+        .max(1.0);
+    // No floor: a box that holds very little at the minimum size gets very
+    // little per slide, rather than text shrunk below that size.
+    (per_line * lines * WRAP_LOSS) as usize
+}
+
+/// [`slides`] with an explicit number of characters per column.
+fn slides_with_budget(
+    passage: &Passage,
+    translations: &[TranslationText],
+    options: ScriptureOptions,
+    per_column_budget: usize,
+) -> Vec<Slide> {
     let max_verses = (options.max_verses as usize).max(1);
 
     // Each translation's text by (chapter, verse), and every verse any of
@@ -246,7 +329,7 @@ pub fn slides(
 
     let mut slides = Vec::new();
     let mut chunk: Vec<(u16, u16)> = Vec::new();
-    let mut chunk_length = 0;
+    let mut chunk_length: usize = 0;
     let mut flush = |chunk: &mut Vec<(u16, u16)>, chunk_length: &mut usize| {
         if !chunk.is_empty() {
             slides.extend(build_slides(
@@ -265,7 +348,8 @@ pub fn slides(
     for key in keys {
         let verse_length = length(&key);
         let new_chapter = chunk.last().is_some_and(|last| last.0 != key.0);
-        let full = chunk.len() >= max_verses || chunk_length + verse_length > per_column_budget;
+        let full = chunk.len() >= max_verses
+            || chunk_length.saturating_add(verse_length) > per_column_budget;
         if new_chapter || (!chunk.is_empty() && full) {
             flush(&mut chunk, &mut chunk_length);
         }
@@ -305,7 +389,7 @@ fn build_slides(
             for (i, parts) in all_parts.iter_mut().enumerate() {
                 if parts.len() < num_parts {
                     let text = texts[i].get(&key).copied().unwrap_or("");
-                    *parts = split_verse_into_n(text, num_parts);
+                    *parts = split_into(text, num_parts);
                 }
             }
 
@@ -352,28 +436,24 @@ fn build_slides(
     vec![scripture_slide(columns, caption, options)]
 }
 
-fn split_verse_into_n(text: &str, n: usize) -> Vec<String> {
-    if n <= 1 || text.is_empty() {
-        return vec![text.to_owned()];
-    }
-    let words: Vec<&str> = text.split(' ').collect();
-    if words.len() <= n {
-        let mut res: Vec<String> = words.iter().map(|&w| w.to_owned()).collect();
-        while res.len() < n {
-            res.push(String::new());
+/// Splits `text` into at most `parts` pieces, at punctuation where it can
+/// (as [`split_long_verse`] does), padded with empty pieces to exactly
+/// `parts`. Used for the other translations of a verse split across
+/// slides, so each slide shows the matching part of every column.
+fn split_into(text: &str, parts: usize) -> Vec<String> {
+    let parts = parts.max(1);
+    let length = text.chars().count();
+    let mut budget = length.div_ceil(parts).max(1);
+    let mut pieces = loop {
+        let pieces = split_long_verse(text, budget);
+        if pieces.len() <= parts {
+            break pieces;
         }
-        return res;
-    }
-
-    let words_per_part = words.len().div_ceil(n);
-    let mut parts = Vec::new();
-    for chunk in words.chunks(words_per_part) {
-        parts.push(chunk.join(" "));
-    }
-    while parts.len() < n {
-        parts.push(String::new());
-    }
-    parts
+        // Clauses rarely divide evenly: allow a little more per piece.
+        budget += budget / 10 + 1;
+    };
+    pieces.resize(parts, String::new());
+    pieces
 }
 
 fn scripture_slide(
@@ -533,6 +613,11 @@ mod tests {
         }
     }
 
+    /// The theme scripture is drawn with in these tests.
+    fn theme() -> Theme {
+        Theme::default()
+    }
+
     fn passage() -> Passage {
         sw_bible::reference::parse("jn 3:16-18").unwrap().passage
     }
@@ -544,7 +629,7 @@ mod tests {
     #[test]
     fn groups_verses_by_count() {
         let kjv = translation("KJV", &[(3, 16, "a"), (3, 17, "b"), (3, 18, "c")]);
-        let slides = slides(&passage(), &[kjv], ScriptureOptions::default());
+        let slides = slides(&passage(), &[kjv], ScriptureOptions::default(), &theme());
 
         assert_eq!(
             captions(&slides),
@@ -557,7 +642,7 @@ mod tests {
     fn never_mixes_chapters() {
         let kjv = translation("KJV", &[(3, 36, "a"), (4, 1, "b")]);
         let p = sw_bible::reference::parse("jn 3:36; 4:1").unwrap().passage;
-        let slides = slides(&p, &[kjv], ScriptureOptions::default());
+        let slides = slides(&p, &[kjv], ScriptureOptions::default(), &theme());
         assert_eq!(
             captions(&slides),
             ["John 3:36; 4:1 (KJV)", "John 3:36; 4:1 (KJV)"]
@@ -583,6 +668,7 @@ mod tests {
                 max_verses: 1,
                 ..ScriptureOptions::default()
             },
+            &theme(),
         );
         assert_eq!(slides.len(), 4);
         for slide in &slides {
@@ -592,9 +678,11 @@ mod tests {
 
     #[test]
     fn long_verses_get_a_slide_of_their_own() {
-        let long = "x".repeat(320);
+        let budget = chars_per_column(&theme(), DEFAULT_MIN_FONT_SIZE as f32, 1);
+        // Fits a slide alone, but not after another verse.
+        let long = "x".repeat(budget - 2);
         let kjv = translation("KJV", &[(3, 16, "short"), (3, 17, &long)]);
-        let slides = slides(&passage(), &[kjv], ScriptureOptions::default());
+        let slides = slides(&passage(), &[kjv], ScriptureOptions::default(), &theme());
         assert_eq!(slides.len(), 2);
     }
 
@@ -612,11 +700,7 @@ mod tests {
         );
 
         let kjv = translation("KJV", &[(3, 16, verse)]);
-        let options = ScriptureOptions {
-            max_chars: 45,
-            ..ScriptureOptions::default()
-        };
-        let slides = slides(&passage(), &[kjv], options);
+        let slides = slides_with_budget(&passage(), &[kjv], ScriptureOptions::default(), 45);
         assert_eq!(slides.len(), 2);
         let second = &slides[1].scripture.as_ref().unwrap().columns[0].verses[0];
         assert!(second.continued, "later parts are marked as continued");
@@ -630,7 +714,12 @@ mod tests {
     fn parallel_translations_line_up_and_tolerate_gaps() {
         let kjv = translation("KJV", &[(3, 16, "kjv 16"), (3, 17, "kjv 17")]);
         let web = translation("WEB", &[(3, 16, "web 16")]);
-        let slides = slides(&passage(), &[kjv, web], ScriptureOptions::default());
+        let slides = slides(
+            &passage(),
+            &[kjv, web],
+            ScriptureOptions::default(),
+            &theme(),
+        );
 
         assert_eq!(captions(&slides), ["John 3:16–17 (KJV · WEB)"]);
         let columns = &slides[0].scripture.as_ref().unwrap().columns;
@@ -644,23 +733,97 @@ mod tests {
         let long_verse_2 = "First clause in WEB, second clause in WEB; third clause in WEB.";
         let kjv = translation("KJV", &[(3, 16, long_verse_1)]);
         let web = translation("WEB", &[(3, 16, long_verse_2)]);
-        let options = ScriptureOptions {
-            max_chars: 40,
-            auto_flow: true,
-            min_font_size: 36,
-            ..ScriptureOptions::default()
-        };
-        let slides = slides(&passage(), &[kjv, web], options);
-        assert!(
-            slides.len() >= 2,
-            "Parallel long verse was split into multiple slides"
-        );
+        let slides = slides_with_budget(&passage(), &[kjv, web], ScriptureOptions::default(), 40);
+        assert!(slides.len() >= 2, "the long verse is split across slides");
         for slide in &slides {
             let cols = &slide.scripture.as_ref().unwrap().columns;
             assert_eq!(cols.len(), 2);
             assert_eq!(cols[0].verses.len(), 1);
             assert_eq!(cols[1].verses.len(), 1);
         }
+    }
+
+    #[test]
+    fn the_other_translation_splits_at_punctuation_too() {
+        let verse = "Jesus wept, and the people saw it; then they went home.";
+        assert_eq!(
+            split_into(verse, 2),
+            ["Jesus wept, and the people saw it;", "then they went home."]
+        );
+        assert_eq!(split_into("Amen.", 3), ["Amen.", "", ""]);
+    }
+
+    #[test]
+    fn a_smaller_minimum_font_fits_more_on_a_slide() {
+        let theme = theme();
+        let at_36 = chars_per_column(&theme, 36.0, 1);
+        let at_60 = chars_per_column(&theme, 60.0, 1);
+        assert!(at_36 > at_60, "{at_36} should be more than {at_60}");
+    }
+
+    #[test]
+    fn side_by_side_columns_each_fit_less() {
+        let theme = theme();
+        let one = chars_per_column(&theme, 48.0, 1);
+        let two = chars_per_column(&theme, 48.0, 2);
+        assert!(
+            two < one / 2 + 10,
+            "{two} per column beside another, {one} alone"
+        );
+    }
+
+    #[test]
+    fn a_smaller_text_box_fits_less() {
+        let mut lower_third = theme();
+        lower_third.text_box.top = 700.0;
+        let full = chars_per_column(&theme(), 48.0, 1);
+        let small = chars_per_column(&lower_third, 48.0, 1);
+        assert!(
+            small < full / 2,
+            "{small} in a lower third, {full} full screen"
+        );
+    }
+
+    #[test]
+    fn a_theme_that_never_shrinks_is_measured_at_its_own_size() {
+        let mut fixed = theme();
+        fixed.text_box.auto_fit = false;
+        assert_eq!(
+            chars_per_column(&fixed, 30.0, 1),
+            chars_per_column(&theme(), fixed.text.font_size, 1)
+        );
+    }
+
+    #[test]
+    fn a_box_too_small_for_any_text_still_moves_on_word_by_word() {
+        assert_eq!(
+            split_long_verse("For God so loved", 0),
+            ["For", "God", "so", "loved"]
+        );
+        let kjv = translation("KJV", &[(3, 16, "For God"), (3, 17, "so loved")]);
+        let slides = slides_with_budget(&passage(), &[kjv], ScriptureOptions::default(), 0);
+        assert_eq!(slides.len(), 4, "one word a slide, and it finishes");
+    }
+
+    #[test]
+    fn a_narrow_box_is_not_given_more_than_it_fits() {
+        let mut narrow = theme();
+        narrow.text_box.left = 860.0;
+        narrow.text_box.right = 860.0;
+        narrow.text_box.top = 480.0;
+        narrow.text_box.bottom = 480.0;
+        assert!(chars_per_column(&narrow, 48.0, 1) < 40);
+    }
+
+    #[test]
+    fn without_auto_flow_a_long_verse_stays_whole() {
+        let long = "word, ".repeat(400);
+        let kjv = translation("KJV", &[(3, 16, &long)]);
+        let options = ScriptureOptions {
+            auto_flow: false,
+            ..ScriptureOptions::default()
+        };
+        assert_eq!(slides(&passage(), &[kjv], options, &theme()).len(), 1);
     }
 
     #[test]

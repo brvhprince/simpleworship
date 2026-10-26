@@ -335,13 +335,15 @@ impl Presentation {
         options: ScriptureOptions,
         look: impl Into<Look>,
     ) -> Self {
+        let look = look.into();
+        let slides = scripture::slides(passage, translations, options, &look.theme);
         Self::new(
             PresentationSource::Scripture {
                 passage: passage.clone(),
             },
             scripture::title(passage, translations),
-            scripture::slides(passage, translations, options),
-            look.into(),
+            slides,
+            look,
             scripture::footer(translations),
         )
     }

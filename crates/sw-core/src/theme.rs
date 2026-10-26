@@ -150,6 +150,12 @@ impl Background {
     }
 }
 
+/// The width of the canvas everything is laid out on, in reference pixels
+/// (screens scale it to their own size).
+pub(crate) const CANVAS_WIDTH: f32 = 1920.0;
+/// The height of the canvas everything is laid out on.
+pub(crate) const CANVAS_HEIGHT: f32 = 1080.0;
+
 /// The default opacity: fully solid.
 pub(crate) fn full_opacity() -> f32 {
     1.0
