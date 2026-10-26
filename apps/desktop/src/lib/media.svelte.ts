@@ -80,12 +80,13 @@ class MediaStore {
       saved = {};
     }
     const known = new Set(this.list.map((item) => item.id));
-    const valid: MediaScaling[] = ["stretch", "maintain", "zoom"];
-    for (const [id, scaling] of Object.entries(saved)) {
-      if (known.has(id) && valid.includes(scaling as MediaScaling)) {
-        await api.setMediaScaling(id, scaling as MediaScaling).catch(() => {});
-      }
-    }
+    const valid = new Set<string>(["stretch", "maintain", "zoom"]);
+    // Each file is saved on its own, so they can all be saved at once.
+    await Promise.all(
+      Object.entries(saved)
+        .filter(([id, scaling]) => known.has(id) && valid.has(scaling))
+        .map(([id, scaling]) => api.setMediaScaling(id, scaling as MediaScaling).catch(() => {})),
+    );
     try {
       localStorage.removeItem(key);
     } catch {
