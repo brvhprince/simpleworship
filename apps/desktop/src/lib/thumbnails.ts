@@ -60,6 +60,18 @@ export async function videoDetails(url: string): Promise<MediaDetails> {
   video.muted = true;
   video.preload = "auto";
   video.playsInline = true;
+  // On the page (though not seen), so its frames are really presented and
+  // the webview reports them (see `seek`).
+  Object.assign(video.style, {
+    position: "fixed",
+    left: "0",
+    top: "0",
+    width: "2px",
+    height: "2px",
+    opacity: "0",
+    pointerEvents: "none",
+  });
+  document.body.append(video);
   video.src = url;
 
   try {
@@ -86,6 +98,7 @@ export async function videoDetails(url: string): Promise<MediaDetails> {
   } finally {
     video.removeAttribute("src");
     video.load();
+    video.remove();
   }
 }
 
@@ -94,13 +107,35 @@ async function seek(video: HTMLVideoElement, time: number): Promise<void> {
   const seeked = waitFor(video, "seeked");
   video.currentTime = time;
   await seeked;
-  // At least the current frame's data, then the frame itself presented
-  // (where the webview can say so); a short wait where it cannot.
+  // At least the current frame's data, then the frame itself presented.
   if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) await waitFor(video, "loadeddata");
-  await new Promise<void>((resolve) => {
-    const fallback = setTimeout(resolve, 400);
-    video.requestVideoFrameCallback?.(() => {
-      clearTimeout(fallback);
+  await framePresented(video);
+}
+
+/** How long to wait for a webview to say the sought frame was presented. */
+const FRAME_WAIT_MS = 2_000;
+/** The wait for webviews that cannot say so at all. */
+const FRAME_GUESS_MS = 400;
+
+/**
+ * Waits until the video's current frame has been presented, where the
+ * webview reports it (`requestVideoFrameCallback`), else for a moment.
+ *
+ * Even where it is supported, a frame that never comes (a webview that
+ * does not report frames of a paused video) only ends the wait, after
+ * {@link FRAME_WAIT_MS}, instead of failing the thumbnail: the frame's data
+ * is already there by then (`HAVE_CURRENT_DATA`), and a black result is
+ * caught by the brightness check and retried at a later point.
+ */
+function framePresented(video: HTMLVideoElement): Promise<void> {
+  return new Promise((resolve) => {
+    if (!video.requestVideoFrameCallback) {
+      setTimeout(resolve, FRAME_GUESS_MS);
+      return;
+    }
+    const timer = setTimeout(resolve, FRAME_WAIT_MS);
+    video.requestVideoFrameCallback(() => {
+      clearTimeout(timer);
       resolve();
     });
   });

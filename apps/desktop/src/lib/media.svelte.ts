@@ -69,9 +69,11 @@ class MediaStore {
   );
 
   /** Items waiting for or having their thumbnail made, and when it is done. */
-  #queued = new Map<string, Promise<void>>();
+  #queued = new Map<string, Promise<boolean>>();
+  /** Items done this session, so they are not done again. */
+  #prepared = new Set<string>();
   /** What is waiting its turn (see {@link AT_ONCE}). */
-  #waiting: { item: MediaItem; done: () => void }[] = [];
+  #waiting: { item: MediaItem; done: (worked: boolean) => void }[] = [];
   /** How many are being prepared right now. */
   #running = 0;
   /** How many times each item was tried this session (see {@link MAX_TRIES}). */
@@ -151,19 +153,21 @@ class MediaStore {
   /**
    * Makes a thumbnail and measures the item, in a queue: at most
    * {@link AT_ONCE} at a time, as WebKit decodes only a few videos together
-   * and leaves the rest waiting. Resolves when this item is done. Safe to
-   * call repeatedly (a thumbnail that fails to load asks again); an item is
-   * tried at most {@link MAX_TRIES} times a session.
+   * and leaves the rest waiting. Resolves to whether it worked. Safe to call
+   * repeatedly (a thumbnail that fails to load asks again): an item done
+   * this session is not done again, and one that failed is tried at most
+   * {@link MAX_TRIES} times.
    */
-  prepare(item: MediaItem): Promise<void> {
+  prepare(item: MediaItem): Promise<boolean> {
     // A joined computer shows the main computer's media, which makes its
     // own thumbnails.
-    if (link.joined || !this.#urls) return Promise.resolve();
+    if (link.joined || !this.#urls) return Promise.resolve(false);
     const queued = this.#queued.get(item.id);
     if (queued) return queued;
-    if ((this.#tries.get(item.id) ?? 0) >= MAX_TRIES) return Promise.resolve();
+    if (this.#prepared.has(item.id)) return Promise.resolve(true);
+    if ((this.#tries.get(item.id) ?? 0) >= MAX_TRIES) return Promise.resolve(false);
 
-    const done = new Promise<void>((resolve) => this.#waiting.push({ item, done: resolve }));
+    const done = new Promise<boolean>((resolve) => this.#waiting.push({ item, done: resolve }));
     this.#queued.set(item.id, done);
     this.#next();
     return done;
@@ -171,35 +175,39 @@ class MediaStore {
 
   /**
    * Makes the item's thumbnail again, e.g. one that came out black before
-   * thumbnails waited for the frame. Resolves when it is done.
+   * thumbnails waited for the frame. Resolves to whether it worked.
    */
-  remake(item: MediaItem): Promise<void> {
-    if (!this.#queued.has(item.id)) this.#tries.delete(item.id);
+  remake(item: MediaItem): Promise<boolean> {
+    if (!this.#queued.has(item.id)) {
+      this.#tries.delete(item.id);
+      this.#prepared.delete(item.id);
+    }
     return this.prepare(item);
   }
 
   /**
    * Once on each computer: makes again the video thumbnails that came out
    * black before thumbnails waited for the frame (0.5.x). Runs in the
-   * background, through the same queue; marked done only when the whole
-   * pass has finished, so an interrupted one runs again next time.
+   * background, through the same queue. Marked done only when every one was
+   * remade, so an interrupted or partly failed pass runs again next time.
    */
   async #repairDarkThumbnails(): Promise<void> {
     const key = "simpleworship.thumbnails_repaired";
     try {
       if (localStorage.getItem(key)) return;
     } catch {
-      return;
+      // Unreadable storage: check anyway; it just cannot be remembered.
     }
     const urls = this.#urls;
     if (!urls) return;
-    const remakes: Promise<void>[] = [];
+    const remakes: Promise<boolean>[] = [];
     for (const item of this.list.filter((item) => item.kind === "video")) {
       if (await isDarkThumbnail(urls.thumbnail({ id: item.id, file: item.file }))) {
         remakes.push(this.remake(item));
       }
     }
-    await Promise.all(remakes);
+    const results = await Promise.all(remakes);
+    if (!results.every(Boolean)) return;
     try {
       localStorage.setItem(key, "1");
     } catch {
@@ -207,54 +215,60 @@ class MediaStore {
     }
   }
 
-  /** Starts the next waiting items, while fewer than {@link AT_ONCE} run. */
+  /**
+   * Starts the next waiting items, while fewer than {@link AT_ONCE} run. An
+   * item that timed out goes to the back of the queue for its next try, and
+   * its caller hears only the final outcome.
+   */
   #next(): void {
     while (this.#running < AT_ONCE) {
       const next = this.#waiting.shift();
       if (!next) return;
       this.#running += 1;
-      void this.#prepareNow(next.item).finally(() => {
+      void this.#prepareNow(next.item).then((outcome) => {
         this.#running -= 1;
-        this.#queued.delete(next.item.id);
-        next.done();
+        if (outcome === "retry") {
+          this.#waiting.push(next);
+        } else {
+          this.#queued.delete(next.item.id);
+          next.done(outcome === "done");
+        }
         this.#next();
       });
     }
   }
 
   /**
-   * Prepares one item. A file the webview cannot play is reported at once
-   * and not tried again; one that took too long is tried once more later,
-   * and reported only if it fails again.
+   * Prepares one item: `"done"`, `"retry"` (it took too long, and has tries
+   * left), or `"failed"`. A file the webview cannot play, or one that timed
+   * out on its last try, is reported to the operator.
    */
-  async #prepareNow(item: MediaItem): Promise<void> {
+  async #prepareNow(item: MediaItem): Promise<"done" | "retry" | "failed"> {
     const tries = (this.#tries.get(item.id) ?? 0) + 1;
     this.#tries.set(item.id, tries);
     try {
       const url = this.#urls?.file({ id: item.id, file: item.file });
-      if (!url) return;
+      if (!url) return "failed";
       if (item.kind === "audio") {
         // Sound has no picture; only its length is worth knowing.
         const { durationMs } = await audioDetails(url);
         await api.updateMediaDetails(item.id, { width: null, height: null, durationMs });
-        return;
+      } else {
+        const details = item.kind === "video" ? await videoDetails(url) : await imageDetails(url);
+        await api.saveMediaThumbnail(item.id, details.jpeg);
+        await api.updateMediaDetails(item.id, {
+          width: details.width,
+          height: details.height,
+          durationMs: details.durationMs,
+        });
+        this.thumbnailVersion += 1;
       }
-      const details = item.kind === "video" ? await videoDetails(url) : await imageDetails(url);
-      await api.saveMediaThumbnail(item.id, details.jpeg);
-      await api.updateMediaDetails(item.id, {
-        width: details.width,
-        height: details.height,
-        durationMs: details.durationMs,
-      });
-      // Done: not prepared again this session.
-      this.#tries.set(item.id, MAX_TRIES);
-      this.thumbnailVersion += 1;
+      this.#prepared.add(item.id);
+      return "done";
     } catch (error) {
-      const retry = error instanceof TimedOut && tries < MAX_TRIES;
-      if (!retry) {
-        this.#tries.set(item.id, MAX_TRIES);
-        engine.showError(`${item.name}: ${error instanceof Error ? error.message : error}`);
-      }
+      if (error instanceof TimedOut && tries < MAX_TRIES) return "retry";
+      engine.showError(`${item.name}: ${error instanceof Error ? error.message : error}`);
+      return "failed";
     }
   }
 }
