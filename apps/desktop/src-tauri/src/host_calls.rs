@@ -37,6 +37,10 @@ pub fn run(app: &AppHandle, method: &str, params: Value) -> AppResult<Value> {
         "song_get" => json(songs::song_get(state(), params.get("id")?)?),
         "song_save" => json(songs::song_save(app.clone(), state(), params.get("song")?)?),
         "song_presentation" => json(songs::song_presentation(state(), params.get("song")?)),
+        "schedule_item_thumbnail" => json(schedule::schedule_item_thumbnail(
+            state(),
+            params.get("id")?,
+        )),
         "song_show_in_preview" => json(songs::song_show_in_preview(
             app.clone(),
             state(),

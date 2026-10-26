@@ -12,10 +12,15 @@
 
   The previewed item is marked blue and the live item red, like the panes.
   Notes for the previewed item can be edited at the bottom.
+
+  Three layouts, remembered on this computer: a list, cards, and a grid
+  with a picture of each item's first slide (← and → move along it too).
 -->
 <script lang="ts">
-  import type { ScheduleItem } from "@simpleworship/protocol";
+  import type { RenderFrame, ScheduleItem } from "@simpleworship/protocol";
+  import { ScaledCanvas, SlideView } from "@simpleworship/renderer";
   import { Button } from "@simpleworship/ui";
+  import { listen } from "@tauri-apps/api/event";
   import {
     addMediaToSchedule,
     addMissingScheduleSongs,
@@ -26,6 +31,7 @@
     appendMediaToItem,
     appendPresentationToItem,
     missingScheduleSongs,
+    scheduleItemThumbnail,
   } from "../lib/api.ts";
   import {
     dropTarget,
@@ -45,16 +51,27 @@
   import ItemLookEditor from "./ItemLookEditor.svelte";
 
   type ScheduleLayout = "list" | "column" | "grid";
-  let layout = $state<ScheduleLayout>(
-    (typeof localStorage !== "undefined" &&
-      (localStorage.getItem("simpleworship.schedule_layout") as ScheduleLayout)) ||
-      "list",
-  );
+  const LAYOUT_KEY = "simpleworship.schedule_layout";
+  const LAYOUTS: ScheduleLayout[] = ["list", "column", "grid"];
+
+  /** The layout chosen last on this computer (a convenience only). */
+  function savedLayout(): ScheduleLayout {
+    try {
+      const saved = localStorage.getItem(LAYOUT_KEY) as ScheduleLayout | null;
+      return saved && LAYOUTS.includes(saved) ? saved : "list";
+    } catch {
+      return "list";
+    }
+  }
+
+  let layout = $state<ScheduleLayout>(savedLayout());
 
   function setLayout(newLayout: ScheduleLayout) {
     layout = newLayout;
-    if (typeof localStorage !== "undefined") {
-      localStorage.setItem("simpleworship.schedule_layout", newLayout);
+    try {
+      localStorage.setItem(LAYOUT_KEY, newLayout);
+    } catch {
+      // Storage can be unavailable; the layout just won't be remembered.
     }
   }
 
@@ -62,6 +79,40 @@
   const previewId = $derived(engine.preview?.scheduleItem ?? null);
   const liveId = $derived(engine.live?.scheduleItem ?? null);
   const previewed = $derived(items.find((item) => item.id === previewId) ?? null);
+
+  /** Must match `SETTINGS_EVENT` in `src-tauri/src/commands/settings.rs`. */
+  const SETTINGS_EVENT = "settings://changed";
+  /** Bumped when settings are saved: the CCLI licence is in song footers. */
+  let settingsSaved = $state(0);
+  $effect(() => {
+    const stop = listen(SETTINGS_EVENT, () => (settingsSaved += 1));
+    return () => void stop.then((unlisten) => unlisten());
+  });
+
+  /**
+   * Each item's first slide, for the grid (`null` for background music).
+   * Only fetched while the grid shows, and again when the schedule, the
+   * themes, the files' own fits or the settings (the CCLI licence) change.
+   */
+  let thumbnails = $state.raw(new Map<string, RenderFrame | null>());
+  $effect(() => {
+    if (layout !== "grid") return;
+    const list = items;
+    void engine.themes;
+    void media.fileFits;
+    void settingsSaved;
+    let current = true;
+    void Promise.all(
+      list.map(
+        async (item) => [item.id, await scheduleItemThumbnail(item.id).catch(() => null)] as const,
+      ),
+    ).then((pairs) => {
+      if (current) thumbnails = new Map(pairs);
+    });
+    return () => {
+      current = false;
+    };
+  });
 
   /** Where a drag in progress would drop, as an insertion index. */
   let dropAt: number | null = $state(null);
@@ -107,7 +158,7 @@
   /** Keyboard control while the list has focus. */
   function handleKeys(event: KeyboardEvent) {
     const index = items.findIndex((item) => item.id === previewId);
-    const step = { ArrowDown: 1, ArrowUp: -1 }[event.key];
+    const step = { ArrowDown: 1, ArrowUp: -1, ArrowRight: 1, ArrowLeft: -1 }[event.key];
 
     if (step !== undefined) {
       const next = items[index === -1 ? 0 : index + step];
@@ -362,11 +413,34 @@
         onclick={() => preview(item)}
         ondblclick={() => show(item)}
       >
-        <span class="number">{index + 1}</span>
-        <span class="kind">{itemKind(item)}</span>
-        <span class="title">{itemTitle(item)}</span>
-        {#if item.notes}
-          <span class="has-notes" title={item.notes}>✎</span>
+        {#if layout === "grid"}
+          <!-- A card: the first slide, then the number and title under it. -->
+          {@const thumbnail = thumbnails.get(item.id)}
+          {#if thumbnail}
+            <!-- Hidden from screen readers: the slide's words would come
+                 before the item's number and title. -->
+            <div class="thumbnail" aria-hidden="true">
+              <ScaledCanvas><SlideView frame={thumbnail} /></ScaledCanvas>
+            </div>
+          {:else}
+            <div class="thumbnail empty-thumbnail" aria-hidden="true">
+              <span class="kind">{itemKind(item)}</span>
+            </div>
+          {/if}
+          <div class="caption">
+            <span class="number">{index + 1}</span>
+            <span class="title">{itemTitle(item)}</span>
+            {#if item.notes}
+              <span class="has-notes" title={item.notes}>✎</span>
+            {/if}
+          </div>
+        {:else}
+          <span class="number">{index + 1}</span>
+          <span class="kind">{itemKind(item)}</span>
+          <span class="title">{itemTitle(item)}</span>
+          {#if item.notes}
+            <span class="has-notes" title={item.notes}>✎</span>
+          {/if}
         {/if}
       </div>
     {:else}
@@ -564,28 +638,50 @@
 
   .items.layout-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     gap: var(--sw-space-2);
     padding: var(--sw-space-2);
     align-content: start;
   }
 
+  /* A card, in plain block layout: WebKit does not always grow a grid
+     or flex card to fit a 16:9 picture sized by aspect-ratio. */
   .items.layout-grid .item {
-    flex-direction: column;
-    align-items: flex-start;
+    display: block;
     border-radius: var(--sw-radius);
     border: 1px solid var(--sw-border);
     border-top: 3px solid transparent;
-    border-left: none;
+    border-left: 1px solid var(--sw-border);
     background: var(--sw-surface-sunken, rgba(255, 255, 255, 0.02));
-    padding: var(--sw-space-2);
-    min-height: 80px;
+    padding: var(--sw-space-1);
+  }
+
+  .items.layout-grid .thumbnail {
+    border-radius: var(--sw-radius-small);
+    overflow: hidden;
+    background: #000;
+    pointer-events: none;
+  }
+
+  /* Background music: its label where the picture would be. */
+  .items.layout-grid .empty-thumbnail {
+    aspect-ratio: 16 / 9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .items.layout-grid .caption {
+    display: flex;
+    align-items: baseline;
     gap: var(--sw-space-1);
-    position: relative;
+    padding: var(--sw-space-1) var(--sw-space-1) 0;
+    min-width: 0;
   }
 
   .items.layout-grid .item .title {
-    width: 100%;
+    flex: 1;
+    min-width: 0;
     white-space: normal;
     display: -webkit-box;
     -webkit-line-clamp: 2;

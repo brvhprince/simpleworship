@@ -30,6 +30,7 @@ import type {
   PreviewMedia,
   RecentSchedule,
   ReferenceFeedback,
+  RenderFrame,
   ScheduleFileStatus,
   ScriptureOptions,
   SlideDeck,
@@ -59,6 +60,7 @@ const ON_HOST = new Set([
   "song_get",
   "song_save",
   "song_presentation",
+  "schedule_item_thumbnail",
   "song_show_in_preview",
   "schedule_add_song",
   "bibles_list",
@@ -116,6 +118,13 @@ export const deleteSong = (id: string) => invoke<boolean>("song_delete", { id })
 
 /** Splits a (possibly unsaved) song into slides, for the editor's preview. */
 export const songPresentation = (song: Song) => invoke<Presentation>("song_presentation", { song });
+
+/**
+ * The first slide of a schedule item as the screens would draw it, for the
+ * schedule's grid; `null` for background music.
+ */
+export const scheduleItemThumbnail = (id: string) =>
+  invoke<RenderFrame | null>("schedule_item_thumbnail", { id });
 
 /** Loads a song into the preview pane. */
 export const showSongInPreview = (id: string) => invoke<void>("song_show_in_preview", { id });
