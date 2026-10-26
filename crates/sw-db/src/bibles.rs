@@ -64,6 +64,18 @@ impl<'db> Bibles<'db> {
         bible: &BibleData,
         bundled_key: Option<&str>,
     ) -> Result<BibleInfo, DbError> {
+        self.import_from(bible, bundled_key, None)
+    }
+
+    /// Like [`Bibles::import`], also recording where the Bible came from
+    /// (see [`Bibles::set_source`]) in the same transaction, so a Bible is
+    /// never stored without it.
+    pub fn import_from(
+        &self,
+        bible: &BibleData,
+        bundled_key: Option<&str>,
+        source: Option<&str>,
+    ) -> Result<BibleInfo, DbError> {
         let id = Id::new();
         let now = time::now();
         let transaction = self.conn.unchecked_transaction()?;
@@ -71,8 +83,8 @@ impl<'db> Bibles<'db> {
         transaction
             .prepare_cached(
                 "INSERT INTO bibles (id, name, abbreviation, language, copyright, bundled_key,
-                                     created_at, updated_at)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7)",
+                                     source, created_at, updated_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?8)",
             )?
             .execute(params![
                 id.to_string(),
@@ -81,6 +93,7 @@ impl<'db> Bibles<'db> {
                 bible.language,
                 bible.copyright,
                 bundled_key,
+                source,
                 now,
             ])?;
         let bible_seq = transaction.last_insert_rowid();
@@ -116,6 +129,38 @@ impl<'db> Bibles<'db> {
             )?
             .execute(params![id.to_string(), name, abbreviation, time::now()])?;
         Ok(changed > 0)
+    }
+
+    /// Records where a Bible came from, e.g. `"ebible:twi"` for one
+    /// downloaded from eBible.org. Returns `false` if there is no such Bible.
+    pub fn set_source(&self, id: Id, source: &str) -> Result<bool, DbError> {
+        let changed = self
+            .conn
+            .prepare_cached("UPDATE bibles SET source = ?2 WHERE id = ?1")?
+            .execute(params![id.to_string(), source])?;
+        Ok(changed > 0)
+    }
+
+    /// Records where the bundled Bible with this key came from, if that is
+    /// not known yet (Bibles bundled before sources were kept).
+    pub fn set_bundled_source(&self, key: &str, source: &str) -> Result<(), DbError> {
+        self.conn
+            .prepare_cached(
+                "UPDATE bibles SET source = ?2 WHERE bundled_key = ?1 AND source IS NULL",
+            )?
+            .execute(params![key, source])?;
+        Ok(())
+    }
+
+    /// Where the installed Bibles came from, for those that were downloaded
+    /// (see [`Bibles::set_source`]), e.g. to mark them as installed in a
+    /// catalogue.
+    pub fn sources(&self) -> Result<Vec<String>, DbError> {
+        let mut statement = self
+            .conn
+            .prepare_cached("SELECT source FROM bibles WHERE source IS NOT NULL")?;
+        let rows = statement.query_map([], |row| row.get(0))?;
+        Ok(rows.collect::<Result<_, _>>()?)
     }
 
     /// Deletes a Bible and all its verses. Returns `false` if there was no
@@ -279,6 +324,26 @@ mod tests {
 
     fn numbers(verses: &[Verse]) -> Vec<(u16, u16)> {
         verses.iter().map(|v| (v.chapter, v.verse)).collect()
+    }
+
+    #[test]
+    fn a_downloaded_bible_remembers_where_it_came_from() {
+        let db = Database::open_in_memory().unwrap();
+        let bibles = db.bibles();
+        let info = bibles.import(&sample(), None).unwrap();
+        assert!(bibles.sources().unwrap().is_empty());
+
+        assert!(bibles.set_source(info.id, "ebible:twi").unwrap());
+        assert_eq!(bibles.sources().unwrap(), ["ebible:twi"]);
+
+        let other = bibles
+            .import_from(&sample(), None, Some("ebible:engbsb"))
+            .unwrap();
+        assert_eq!(bibles.sources().unwrap().len(), 2, "recorded on import");
+        bibles.delete(other.id).unwrap();
+
+        bibles.delete(info.id).unwrap();
+        assert!(bibles.sources().unwrap().is_empty(), "deleting forgets it");
     }
 
     #[test]

@@ -64,6 +64,24 @@ fn world_english_bible() {
     assert_clean(&bible);
 }
 
+#[test]
+#[ignore = "large files; run with --ignored"]
+fn asante_twi_bible() {
+    let bible = import_bundled("twiasante_usfm.zip");
+    assert_eq!(bible.verses.len(), 31_100);
+    assert!(text(&bible, 43, 3, 16).contains("Onyankopɔn"));
+    assert_clean(&bible);
+}
+
+#[test]
+#[ignore = "large files; run with --ignored"]
+fn louis_segond_1910() {
+    let bible = import_bundled("fraLSG_usfm.zip");
+    assert_eq!(bible.verses.len(), 31_170);
+    assert!(text(&bible, 43, 3, 16).starts_with("Car Dieu a tant aimé le monde"));
+    assert_clean(&bible);
+}
+
 /// Imports every EasyWorship Bible in a folder, if one is given. These are
 /// usually licensed texts, so they never go into the repository:
 ///

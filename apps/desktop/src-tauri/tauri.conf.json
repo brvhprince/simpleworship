@@ -53,6 +53,8 @@
     "resources": {
       "../../../resources/bibles/eng-kjv2006_usfm.zip": "bibles/eng-kjv2006_usfm.zip",
       "../../../resources/bibles/engwebp_usfm.zip": "bibles/engwebp_usfm.zip",
+      "../../../resources/bibles/twiasante_usfm.zip": "bibles/twiasante_usfm.zip",
+      "../../../resources/bibles/fraLSG_usfm.zip": "bibles/fraLSG_usfm.zip",
       "../../remote/dist/": "remote/"
     },
     "publisher": "SimpleWorship contributors",

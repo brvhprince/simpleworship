@@ -97,6 +97,10 @@ pub enum AppError {
     #[error("could not look on the network: {0}")]
     Network(String),
 
+    /// Something could not be downloaded from the internet.
+    #[error("could not download it: {0}. Check the internet connection and try again")]
+    Download(String),
+
     /// A command only NDI's hidden windows may use came from elsewhere.
     #[error("only an NDI output window can do that")]
     NotAnNdiWindow,

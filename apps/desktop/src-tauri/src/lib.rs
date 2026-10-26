@@ -9,7 +9,8 @@
 //! - [`schedule_file`], [`autosave`] and [`recent`] handle `.sws` files:
 //!   unsaved changes, crash recovery and "Open Recent".
 //! - [`menu`] builds the native menu bar.
-//! - [`bibles`] imports Bibles in the background, including the bundled ones.
+//! - [`bibles`] imports Bibles in the background, including the bundled ones;
+//!   [`bible_catalog`] offers more from eBible.org.
 //! - [`import_sources`] finds libraries from other worship software to import.
 //! - [`distribution`] tells a Microsoft Store copy (updated by the Store)
 //!   from one that updates itself.
@@ -23,6 +24,7 @@
 
 mod assistant;
 mod autosave;
+mod bible_catalog;
 mod bibles;
 mod commands;
 mod distribution;
@@ -44,6 +46,7 @@ mod schedule_archive;
 mod schedule_file;
 mod settings;
 mod state;
+mod web;
 mod windows;
 
 use tauri::Manager;
@@ -151,6 +154,8 @@ pub fn run() {
             commands::schedule::autosave_restore,
             commands::schedule::autosave_discard,
             commands::scripture::bibles_list,
+            bible_catalog::bible_catalog,
+            bible_catalog::bible_catalog_install,
             commands::scripture::bible_import,
             commands::scripture::bible_rename,
             commands::scripture::bible_delete,

@@ -1,7 +1,8 @@
 <!--
   @component
   Lists the installed Bibles, and lets the operator import, rename and
-  delete them. Imports run in the background and take a few seconds.
+  delete them, or download more (see `GetBibles`). Imports run in the
+  background and take a few seconds.
 -->
 <script lang="ts">
   import type { BibleInfo } from "@simpleworship/protocol";
@@ -12,6 +13,7 @@
   import { engine } from "../../lib/engine.svelte.ts";
   import { t } from "../../lib/i18n/i18n.svelte.ts";
   import { prompts } from "../../lib/prompts.svelte.ts";
+  import GetBibles from "./GetBibles.svelte";
 
   interface Props {
     onclose: () => void;
@@ -28,6 +30,8 @@
   ];
 
   let importing: string | null = $state(null);
+  /** Whether the Get More Bibles window is open. */
+  let gettingMore = $state(false);
 
   async function chooseAndImport() {
     const path = await open({ filters: BIBLE_FILTERS, multiple: false });
@@ -121,10 +125,15 @@
     {#if importing}
       <span class="importing">{t("bibles.importing", { file: importing })}</span>
     {/if}
+    <Button onclick={() => (gettingMore = true)}>{t("bibles.getMore")}</Button>
     <Button disabled={importing !== null} onclick={chooseAndImport}>{t("bibles.import")}</Button>
     <Button variant="primary" onclick={onclose}>{t("common.done")}</Button>
   {/snippet}
 </Dialog>
+
+{#if gettingMore}
+  <GetBibles onclose={() => (gettingMore = false)} />
+{/if}
 
 <style>
   table {

@@ -447,15 +447,7 @@ async fn download(app: &AppHandle, model: SpeechModel) -> AppResult<()> {
     let partial = folder.join(format!("{}.part", model.file()));
     let network = |error: reqwest::Error| AppError::Network(error.to_string());
 
-    // The HTTPS library leaves the choice of encryption code to the app
-    // (as the updater does too).
-    if rustls::crypto::CryptoProvider::get_default().is_none() {
-        let _ = rustls::crypto::ring::default_provider().install_default();
-    }
-    let client = reqwest::Client::builder()
-        .user_agent(concat!("SimpleWorship/", env!("CARGO_PKG_VERSION")))
-        .build()
-        .map_err(network)?;
+    let client = crate::web::client().map_err(network)?;
     let mut response = client
         .get(model.url())
         .send()

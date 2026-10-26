@@ -29,6 +29,7 @@ fn migrations() -> Migrations<'static> {
             "../migrations/0005_editable_presentations.sql"
         )),
         M::up(include_str!("../migrations/0006_media_scaling.sql")),
+        M::up(include_str!("../migrations/0007_bible_sources.sql")),
     ])
 }
 
