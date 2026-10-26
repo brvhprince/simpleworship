@@ -880,6 +880,7 @@
   "transitions.other": "Everything else",
   "updates.checkFailed": "Could not check for updates: {error}",
   "updates.downloading": "Downloading… {percent}%",
+  "updates.fromStore": "Updates come from the Microsoft Store.",
   "updates.install": "Install and Restart",
   "updates.installFailed": "The update could not be installed: {error}",
   "updates.installMessage": "SimpleWorship will restart. Save your schedule first if it has changes.",

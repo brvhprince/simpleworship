@@ -12,11 +12,15 @@
  * Updates come from the project's GitHub releases and are checked against
  * the project's signing key (see `src-tauri/tauri.conf.json`), so only
  * real SimpleWorship releases are installed.
+ *
+ * A copy from the Microsoft Store is updated by the Store instead: it never
+ * looks for updates itself, and the buttons and setting for them are hidden
+ * (see `fromStore`).
  */
 
 import { relaunch } from "@tauri-apps/plugin-process";
 import { check, type Update } from "@tauri-apps/plugin-updater";
-import { getSettings } from "./api.ts";
+import { getSettings, updatesFromStore } from "./api.ts";
 import { engine } from "./engine.svelte.ts";
 import { t } from "./i18n/i18n.svelte.ts";
 import { onMenuClick } from "./menu.ts";
@@ -47,11 +51,17 @@ class Updates {
   offer: Offer | null = $state.raw(null);
   /** Download progress, 0 to 1. */
   progress = $state(0);
+  /** Installed from the Microsoft Store, which updates it: nothing to check. */
+  fromStore = $state(false);
 
   #update: Update | null = null;
 
   /** Starts the automatic checks and listens for the Help menu. */
   async connect(): Promise<() => void> {
+    this.fromStore = await updatesFromStore().catch(() => false);
+    // The Store updates this copy (and its menu has no Check for Updates).
+    if (this.fromStore) return () => {};
+
     const stopMenu = await onMenuClick((id) => {
       if (id === "check-updates") void this.checkNow();
     });
@@ -78,6 +88,7 @@ class Updates {
    * install, unless something is live (the toolbar's Update Ready waits).
    */
   async checkNow(): Promise<void> {
+    if (this.fromStore) return;
     // While developing there are no releases to find: show the update
     // window with the newest CHANGELOG section instead, to see how it looks.
     if (import.meta.env.DEV) {

@@ -11,6 +11,8 @@
 //! - [`menu`] builds the native menu bar.
 //! - [`bibles`] imports Bibles in the background, including the bundled ones.
 //! - [`import_sources`] finds libraries from other worship software to import.
+//! - [`distribution`] tells a Microsoft Store copy (updated by the Store)
+//!   from one that updates itself.
 //! - [`media`] copies images and videos into the media library;
 //!   [`schedule_archive`] carries themes and media inside saved schedules.
 //!
@@ -23,6 +25,7 @@ mod assistant;
 mod autosave;
 mod bibles;
 mod commands;
+mod distribution;
 mod error;
 mod files;
 mod host_calls;
@@ -74,8 +77,14 @@ pub fn run() {
         .plugin(logging())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_process::init())
-        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init());
+    // A Microsoft Store copy is updated by the Store, never by itself.
+    let app = if distribution::installed_from_store() {
+        app
+    } else {
+        app.plugin(tauri_plugin_updater::Builder::new().build())
+    };
+    let app = app
         .manage(launch::PendingOpen::default())
         .manage(remote::RemoteState::default())
         .manage(ndi::NdiState::default())
@@ -235,6 +244,7 @@ pub fn run() {
             listen::listen_configure,
             listen::listen_start,
             listen::listen_stop,
+            distribution::updates_from_store,
             listen::listen_download,
         ])
         .on_window_event(windows::on_window_event)

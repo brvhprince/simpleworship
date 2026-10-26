@@ -880,6 +880,7 @@
   "transitions.other": "Tout le reste",
   "updates.checkFailed": "Impossible de rechercher les mises à jour : {error}",
   "updates.downloading": "Téléchargement… {percent} %",
+  "updates.fromStore": "Les mises à jour viennent du Microsoft Store.",
   "updates.install": "Installer et redémarrer",
   "updates.installFailed": "La mise à jour n’a pas pu être installée : {error}",
   "updates.installMessage": "SimpleWorship va redémarrer. Enregistrez d’abord votre programme s’il a des modifications.",

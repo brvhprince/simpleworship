@@ -11,6 +11,7 @@
   import { openLogsFolder, openProjectPage } from "../lib/api.ts";
   import { dialogs } from "../lib/dialogs.svelte.ts";
   import { t } from "../lib/i18n/i18n.svelte.ts";
+  import { updates } from "../lib/updates.svelte.ts";
   import UpdateButton from "./UpdateButton.svelte";
 
   let version = $state("");
@@ -27,6 +28,9 @@
     <img class="icon" src={icon} alt="" width="96" height="96">
     <h2>SimpleWorship</h2>
     <p class="version">{t("about.version", { version })}</p>
+    {#if updates.fromStore}
+      <p class="version">{t("updates.fromStore")}</p>
+    {/if}
     <p class="tagline">{t("about.tagline")}</p>
 
     <div class="links">
@@ -62,7 +66,9 @@
   </div>
 
   {#snippet actions()}
-    <UpdateButton label={t("about.checkUpdates")} />
+    {#if !updates.fromStore}
+      <UpdateButton label={t("about.checkUpdates")} />
+    {/if}
     <Button variant="primary" onclick={() => dialogs.close()}>{t("common.close")}</Button>
   {/snippet}
 </Dialog>

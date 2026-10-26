@@ -45,6 +45,18 @@
           </uap:ShowNameOnTiles>
         </uap:DefaultTile>
       </uap:VisualElements>
+      <!-- Double-clicking a schedule opens it, as with the NSIS install
+           (see bundle.fileAssociations in tauri.conf.json). -->
+      <Extensions>
+        <uap:Extension Category="windows.fileTypeAssociation">
+          <uap:FileTypeAssociation Name="simpleworship-schedule">
+            <uap:DisplayName>SimpleWorship Schedule</uap:DisplayName>
+            <uap:SupportedFileTypes>
+              <uap:FileType>.sws</uap:FileType>
+            </uap:SupportedFileTypes>
+          </uap:FileTypeAssociation>
+        </uap:Extension>
+      </Extensions>
     </Application>
   </Applications>
 

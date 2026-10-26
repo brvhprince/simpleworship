@@ -165,11 +165,23 @@ Get-ChildItem -Path $TargetReleaseDir -Filter "*.dll" | ForEach-Object {
     Copy-Item $_.FullName -Destination $StagingDir -Force
 }
 
-# Copy bundled resource folders (e.g. bibles, remote)
-$ExcludeDirs = @("build", "deps", "examples", "incremental", ".fingerprint", "msix-staging")
-Get-ChildItem -Path $TargetReleaseDir -Directory | Where-Object { $_.Name -notin $ExcludeDirs } | ForEach-Object {
-    Write-Host "Copying bundled resource directory: $($_.Name)" -ForegroundColor Gray
-    Copy-Item $_.FullName -Destination (Join-Path $StagingDir $_.Name) -Recurse -Force
+# Copy the bundled resource folders, and only those: tauri.conf.json's
+# `bundle.resources` maps each source to where the app expects it (e.g.
+# "bibles/eng-kjv2006_usfm.zip"), and the build copies them next to the exe.
+# An allowlist keeps everything else in target\release out of the package,
+# above all `bundle\` with the NSIS and MSI installers.
+$TauriConf = Get-Content (Join-Path $TauriDir "tauri.conf.json") -Raw | ConvertFrom-Json
+$ResourceDirs = $TauriConf.bundle.resources.PSObject.Properties.Value |
+    ForEach-Object { ($_ -split "[\\/]")[0] } |
+    Where-Object { $_ } |
+    Sort-Object -Unique
+foreach ($dir in $ResourceDirs) {
+    $Source = Join-Path $TargetReleaseDir $dir
+    if (-not (Test-Path $Source)) {
+        throw "Bundled resource folder '$dir' not found in $TargetReleaseDir. Build the app first."
+    }
+    Write-Host "Copying bundled resource directory: $dir" -ForegroundColor Gray
+    Copy-Item $Source -Destination (Join-Path $StagingDir $dir) -Recurse -Force
 }
 
 # Copy Assets / Icons

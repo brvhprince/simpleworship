@@ -436,6 +436,12 @@ export const openProjectPage = (
 /** Opens the folder with the log files. */
 export const openLogsFolder = () => invoke<void>("open_logs_folder");
 
+/**
+ * Whether this copy came from the Microsoft Store, which updates it: the
+ * app's own update checks are then hidden.
+ */
+export const updatesFromStore = () => invoke<boolean>("updates_from_store");
+
 // ── Outputs ──────────────────────────────────────────────────────────────
 
 /** Lists the connected monitors. */
