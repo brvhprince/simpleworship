@@ -3,7 +3,7 @@
 use std::fmt;
 use std::str::FromStr;
 
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 use uuid::Uuid;
 
@@ -15,7 +15,7 @@ use uuid::Uuid;
 ///
 /// Serialized as the usual hyphenated string, e.g.
 /// `"01920c7e-5a4b-7c3d-9e8f-0a1b2c3d4e5f"`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, TS)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize, TS)]
 #[ts(export, export_to = "bindings.ts", type = "string")]
 pub struct Id(Uuid);
 
@@ -29,6 +29,11 @@ impl Id {
     /// (such as [`crate::engine::LOCAL_OPERATOR`]).
     pub const fn nil() -> Self {
         Self(Uuid::nil())
+    }
+
+    /// Wraps an existing UUID, e.g. one derived from older, non-UUID data.
+    pub const fn from_uuid(uuid: Uuid) -> Self {
+        Self(uuid)
     }
 }
 
@@ -45,25 +50,12 @@ impl fmt::Display for Id {
 }
 
 impl FromStr for Id {
-    type Err = std::convert::Infallible;
+    type Err = uuid::Error;
 
+    /// Parses the hyphenated form. Anything else is an error, so a mistyped
+    /// or corrupt id is caught instead of quietly naming nothing.
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.trim().is_empty() {
-            return Ok(Self::nil());
-        }
-        let uuid =
-            Uuid::parse_str(s).unwrap_or_else(|_| Uuid::new_v5(&Uuid::NAMESPACE_OID, s.as_bytes()));
-        Ok(Self(uuid))
-    }
-}
-
-impl<'de> Deserialize<'de> for Id {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let s = String::deserialize(deserializer)?;
-        Ok(s.parse::<Self>().unwrap())
+        Uuid::parse_str(s).map(Self)
     }
 }
 
@@ -72,23 +64,18 @@ mod tests {
     use super::*;
 
     #[test]
-    fn parses_valid_uuid_and_arbitrary_string() {
-        let valid_str = "\"01920c7e-5a4b-7c3d-9e8f-0a1b2c3d4e5f\"";
-        let parsed: Id = serde_json::from_str(valid_str).expect("valid uuid");
-        assert_eq!(parsed.to_string(), "01920c7e-5a4b-7c3d-9e8f-0a1b2c3d4e5f");
+    fn parses_and_prints_the_hyphenated_form() {
+        let text = "01920c7e-5a4b-7c3d-9e8f-0a1b2c3d4e5f";
+        let id: Id = serde_json::from_str(&format!("\"{text}\"")).unwrap();
+        assert_eq!(id.to_string(), text);
+        assert_eq!(text.parse::<Id>().unwrap(), id);
+    }
 
-        // Arbitrary strings like "title" or "body" must deserialize without error
-        let title_str = "\"title\"";
-        let parsed_title: Id = serde_json::from_str(title_str).expect("arbitrary string title");
-        assert_ne!(parsed_title, Id::nil());
-
-        // Must be deterministic
-        let parsed_title_again: Id = serde_json::from_str(title_str).unwrap();
-        assert_eq!(parsed_title, parsed_title_again);
-
-        // Empty string deserializes to nil
-        let empty_str = "\"\"";
-        let parsed_empty: Id = serde_json::from_str(empty_str).expect("empty string");
-        assert_eq!(parsed_empty, Id::nil());
+    #[test]
+    fn rejects_anything_that_is_not_a_uuid() {
+        assert!("title".parse::<Id>().is_err());
+        assert!("".parse::<Id>().is_err());
+        assert!(serde_json::from_str::<Id>("\"title\"").is_err());
+        assert!(serde_json::from_str::<Id>("\"\"").is_err());
     }
 }
