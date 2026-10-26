@@ -122,6 +122,28 @@ impl MediaItem {
     }
 }
 
+/// The church logo, shown by the Logo button: a picture, or a video that
+/// plays on a loop, without sound.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "bindings.ts")]
+pub struct Logo {
+    /// The file.
+    pub media: MediaRef,
+    /// Picture or video (never sound).
+    pub kind: MediaKind,
+}
+
+impl Logo {
+    /// The logo for `item`, or `None` for a sound file, which has no picture.
+    pub fn of(item: &MediaItem) -> Option<Self> {
+        (item.kind != MediaKind::Audio).then(|| Self {
+            media: item.as_ref(),
+            kind: item.kind,
+        })
+    }
+}
+
 /// A camera or capture card connected to the computer, as a live picture
 /// (see the Cameras section of the Media tab).
 ///

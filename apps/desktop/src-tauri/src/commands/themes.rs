@@ -2,14 +2,15 @@
 
 use std::collections::BTreeSet;
 
-use sw_core::{Command, Id, MediaRef, ThemeDefaults, ThemeRecord};
+use serde::Deserialize;
+use sw_core::{Command, Id, Logo, MediaRef, ThemeDefaults, ThemeRecord};
 use tauri::{AppHandle, State};
 
 use crate::commands::engine::dispatch;
 use crate::error::{AppError, AppResult};
 use crate::state::AppState;
 
-/// Settings key of the logo image.
+/// Settings key of the logo (a [`Logo`]; before 0.6, a picture's `MediaRef`).
 const LOGO_KEY: &str = "logo";
 
 /// Fonts that ship with the app (see `packages/renderer/fonts`), so themes
@@ -96,18 +97,19 @@ fn installed_fonts() -> BTreeSet<String> {
         .collect()
 }
 
-/// Sets (or, with `None`, removes) the church logo.
+/// Sets (or, with `None`, removes) the church logo: a picture, or a video
+/// that plays on a loop. A sound file cannot be the logo.
 #[tauri::command]
 pub fn logo_set(app: AppHandle, state: State<'_, AppState>, media_id: Option<Id>) -> AppResult<()> {
     let logo = match media_id {
-        Some(id) => Some(
-            state
+        Some(id) => {
+            let item = state
                 .database()
                 .media()
                 .get(id)?
-                .ok_or(AppError::MediaNotFound)?
-                .as_ref(),
-        ),
+                .ok_or(AppError::MediaNotFound)?;
+            Some(Logo::of(&item).ok_or(AppError::NotALogo)?)
+        }
         None => None,
     };
     state.database().settings().set(LOGO_KEY, &logo)?;
@@ -154,8 +156,46 @@ pub fn sync_settings(app: &AppHandle, state: &AppState) -> AppResult<()> {
     dispatch(app, state, Command::SetStreamSettings { settings })
 }
 
+/// The logo as saved: since 0.6 a [`Logo`]; before, only a picture's file.
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum SavedLogo {
+    Logo(Logo),
+    Picture(MediaRef),
+}
+
 /// Loads the saved logo into the engine. Called at startup.
 pub fn sync_logo(app: &AppHandle, state: &AppState) -> AppResult<()> {
-    let logo: Option<MediaRef> = state.database().settings().get(LOGO_KEY)?.flatten();
+    let saved: Option<SavedLogo> = state.database().settings().get(LOGO_KEY)?.flatten();
+    let logo = saved.map(|saved| match saved {
+        SavedLogo::Logo(logo) => logo,
+        SavedLogo::Picture(media) => Logo {
+            media,
+            kind: sw_core::MediaKind::Image,
+        },
+    });
     dispatch(app, state, Command::SetLogoImage { logo })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_logo_saved_before_videos_could_be_one_still_loads_as_a_picture() {
+        let old = r#"{"id":"01920c7e-0000-7000-8000-000000000001","file":"cross.png"}"#;
+        assert!(matches!(
+            serde_json::from_str::<SavedLogo>(old).unwrap(),
+            SavedLogo::Picture(media) if media.file == "cross.png"
+        ));
+
+        let new = r#"{"media":{"id":"01920c7e-0000-7000-8000-000000000001","file":"cross.mp4"},"kind":"video"}"#;
+        assert!(matches!(
+            serde_json::from_str::<SavedLogo>(new).unwrap(),
+            SavedLogo::Logo(Logo {
+                kind: sw_core::MediaKind::Video,
+                ..
+            })
+        ));
+    }
 }

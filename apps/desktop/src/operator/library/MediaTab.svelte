@@ -8,7 +8,8 @@
   - Click to select, double-click to preview, drag onto the schedule.
   - ⌘/Ctrl-click or Shift-click to pick several; dragging them onto the
     schedule (or "Add as Slideshow") makes one slideshow item.
-  - "Set as Logo" makes the selected image the Logo button's picture.
+  - "Set as Logo" makes the selected image or video what the Logo button
+    shows (a video plays on a loop, without sound).
   - Sound plays in the music bar at the bottom of the window ("Play"), or
     goes in the schedule as background music.
 -->
@@ -72,7 +73,7 @@
   const selected = $derived(media.list.find((item) => item.id === selectedId) ?? null);
   /** The picked items, in the order they are shown. */
   const pickedItems = $derived(shown.filter((item) => picked.has(item.id)));
-  const logoId = $derived(engine.output?.logo?.id ?? null);
+  const logoId = $derived(engine.output?.logo?.media.id ?? null);
 
   async function chooseAndImport() {
     const paths = await open({ filters: MEDIA_FILTERS, multiple: true });
@@ -254,7 +255,7 @@
           </select>
         </label>
       {/if}
-      {#if selected?.kind === "image"}
+      {#if selected && selected.kind !== "audio"}
         {#if selected.id === logoId}
           <Button onclick={() => onSelected(() => setLogo(null))}>{t("media.removeLogo")}</Button>
         {:else}

@@ -44,7 +44,7 @@ use crate::command::{Command, EngineEvent};
 use crate::countdown::{CountdownEnd, CountdownFrame};
 use crate::deck::SlideDeck;
 use crate::id::Id;
-use crate::media::{MediaItem, MediaKind, MediaRef};
+use crate::media::{Logo, MediaItem, MediaKind};
 use crate::output::{
     DisplayFlags, OutputState, RenderFrame, Transition, TransitionSettings, VideoPlayback,
 };
@@ -148,7 +148,7 @@ pub struct Engine {
     /// The themes and defaults everything is styled with.
     themes: ThemeLibrary,
     /// The church logo, if one is set.
-    logo: Option<MediaRef>,
+    logo: Option<Logo>,
     /// The media files' own fits, recorded in every pane's backgrounds.
     file_fits: crate::FileFits,
     /// Playback of the live video background, if there is one.

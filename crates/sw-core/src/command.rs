@@ -20,7 +20,7 @@ use crate::audio::AudioState;
 use crate::deck::{AutoAdvance, DeckSlide, SlideDeck};
 use crate::engine::PaneState;
 use crate::id::Id;
-use crate::media::{CameraRef, MediaItem, MediaRef};
+use crate::media::{CameraRef, Logo, MediaItem};
 use crate::output::{OutputState, TransitionSettings};
 use crate::presentation::Presentation;
 use crate::schedule::{Schedule, ScheduleItem};
@@ -136,8 +136,9 @@ pub enum Command {
     },
     /// Set (or remove) the church logo shown by the Logo button.
     SetLogoImage {
-        /// The logo image, or `None` to show the background instead.
-        logo: Option<MediaRef>,
+        /// The logo picture or video, or `None` to show the background
+        /// instead.
+        logo: Option<Logo>,
     },
     /// The media files' own fits (the Media tab's scaling), applied to
     /// every picture and video background on the screens.

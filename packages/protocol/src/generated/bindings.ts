@@ -479,9 +479,10 @@ export type Command =
   | {
       type: "setLogoImage";
       /**
-       * The logo image, or `None` to show the background instead.
+       * The logo picture or video, or `None` to show the background
+       * instead.
        */
-      logo: MediaRef | null;
+      logo: Logo | null;
     }
   | {
       type: "setFileFits";
@@ -1308,6 +1309,21 @@ export type ItemLook = {
 };
 
 /**
+ * The church logo, shown by the Logo button: a picture, or a video that
+ * plays on a loop, without sound.
+ */
+export type Logo = {
+  /**
+   * The file.
+   */
+  media: MediaRef;
+  /**
+   * Picture or video (never sound).
+   */
+  kind: MediaKind;
+};
+
+/**
  * The outcome of resolving a look: the theme to draw with, and what it
  * came from, so it can be refreshed when the library changes.
  */
@@ -1452,7 +1468,7 @@ export type OutputState = {
    * The church logo, shown when [`DisplayFlags::logo`] is on. Without
    * one, the Logo button shows the background with no text.
    */
-  logo: MediaRef | null;
+  logo: Logo | null;
   /**
    * An alert over the slides, if one is showing.
    */

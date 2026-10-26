@@ -5,11 +5,11 @@
   (see `src-tauri/src/windows.rs`). Without a view it is the operator window.
 -->
 <script lang="ts">
+  import { i18n } from "@simpleworship/i18n";
   import type { MediaFolderPaths, MediaRef } from "@simpleworship/protocol";
   import { setCameraUse, setFileFitLookup, setMediaUrls } from "@simpleworship/renderer";
   import { convertFileSrc } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
-  import { i18n } from "@simpleworship/i18n";
   import { link } from "./lib/link.svelte.ts";
   import { media } from "./lib/media.svelte.ts";
   import NdiPage from "./ndi/NdiPage.svelte";
