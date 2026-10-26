@@ -327,10 +327,7 @@ impl Helper {
     /// thing it complained about.
     fn stopped(&mut self) -> Error {
         let ended = match take_own(&self.slot, self.id) {
-            Some(mut child) => match child.wait() {
-                Ok(status) => describe_exit(status),
-                Err(error) => error.to_string(),
-            },
+            Some(child) => reap(child),
             // Taken by `stop_helper`: listening was stopped, or the
             // helper had frozen.
             None => "it was stopped".into(),
@@ -400,6 +397,30 @@ fn low_priority(helper: &HelperCommand) -> Command {
         command.args(&helper.args);
         command
     }
+}
+
+/// How long a helper that stopped answering has to end by itself before
+/// it is ended: closing its output usually means it is on its way out.
+const EXIT_GRACE: Duration = Duration::from_secs(1);
+
+/// Waits for a helper that stopped answering to end, and says how it
+/// ended. One that is still running after [`EXIT_GRACE`] (it closed its
+/// output but carried on) is ended, so nothing waits on it for ever.
+fn reap(mut child: Child) -> String {
+    let deadline = std::time::Instant::now() + EXIT_GRACE;
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) => return describe_exit(status),
+            Ok(None) if std::time::Instant::now() < deadline => {
+                std::thread::sleep(Duration::from_millis(20));
+            }
+            Ok(None) => break,
+            Err(error) => return error.to_string(),
+        }
+    }
+    let _ = child.kill();
+    let _ = child.wait();
+    "it stopped answering, so it was ended".into()
 }
 
 /// Copies what the helper writes to standard error into the app's log,
@@ -557,6 +578,29 @@ mod tests {
         assert!(
             started.elapsed() < Duration::from_secs(5),
             "it gave up in time"
+        );
+        assert!(slot.lock().unwrap().is_none(), "and the helper was ended");
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn a_helper_that_closes_its_output_but_carries_on_is_ended() {
+        // Closes standard output, then keeps running.
+        let mute = HelperCommand {
+            program: "/bin/sh".into(),
+            args: vec!["-c".into(), "exec >&-; sleep 30".into()],
+        };
+        let slot = HelperSlot::default();
+        let started = Instant::now();
+        let result = Helper::start_within(&mute, slot.clone(), Duration::from_secs(20));
+        assert!(
+            matches!(&result, Err(Error::Helper(why)) if why.contains("stopped answering")),
+            "got {:?}",
+            result.err()
+        );
+        assert!(
+            started.elapsed() < Duration::from_secs(5),
+            "it did not wait for ever"
         );
         assert!(slot.lock().unwrap().is_none(), "and the helper was ended");
     }
