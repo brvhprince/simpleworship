@@ -22,12 +22,20 @@ use crate::state::AppState;
 /// Keep in sync with `apps/desktop/src/lib/bibles.svelte.ts`.
 pub const BIBLES_EVENT: &str = "bibles://changed";
 
-/// A Bible that ships with the app: its key, resource file and display name.
+/// A Bible that ships with the app.
 struct Bundled {
+    /// Marks it in the library, so it is imported once.
     key: &'static str,
+    /// Its zip, among the app's resources.
     file: &'static str,
     name: &'static str,
     abbreviation: &'static str,
+    /// The copyright line to show with its verses, when its licence asks
+    /// for one the file does not carry.
+    copyright: Option<&'static str>,
+    /// Where it came from (see `bible_catalog`), so eBible.org's list shows
+    /// it as installed.
+    source: &'static str,
 }
 
 /// See `resources/bibles/README.md` for sources and licences.
@@ -37,12 +45,35 @@ const BUNDLED: &[Bundled] = &[
         file: "bibles/eng-kjv2006_usfm.zip",
         name: "King James Version",
         abbreviation: "KJV",
+        copyright: None,
+        source: "ebible:eng-kjv2006",
     },
     Bundled {
         key: "web",
         file: "bibles/engwebp_usfm.zip",
         name: "World English Bible",
         abbreviation: "WEB",
+        copyright: None,
+        source: "ebible:engwebp",
+    },
+    // CC BY-SA 4.0: shared unchanged, with Biblica's name and notice.
+    Bundled {
+        key: "twiasante",
+        file: "bibles/twiasante_usfm.zip",
+        name: "Biblica® Open Asante Twi Contemporary Bible",
+        abbreviation: "ASANTE",
+        copyright: Some(
+            "Biblica® Open Asante Twi Contemporary Bible™ © 1996, 2020 Biblica, Inc. CC BY-SA 4.0",
+        ),
+        source: "ebible:twiasante",
+    },
+    Bundled {
+        key: "lsg",
+        file: "bibles/fraLSG_usfm.zip",
+        name: "Louis Segond 1910",
+        abbreviation: "LSG",
+        copyright: None,
+        source: "ebible:fraLSG",
     },
 ];
 
@@ -62,14 +93,21 @@ fn install_missing_bundled(app: &AppHandle) -> AppResult<()> {
 
     for bundled in BUNDLED {
         if database.bibles().has_bundled(bundled.key)? {
+            database
+                .bibles()
+                .set_bundled_source(bundled.key, bundled.source)?;
             continue;
         }
         let path = app.path().resolve(bundled.file, BaseDirectory::Resource)?;
         let mut bible = read(&path)?;
         bible.name = bundled.name.to_owned();
         bible.abbreviation = bundled.abbreviation.to_owned();
+        if let Some(copyright) = bundled.copyright {
+            copyright.clone_into(&mut bible.copyright);
+        }
 
-        database.bibles().import(&bible, Some(bundled.key))?;
+        let info = database.bibles().import(&bible, Some(bundled.key))?;
+        database.bibles().set_source(info.id, bundled.source)?;
         announce(app);
     }
     Ok(())

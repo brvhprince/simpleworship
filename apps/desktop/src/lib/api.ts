@@ -7,6 +7,7 @@
 import type {
   AppSettings,
   AutosaveInfo,
+  BibleCatalog,
   BibleChoice,
   BibleInfo,
   BookOutline,
@@ -192,6 +193,17 @@ export const listBibles = () => invoke<BibleInfo[]>("bibles_list");
 
 /** Imports a Bible file; resolves when it is ready (this takes a few seconds). */
 export const importBible = (path: string) => invoke<BibleInfo>("bible_import", { path });
+
+/**
+ * The Bibles that can be downloaded from eBible.org (freely shared ones
+ * only). Fetches the list again when `refresh` is set or it is a week old;
+ * without internet, the copy kept from before (marked `offline`).
+ */
+export const bibleCatalog = (refresh = false) => invoke<BibleCatalog>("bible_catalog", { refresh });
+
+/** Downloads a Bible from eBible.org's list and adds it to the library. */
+export const installCatalogBible = (id: string) =>
+  invoke<BibleInfo>("bible_catalog_install", { id });
 
 /** Renames a Bible. */
 export const renameBible = (id: string, name: string, abbreviation: string) =>

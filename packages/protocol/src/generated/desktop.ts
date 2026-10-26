@@ -115,6 +115,21 @@ export type AutosaveInfo = {
 };
 
 /**
+ * The catalogue, as the window shows it.
+ */
+export type BibleCatalog = {
+  /**
+   * The translations, by language, then name.
+   */
+  bibles: Array<CatalogBible>;
+  /**
+   * The list could not be fetched just now: this is the copy kept from
+   * before, which may be out of date.
+   */
+  offline: boolean;
+};
+
+/**
  * A Bible to import, with the name the operator settled on.
  */
 export type BibleChoice = {
@@ -133,6 +148,70 @@ export type BibleChoice = {
 };
 
 /**
+ * How far a download has got, sent as [`DOWNLOAD_EVENT`].
+ */
+export type BibleDownload = {
+  /**
+   * The translation's id.
+   */
+  id: string;
+  /**
+   * From 0 to 1 while downloading; 1 while it is being imported.
+   */
+  progress: number;
+};
+
+/**
+ * A translation that can be downloaded.
+ */
+export type CatalogBible = {
+  /**
+   * eBible.org's id for it, e.g. `"twi"`.
+   */
+  id: string;
+  /**
+   * The ISO 639-3 code of its language, e.g. `"twi"`, `"eng"`.
+   */
+  languageCode: string;
+  /**
+   * Its language in that language, e.g. "Akuapem Twi".
+   */
+  language: string;
+  /**
+   * Its language in English, e.g. "Twi".
+   */
+  languageEnglish: string;
+  /**
+   * Its name, e.g. "Akuapem Twi Bible".
+   */
+  name: string;
+  /**
+   * Its full title, in its own language.
+   */
+  title: string;
+  /**
+   * The short name it gets in the library, e.g. "TWI".
+   */
+  abbreviation: string;
+  /**
+   * The copyright line, shown with its verses.
+   */
+  copyright: string;
+  /**
+   * How much of the Bible it has.
+   */
+  coverage: Coverage;
+  /**
+   * Written right to left (Arabic, Hebrew…).
+   */
+  rightToLeft: boolean;
+  /**
+   * Already in the library.
+   */
+  installed: boolean;
+};
+
+/**
  * The models chosen from a service's list when its key was saved.
  */
 export type ChosenModels = {
@@ -145,6 +224,11 @@ export type ChosenModels = {
    */
   better: string;
 };
+
+/**
+ * How much of the Bible a translation has.
+ */
+export type Coverage = "bible" | "newTestament" | "oldTestament" | "portions";
 
 /**
  * A host found on the network.
