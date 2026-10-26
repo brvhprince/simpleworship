@@ -97,7 +97,7 @@
     if (isScripture && caption.visible && caption.placement === "box") {
       list.push({ id: "caption", label: t("designer.boxReference"), box: caption.textBox });
     }
-    if (isSong && footer.visible && footer.placement === "box") {
+    if ((isSong || isScripture) && footer.visible && footer.placement === "box") {
       list.push({ id: "footer", label: t("designer.boxFooter"), box: footer.textBox });
     }
     return list;
@@ -511,9 +511,18 @@
         </section>
       {/if}
 
-      {#if draft.theme.category === "song" || (!draft.theme.category && sample === "lyrics")}
+      <!-- The copyright line: a song's writers, copyright and CCLI number,
+           or a translation's copyright. Off unless turned on. -->
+      {#if draft.theme.category === "song" ||
+        draft.theme.category === "scripture" ||
+        !draft.theme.category}
+        {@const scripture =
+          draft.theme.category === "scripture" || (!draft.theme.category && sample === "scripture")}
         <section>
-          <h4>{t("designer.footer")}</h4>
+          <h4>{scripture ? t("designer.translationCopyright") : t("designer.footer")}</h4>
+          {#if !scripture}
+            <p class="hint">{t("designer.ccliHint")}</p>
+          {/if}
           <LabelEditor
             name={t("designer.boxFooter")}
             value={draft.theme.footer}

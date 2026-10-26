@@ -230,6 +230,8 @@
   "designer.everySlide": "Show the reference on every slide (not just the first)",
   "designer.font": "Font",
   "designer.footer": "Footer (copyright, CCLI)",
+  "designer.translationCopyright": "Copyright line (translation)",
+  "designer.ccliHint": "Off unless you turn it on. A CCLI licence asks for each song’s copyright and licence number to be shown, for example on its first or last slide.",
   "designer.italic": "Italic",
   "designer.left": "Left",
   "designer.light": "Light",

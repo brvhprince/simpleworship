@@ -302,10 +302,6 @@ fn lower_third() -> Theme {
             auto_fit: true,
             scale_up: false,
         },
-        footer: FooterStyle {
-            visible: false,
-            ..FooterStyle::default()
-        },
         // The text sits low already; the reference follows it.
         caption: FooterStyle {
             placement: Placement::AfterText,

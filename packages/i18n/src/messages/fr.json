@@ -230,6 +230,8 @@
   "designer.everySlide": "Afficher la référence sur chaque diapositive (pas seulement la première)",
   "designer.font": "Police",
   "designer.footer": "Pied de page (droits d’auteur, CCLI)",
+  "designer.translationCopyright": "Ligne de copyright (traduction)",
+  "designer.ccliHint": "Désactivée sauf si vous l’activez. Une licence CCLI demande d’afficher le copyright et le numéro de licence de chaque chant, par exemple sur sa première ou sa dernière diapositive.",
   "designer.italic": "Italique",
   "designer.left": "Gauche",
   "designer.light": "Fin",

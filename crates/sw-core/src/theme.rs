@@ -359,10 +359,12 @@ pub struct FooterStyle {
 }
 
 impl Default for FooterStyle {
-    /// The footer: small and faint, along the bottom edge.
+    /// The footer: small and faint, along the bottom edge, and off until a
+    /// theme turns it on (a song's copyright and CCLI line, a translation's
+    /// copyright).
     fn default() -> Self {
         Self {
-            visible: true,
+            visible: false,
             font_size: 28.0,
             color: "rgba(255, 255, 255, 0.75)".into(),
             font_family: String::new(),
@@ -387,6 +389,7 @@ impl FooterStyle {
     /// and colour (the audience reads it), just above the footer.
     pub fn caption() -> Self {
         Self {
+            visible: true,
             font_size: 39.0,
             color: String::new(),
             bold: true,
