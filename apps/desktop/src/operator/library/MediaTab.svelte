@@ -13,13 +13,8 @@
     goes in the schedule as background music.
 -->
 <script lang="ts">
-  import type { MediaItem } from "@simpleworship/protocol";
-  import {
-    getMediaFitPreference,
-    getMediaUrls,
-    type MediaFitPreference,
-    setMediaFitPreference,
-  } from "@simpleworship/renderer";
+  import type { MediaItem, MediaScaling } from "@simpleworship/protocol";
+  import { getMediaUrls } from "@simpleworship/renderer";
   import { Button } from "@simpleworship/ui";
   import { open } from "@tauri-apps/plugin-dialog";
   import { SvelteSet } from "svelte/reactivity";
@@ -30,6 +25,7 @@
     deleteMedia,
     renameMedia,
     setLogo,
+    setMediaScaling,
     showMediaInPreview,
   } from "../../lib/api.ts";
   import { MEDIA_DRAG_TYPE } from "../../lib/drag.ts";
@@ -57,7 +53,6 @@
   const urls = getMediaUrls();
   let filter = $state<Filter>("all");
   let searchQuery = $state("");
-  let fitRevision = $state(0);
   /** The item last clicked: the one the single-item buttons act on. */
   let selectedId: string | null = $state(null);
   /** Every picked item (more than one with ⌘/Ctrl- or Shift-click). */
@@ -241,17 +236,15 @@
           onchange={(e) => onSelected((item) => renameMedia(item.id, e.currentTarget.value))}
         >
       {/if}
-      {#if selected && selected.kind !== "audio"}
-        {@const currentFit = fitRevision >= 0 ? getMediaFitPreference(selected.id) : "contain"}
+      {#if selected && selected.kind !== "audio" && !link.joined}
+        <!-- Kept in the library, so the screens follow it straight away. -->
         <label class="fit-option" title={t("media.fitHint")}>
           {t("media.aspectRatio")}
           <select
-            value={currentFit}
+            value={selected.scaling}
             onchange={(e) => {
-              if (selected) {
-                setMediaFitPreference(selected.id, e.currentTarget.value as MediaFitPreference);
-                fitRevision += 1;
-              }
+              const scaling = e.currentTarget.value as MediaScaling;
+              void onSelected((item) => setMediaScaling(item.id, scaling));
             }}
           >
             <option value="automatic">{t("media.fitAutomatic")}</option>

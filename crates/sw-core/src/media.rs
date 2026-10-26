@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
 use crate::id::Id;
+use crate::theme::MediaFit;
 use crate::time::Timestamp;
 
 /// What kind of file a media item is.
@@ -24,6 +25,45 @@ pub enum MediaKind {
     /// A sound file (MP3, M4A, WAV…), for background music.
     Audio,
 }
+
+/// How a picture or video fills the screen, chosen for the file itself in
+/// the Media tab and used wherever the file fills the screen: as a theme's
+/// or a slide's background, or shown on its own. (A picture placed on a
+/// slide in the canvas editor has its own fit, set in the Inspector.)
+///
+/// As in EasyWorship, most files are left on `Automatic`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "bindings.ts")]
+pub enum MediaScaling {
+    /// Do what the place it is used asks for: a theme background as the
+    /// theme's designer set it, a picture on its own with black bars.
+    #[default]
+    Automatic,
+    /// Stretch it to the screen's shape, distorting it if needed.
+    Stretch,
+    /// Show all of it, with black bars if its shape differs.
+    Maintain,
+    /// Fill the screen, cropping the edges if its shape differs.
+    Zoom,
+}
+
+impl MediaScaling {
+    /// The fit to use instead of the place's own, or `None` for automatic.
+    pub fn fit(self) -> Option<MediaFit> {
+        match self {
+            Self::Automatic => None,
+            Self::Stretch => Some(MediaFit::Stretch),
+            Self::Maintain => Some(MediaFit::Contain),
+            Self::Zoom => Some(MediaFit::Cover),
+        }
+    }
+}
+
+/// The files that are not on [`MediaScaling::Automatic`], and the fit each
+/// one asks for. The host keeps the engine's copy up to date (see
+/// [`Command::SetFileFits`](crate::Command::SetFileFits)).
+pub type FileFits = std::collections::BTreeMap<Id, MediaFit>;
 
 /// A pointer to a file in the media library.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
@@ -67,6 +107,9 @@ pub struct MediaItem {
     /// the Media tab and shown in the Presentations tab instead.
     #[serde(default)]
     pub collection: Option<Id>,
+    /// How it fills the screen (see [`MediaScaling`]).
+    #[serde(default)]
+    pub scaling: MediaScaling,
 }
 
 impl MediaItem {

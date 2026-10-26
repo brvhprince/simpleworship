@@ -12,8 +12,8 @@
   import CameraLayer from "./CameraLayer.svelte";
   import CameraPlaceholder from "./CameraPlaceholder.svelte";
   import { getCameraUse } from "./camera.ts";
+  import { backgroundFit, getFileFitLookup } from "./file-fit.ts";
   import { getMediaUrls } from "./media.ts";
-  import { resolveFitClass } from "./media-fit.ts";
   import { backgroundCss } from "./styles.ts";
   import VideoLayer from "./VideoLayer.svelte";
 
@@ -29,15 +29,10 @@
   const urls = getMediaUrls();
   const cameras = getCameraUse();
 
-  const fit = $derived.by(() => {
-    if (background.type === "image" || background.type === "video") {
-      return resolveFitClass(background.media.id, background.fit);
-    }
-    if (background.type === "camera") {
-      return background.fit;
-    }
-    return "cover";
-  });
+  const fileFits = getFileFitLookup();
+
+  /** The file's own scaling (Media tab) wins over the theme's or slide's fit. */
+  const fit = $derived(backgroundFit(background, fileFits));
 
   /** Pictures and videos can be faded into the black behind them. */
   const opacity = $derived(

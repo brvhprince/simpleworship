@@ -20,6 +20,7 @@ import type {
   MediaChoice,
   MediaFolderPaths,
   MediaItem,
+  MediaScaling,
   MonitorInfo,
   OutputKind,
   OutputTarget,
@@ -266,6 +267,10 @@ export const saveMediaThumbnail = (id: string, jpeg: Uint8Array) =>
 
 /** Renames a media item. */
 export const renameMedia = (id: string, name: string) => invoke<void>("media_rename", { id, name });
+
+/** Sets how a picture or video fills the screen wherever it is used. */
+export const setMediaScaling = (id: string, scaling: MediaScaling) =>
+  invoke<void>("media_set_scaling", { id, scaling });
 
 /** Deletes a media item and its file. */
 export const deleteMedia = (id: string) => invoke<void>("media_delete", { id });

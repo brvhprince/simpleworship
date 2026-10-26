@@ -7,7 +7,14 @@
  * schedule file) gets one the first time its thumbnail fails to load.
  */
 
-import type { MediaItem, MediaProgress, MediaRef } from "@simpleworship/protocol";
+import type {
+  MediaFit,
+  MediaItem,
+  MediaProgress,
+  MediaRef,
+  MediaScaling,
+} from "@simpleworship/protocol";
+import { scalingFit } from "@simpleworship/renderer";
 import { listen } from "@tauri-apps/api/event";
 import * as api from "./api.ts";
 import { engine } from "./engine.svelte.ts";
@@ -25,6 +32,20 @@ class MediaStore {
   progress: MediaProgress | null = $state(null);
   /** Bumped when thumbnails change, so `<img>` tags reload them. */
   thumbnailVersion = $state(0);
+  /**
+   * Each file's own fit (its Scaling in the Media tab), by id, for files not
+   * on automatic. The theme designer and slide editor draw backgrounds with
+   * it (see `setFileFitLookup` in `App.svelte`); the engine does the same
+   * for the screens.
+   */
+  fileFits: Map<string, MediaFit> = $derived(
+    new Map(
+      this.list.flatMap((item) => {
+        const fit = scalingFit(item.scaling);
+        return fit ? [[item.id, fit] as const] : [];
+      }),
+    ),
+  );
 
   /** Items whose thumbnail is being made, so it is only made once. */
   #preparing = new Set<string>();
@@ -38,10 +59,38 @@ class MediaStore {
       this.progress = payload.copied < payload.total ? payload : null;
     });
     await this.refresh();
+    if (!link.joined) await this.#moveOldFits();
     return () => {
       stopChanges();
       stopProgress();
     };
+  }
+
+  /**
+   * SimpleWorship 0.5.x kept each file's Scaling in this window's browser
+   * storage, where the screens and other computers could not see it. Moves
+   * any found there into the library, once.
+   */
+  async #moveOldFits(): Promise<void> {
+    const key = "simpleworship.media_fit";
+    let saved: Record<string, string>;
+    try {
+      saved = JSON.parse(localStorage.getItem(key) ?? "{}");
+    } catch {
+      saved = {};
+    }
+    const known = new Set(this.list.map((item) => item.id));
+    const valid: MediaScaling[] = ["stretch", "maintain", "zoom"];
+    for (const [id, scaling] of Object.entries(saved)) {
+      if (known.has(id) && valid.includes(scaling as MediaScaling)) {
+        await api.setMediaScaling(id, scaling as MediaScaling).catch(() => {});
+      }
+    }
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // Storage can be unavailable; then there was nothing to move either.
+    }
   }
 
   async refresh(): Promise<void> {

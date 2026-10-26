@@ -195,6 +195,8 @@ pub async fn schedule_open(app: AppHandle, path: String) -> AppResult<()> {
         if themes_added {
             commands::themes::sync_themes(&app, &state)?;
         }
+        // Files it brought may have their own scaling.
+        commands::media::sync_file_fits(&app, &state)?;
         media::announce(&app);
         prefer_library_songs(&state, &mut schedule)?;
 

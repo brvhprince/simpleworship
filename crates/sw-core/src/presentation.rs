@@ -309,6 +309,24 @@ impl Presentation {
         changed
     }
 
+    /// Records each picture's and video's own fit from `fits` in every
+    /// background the slides can show (see [`Background::apply_file_fits`]).
+    pub fn apply_file_fits(&mut self, fits: &crate::FileFits) {
+        let mut backgrounds: Vec<&mut Background> = vec![&mut self.theme.background];
+        backgrounds.extend(self.background_override.as_mut());
+        for slide in &mut self.slides {
+            backgrounds.extend(slide.background.as_mut());
+            if let Some(look) = &mut slide.look {
+                let look = &mut **look;
+                backgrounds.push(&mut look.theme.background);
+                backgrounds.extend(look.background_override.as_mut());
+            }
+        }
+        for background in backgrounds {
+            background.apply_file_fits(fits);
+        }
+    }
+
     /// Builds a presentation from a Bible passage in one or more
     /// translations (shown side by side).
     pub fn from_scripture(
@@ -383,8 +401,6 @@ impl Presentation {
     }
 }
 
-/// How an image or video looks shown on its own: the whole picture, with
-/// black bars if needed. Sound files have no picture.
 /// Applies one slide's text adjustments to its theme.
 fn apply_style(theme: &mut Theme, style: &SlideStyle) {
     if let Some(size) = style.font_size {
@@ -398,12 +414,17 @@ fn apply_style(theme: &mut Theme, style: &SlideStyle) {
     }
 }
 
+/// How an image or video looks shown on its own: the whole picture, with
+/// black bars if needed, unless the file's own scaling says otherwise.
+/// Sound files have no picture.
 pub(crate) fn shown_on_its_own(media: &MediaItem) -> Option<Background> {
     match media.kind {
         MediaKind::Image => Some(Background::Image {
             media: media.as_ref(),
             fit: MediaFit::Contain,
             opacity: 1.0,
+            // The engine records the file's own fit (see `Engine::finish`).
+            file_fit: None,
         }),
         MediaKind::Video => Some(Background::Video {
             media: media.as_ref(),
@@ -411,6 +432,8 @@ pub(crate) fn shown_on_its_own(media: &MediaItem) -> Option<Background> {
             looping: false,
             play_audio: true,
             opacity: 1.0,
+            // The engine records the file's own fit (see `Engine::finish`).
+            file_fit: None,
         }),
         MediaKind::Audio => None,
     }

@@ -6,11 +6,12 @@
 -->
 <script lang="ts">
   import type { MediaFolderPaths, MediaRef } from "@simpleworship/protocol";
-  import { setCameraUse, setMediaUrls } from "@simpleworship/renderer";
+  import { setCameraUse, setFileFitLookup, setMediaUrls } from "@simpleworship/renderer";
   import { convertFileSrc } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
   import { i18n } from "./lib/i18n/i18n.svelte.ts";
   import { link } from "./lib/link.svelte.ts";
+  import { media } from "./lib/media.svelte.ts";
   import NdiPage from "./ndi/NdiPage.svelte";
   import Operator from "./operator/Operator.svelte";
   import Output from "./output/Output.svelte";
@@ -49,6 +50,11 @@
   // pictures could not keep up with live video.
   // A joined computer's cameras are not the service's: the main
   // computer's cameras show there only.
+  // Each file's own Scaling, for backgrounds drawn without the engine (the
+  // theme designer and slide editor). Only the operator window loads the
+  // library; the screens get the same fits from the engine.
+  setFileFitLookup((mediaId) => media.fileFits.get(mediaId) ?? null);
+
   setCameraUse({
     live: view !== "ndi" && view !== "stage" && !host.joined,
     placeholder: view === "operator",

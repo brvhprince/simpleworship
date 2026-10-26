@@ -149,6 +149,8 @@ pub struct Engine {
     themes: ThemeLibrary,
     /// The church logo, if one is set.
     logo: Option<MediaRef>,
+    /// The media files' own fits, recorded in every pane's backgrounds.
+    file_fits: crate::FileFits,
     /// Playback of the live video background, if there is one.
     video: Option<VideoPlayback>,
     /// The alert over the slides, if any.
@@ -221,6 +223,7 @@ impl Engine {
             stream: StreamSettings::default(),
             themes: ThemeLibrary::default(),
             logo: None,
+            file_fits: crate::FileFits::new(),
             video: None,
             alert: None,
             stage: StageState::default(),
@@ -318,6 +321,8 @@ impl Engine {
             engine.audio = service.audio;
             engine.transitions = service.transitions;
             engine.stream = service.stream;
+            // Its media files keep this computer's scaling, as its themes do.
+            engine.refit_panes();
             Ok(())
         });
         result.unwrap_or_default()
@@ -597,7 +602,12 @@ impl Engine {
                 self.themes = *library;
                 for pane in self.previews.values_mut().chain(self.live.as_mut()) {
                     pane.presentation.restyle(&self.themes);
+                    pane.presentation.apply_file_fits(&self.file_fits);
                 }
+            }
+            Command::SetFileFits { fits } => {
+                self.file_fits = fits;
+                self.refit_panes();
             }
 
             // ── Schedule ──────────────────────────────────────────────────
@@ -903,9 +913,21 @@ impl Engine {
         self.audio.start_track(index, now);
     }
 
-    /// Adds the CCLI licence number to a song's footer, as the licence asks.
+    /// Records the media files' own fits again in every pane, after they
+    /// changed or the panes came from elsewhere.
+    fn refit_panes(&mut self) {
+        for pane in self.previews.values_mut().chain(self.live.as_mut()) {
+            pane.presentation.apply_file_fits(&self.file_fits);
+        }
+    }
+
+    /// Readies a presentation for a pane: adds the CCLI licence number to a
+    /// song's footer, as the licence asks, and records the media files' own
+    /// fits in its backgrounds.
     fn finish(&self, presentation: Presentation) -> Presentation {
-        license_footer(presentation, self.ccli_license.as_deref())
+        let mut presentation = license_footer(presentation, self.ccli_license.as_deref());
+        presentation.apply_file_fits(&self.file_fits);
+        presentation
     }
 
     /// The "song went live" event, if a different song just went live.
@@ -1524,6 +1546,7 @@ mod tests {
             size_bytes: 1,
             created_at: 0,
             collection: None,
+            scaling: crate::MediaScaling::Automatic,
         }
     }
 
@@ -1534,6 +1557,7 @@ mod tests {
             looping: true,
             play_audio: false,
             opacity: 1.0,
+            file_fit: None,
         }
     }
 
@@ -1646,6 +1670,59 @@ mod tests {
         let after = engine.snapshot().output.video.unwrap();
         assert_eq!(after, started, "same video, same clock: no restart");
         assert_eq!(after.position_at(fake_now()), 5_000);
+    }
+
+    /// The fit the live screen gives the live background's file, if any.
+    fn live_file_fit(engine: &Engine) -> Option<MediaFit> {
+        match engine.snapshot().output.frame?.theme.background {
+            Background::Image { file_fit, .. } | Background::Video { file_fit, .. } => file_fit,
+            _ => None,
+        }
+    }
+
+    #[test]
+    fn a_files_own_scaling_reaches_the_screens_and_can_change_while_live() {
+        let clip = video("portrait");
+        let mut item = text_item("Song", "one");
+        item.look.background = Some(video_background(&clip));
+        let id = item.id;
+        let mut engine = themed_engine(vec![item]);
+        let fits = |fit| crate::FileFits::from([(clip.id, fit)]);
+
+        engine
+            .dispatch(Command::SetFileFits {
+                fits: fits(MediaFit::Contain),
+            })
+            .unwrap();
+        engine.dispatch(Command::ShowScheduleItem { id }).unwrap();
+        assert_eq!(live_file_fit(&engine), Some(MediaFit::Contain));
+
+        engine
+            .dispatch(Command::SetFileFits {
+                fits: fits(MediaFit::Stretch),
+            })
+            .unwrap();
+        assert_eq!(live_file_fit(&engine), Some(MediaFit::Stretch));
+
+        // Back to automatic: the theme's own fit applies again.
+        engine
+            .dispatch(Command::SetFileFits {
+                fits: crate::FileFits::new(),
+            })
+            .unwrap();
+        assert_eq!(live_file_fit(&engine), None);
+    }
+
+    #[test]
+    fn a_file_shown_on_its_own_uses_its_scaling() {
+        let clip = video("wide");
+        let fits = crate::FileFits::from([(clip.id, MediaFit::Cover)]);
+        let item = ScheduleItem::new(crate::schedule::ItemContent::Media { media: clip });
+        let id = item.id;
+        let mut engine = themed_engine(vec![item]);
+        engine.dispatch(Command::SetFileFits { fits }).unwrap();
+        engine.dispatch(Command::ShowScheduleItem { id }).unwrap();
+        assert_eq!(live_file_fit(&engine), Some(MediaFit::Cover));
     }
 
     #[test]

@@ -401,6 +401,7 @@ mod tests {
             size_bytes: 1,
             created_at: 0,
             collection: None,
+            scaling: crate::MediaScaling::Automatic,
         }
     }
 

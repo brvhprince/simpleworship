@@ -136,6 +136,7 @@ pub fn presentation_add_page(
         size_bytes: bytes.len() as u64,
         created_at: sw_core::time::now(),
         collection: Some(deck),
+        scaling: sw_core::MediaScaling::Automatic,
     };
     state.database().media().save(&item)?;
     Ok(item)

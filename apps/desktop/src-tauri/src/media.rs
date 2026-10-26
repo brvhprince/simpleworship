@@ -112,6 +112,7 @@ pub fn import_file(app: &AppHandle, source: &Path) -> AppResult<MediaItem> {
         size_bytes,
         created_at: time::now(),
         collection: None,
+        scaling: sw_core::MediaScaling::Automatic,
     };
     state.database().media().save(&item)?;
     announce(app);

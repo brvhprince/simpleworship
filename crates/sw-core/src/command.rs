@@ -139,6 +139,13 @@ pub enum Command {
         /// The logo image, or `None` to show the background instead.
         logo: Option<MediaRef>,
     },
+    /// The media files' own fits (the Media tab's scaling), applied to
+    /// every picture and video background on the screens.
+    SetFileFits {
+        /// The files not on automatic, and their fits.
+        #[ts(type = "Record<string, MediaFit>")]
+        fits: crate::FileFits,
+    },
     /// Whether taking an item live automatically puts the next schedule item into preview.
     SetAutoPreviewNext {
         /// Whether to preview the next item automatically.

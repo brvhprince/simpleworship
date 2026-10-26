@@ -216,9 +216,15 @@ export type Background =
        */
       media: MediaRef;
       /**
-       * How the image fills the screen.
+       * How the image fills the screen, as the theme or slide asks.
        */
       fit: MediaFit;
+      /**
+       * The file's own choice (its [`MediaScaling`](crate::MediaScaling)
+       * in the Media tab), which wins over `fit`. Filled in by the engine
+       * for the screens; `None` when the file is left on automatic.
+       */
+      fileFit?: MediaFit | null;
       /**
        * How see-through it is, from 0 (invisible) to 1 (solid). Lower
        * values fade it into black, so text on top stands out.
@@ -247,9 +253,14 @@ export type Background =
        */
       media: MediaRef;
       /**
-       * How the video fills the screen.
+       * How the video fills the screen, as the theme or slide asks.
        */
       fit: MediaFit;
+      /**
+       * The file's own choice, which wins over `fit` (see
+       * [`Background::Image`]).
+       */
+      fileFit?: MediaFit | null;
       /**
        * Restart the video when it ends.
        */
@@ -471,6 +482,13 @@ export type Command =
        * The logo image, or `None` to show the background instead.
        */
       logo: MediaRef | null;
+    }
+  | {
+      type: "setFileFits";
+      /**
+       * The files not on automatic, and their fits.
+       */
+      fits: Record<string, MediaFit>;
     }
   | {
       type: "setAutoPreviewNext";
@@ -1355,6 +1373,10 @@ export type MediaItem = {
    * the Media tab and shown in the Presentations tab instead.
    */
   collection: Id | null;
+  /**
+   * How it fills the screen (see [`MediaScaling`]).
+   */
+  scaling: MediaScaling;
 };
 
 /**
@@ -1375,6 +1397,16 @@ export type MediaRef = {
    */
   file: string;
 };
+
+/**
+ * How a picture or video fills the screen, chosen for the file itself in
+ * the Media tab and used wherever the file fills the screen: as a theme's
+ * or a slide's background, or shown on its own. (A picture placed on a
+ * slide in the canvas editor has its own fit, set in the Inspector.)
+ *
+ * As in EasyWorship, most files are left on `Automatic`.
+ */
+export type MediaScaling = "automatic" | "stretch" | "maintain" | "zoom";
 
 /**
  * An outline drawn around each glyph.
