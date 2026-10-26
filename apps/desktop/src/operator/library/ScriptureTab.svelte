@@ -34,7 +34,7 @@
   import { t } from "../../lib/i18n/i18n.svelte.ts";
   import { link } from "../../lib/link.svelte.ts";
   import { type Heard, listen } from "../../lib/listen.svelte.ts";
-  import { scriptureState } from "../../lib/scripture-state.svelte.ts";
+  import { scriptureState, validMinFontSize } from "../../lib/scripture-state.svelte.ts";
   import HeardStrip from "./HeardStrip.svelte";
   import ManageBibles from "./ManageBibles.svelte";
 
@@ -87,7 +87,7 @@
     maxChars: 300,
     verseNumbers,
     autoFlow,
-    minFontSize,
+    minFontSize: validMinFontSize(minFontSize),
   });
 
   /** Whether the scripture theme shows verse numbers. */
@@ -459,7 +459,14 @@
     {#if autoFlow}
       <label class="option" title={t("scripture.minFontSizeHint")}>
         {t("scripture.minFontSize")}
-        <input type="number" min="16" max="120" class="min-font-size" bind:value={minFontSize}>
+        <input
+          type="number"
+          min="16"
+          max="120"
+          class="min-font-size"
+          bind:value={minFontSize}
+          onchange={() => (minFontSize = validMinFontSize(minFontSize))}
+        >
       </label>
     {/if}
 

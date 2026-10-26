@@ -26,12 +26,11 @@ use crate::id::Id;
 use crate::markup::{self, TextRun};
 use crate::media::{MediaItem, MediaKind, MediaRef};
 use crate::presentation::shown_on_its_own;
-use crate::theme::{Background, HorizontalAlign, MediaFit, TextStyle, Theme, VerticalAlign};
+use crate::theme::{
+    Background, CANVAS_HEIGHT, CANVAS_WIDTH, HorizontalAlign, MediaFit, TextStyle, Theme,
+    VerticalAlign,
+};
 use crate::time::{self, Timestamp};
-
-/// The reference canvas, in pixels (see [`crate::theme`]).
-const CANVAS_WIDTH: f32 = 1920.0;
-const CANVAS_HEIGHT: f32 = 1080.0;
 
 /// A presentation: a named, ordered list of slides.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]

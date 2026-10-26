@@ -1640,7 +1640,8 @@ export type ScriptureOptions = {
    */
   maxVerses: number;
   /**
-   * Roughly the most characters on one slide (per column).
+   * No longer used: how much fits now comes from the theme (see
+   * [`chars_per_column`]). Kept so schedules saved before still load.
    */
   maxChars: number;
   /**
@@ -1649,11 +1650,15 @@ export type ScriptureOptions = {
    */
   verseNumbers: boolean | null;
   /**
-   * Automatically flow long scripture onto multiple slides.
+   * Move text that does not fit the theme's text box at
+   * `min_font_size` on to more slides. Without it, everything up to
+   * `max_verses` goes on one slide and shrinks as far as it must.
    */
   autoFlow: boolean;
   /**
-   * Minimum font size before breaking slide.
+   * The smallest font size, in canvas pixels (1920 × 1080), the text may
+   * shrink to before the rest goes on the next slide. EasyWorship's
+   * "Minimum font size before breaking slide".
    */
   minFontSize: number;
 };
