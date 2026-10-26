@@ -49,12 +49,36 @@ fn migrations() -> Migrations<'static> {
         M::up(include_str!(
             "../migrations/0008_removed_bundled_bibles.sql"
         )),
+        M::up(include_str!("../migrations/0009_footers_off.sql")),
     ])
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn footers_are_turned_off_in_existing_themes() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        migrations().to_version(&mut conn, 8).unwrap();
+        conn.execute_batch(
+            "INSERT INTO themes (id, theme, created_at, updated_at) VALUES
+               ('01920c7e-0000-7000-8000-000000000001',
+                '{\"name\":\"On\",\"footer\":{\"visible\":true},\"caption\":{\"visible\":true}}', 1, 1)",
+        )
+        .unwrap();
+        migrations().to_latest(&mut conn).unwrap();
+        let (footer, caption): (bool, bool) = conn
+            .query_row(
+                "SELECT json_extract(theme, '$.footer.visible'),
+                        json_extract(theme, '$.caption.visible') FROM themes",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .unwrap();
+        assert!(!footer, "the footer is turned off");
+        assert!(caption, "the scripture reference is left alone");
+    }
 
     #[test]
     fn a_library_from_a_newer_version_is_refused_and_left_alone() {
