@@ -226,8 +226,7 @@ impl Helper {
     /// Starts the helper and waits until its model has loaded (a second or
     /// two). It is kept in `slot`.
     pub(crate) fn start(command: &HelperCommand, slot: HelperSlot) -> Result<Self, Error> {
-        let mut child = Command::new(&command.program)
-            .args(&command.args)
+        let mut child = low_priority(command)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
@@ -309,6 +308,39 @@ impl SpeechToText for Helper {
 impl Drop for Helper {
     fn drop(&mut self) {
         stop_helper(&self.slot);
+    }
+}
+
+/// The command for `helper`, set to run at a lower priority than the app,
+/// so the computer gives the sound and the operator window their time
+/// first and Whisper all the rest. On Windows it also has no console
+/// window.
+fn low_priority(helper: &HelperCommand) -> Command {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const BELOW_NORMAL_PRIORITY_CLASS: u32 = 0x0000_4000;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        let mut command = Command::new(&helper.program);
+        command
+            .args(&helper.args)
+            .creation_flags(BELOW_NORMAL_PRIORITY_CLASS | CREATE_NO_WINDOW);
+        command
+    }
+    #[cfg(unix)]
+    {
+        // `nice` starts the helper in its own place (same process), at a
+        // lower priority. Without it, the helper runs at the normal one.
+        const NICE: &str = "/usr/bin/nice";
+        let mut command = if Path::new(NICE).exists() {
+            let mut command = Command::new(NICE);
+            command.args(["-n", "10"]).arg(&helper.program);
+            command
+        } else {
+            Command::new(&helper.program)
+        };
+        command.args(&helper.args);
+        command
     }
 }
 
