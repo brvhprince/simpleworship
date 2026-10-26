@@ -1,6 +1,7 @@
 //! The media library: importing, listing, thumbnails, and showing media.
 
 use std::path::PathBuf;
+use std::sync::{Mutex, PoisonError};
 
 use serde::{Deserialize, Serialize};
 use sw_core::{Command, Id, ItemContent, MediaItem, MediaKind, MediaScaling, ScheduleItem};
@@ -130,7 +131,15 @@ pub fn media_set_scaling(
 
 /// Gives the engine the media files' own fits (see `Command::SetFileFits`).
 /// Called at startup and whenever a file's scaling may have changed.
+///
+/// Reading the fits and handing them over happen together, one call at a
+/// time: otherwise two calls at once (several files changed together) could
+/// hand over out of order, and an older list replace a newer one. The
+/// database lock itself is not held while dispatching, as sending the
+/// engine's events can need the database.
 pub fn sync_file_fits(app: &AppHandle, state: &AppState) -> AppResult<()> {
+    static SYNCING: Mutex<()> = Mutex::new(());
+    let _one_at_a_time = SYNCING.lock().unwrap_or_else(PoisonError::into_inner);
     let fits = state.database().media().file_fits()?;
     dispatch(app, state, Command::SetFileFits { fits })
 }

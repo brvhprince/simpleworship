@@ -321,8 +321,8 @@ impl Engine {
             engine.audio = service.audio;
             engine.transitions = service.transitions;
             engine.stream = service.stream;
-            // Its media files keep this computer's scaling, as its themes do.
-            engine.refit_panes();
+            // Its media files keep this computer's scaling, as its themes
+            // do: `changes` refits the panes.
             Ok(())
         });
         result.unwrap_or_default()
@@ -343,6 +343,9 @@ impl Engine {
         self.schedule_changed = false;
 
         change(self)?;
+        // Whatever put a presentation in a pane (a preview, an edited song
+        // or deck, a takeover…), its backgrounds get the files' own fits.
+        self.refit_panes();
 
         let mut events = Vec::new();
         if themes_changing {
@@ -602,13 +605,10 @@ impl Engine {
                 self.themes = *library;
                 for pane in self.previews.values_mut().chain(self.live.as_mut()) {
                     pane.presentation.restyle(&self.themes);
-                    pane.presentation.apply_file_fits(&self.file_fits);
                 }
             }
-            Command::SetFileFits { fits } => {
-                self.file_fits = fits;
-                self.refit_panes();
-            }
+            // Applied to the panes after every command (see `changes`).
+            Command::SetFileFits { fits } => self.file_fits = fits,
 
             // ── Schedule ──────────────────────────────────────────────────
             Command::ReplaceSchedule { schedule } => {
@@ -913,21 +913,18 @@ impl Engine {
         self.audio.start_track(index, now);
     }
 
-    /// Records the media files' own fits again in every pane, after they
-    /// changed or the panes came from elsewhere.
+    /// Records the media files' own fits in every pane. Run after every
+    /// command, so no way of filling a pane can miss them; panes already
+    /// up to date are left exactly as they were.
     fn refit_panes(&mut self) {
         for pane in self.previews.values_mut().chain(self.live.as_mut()) {
             pane.presentation.apply_file_fits(&self.file_fits);
         }
     }
 
-    /// Readies a presentation for a pane: adds the CCLI licence number to a
-    /// song's footer, as the licence asks, and records the media files' own
-    /// fits in its backgrounds.
+    /// Adds the CCLI licence number to a song's footer, as the licence asks.
     fn finish(&self, presentation: Presentation) -> Presentation {
-        let mut presentation = license_footer(presentation, self.ccli_license.as_deref());
-        presentation.apply_file_fits(&self.file_fits);
-        presentation
+        license_footer(presentation, self.ccli_license.as_deref())
     }
 
     /// The "song went live" event, if a different song just went live.
@@ -1711,6 +1708,21 @@ mod tests {
             })
             .unwrap();
         assert_eq!(live_file_fit(&engine), None);
+    }
+
+    #[test]
+    fn a_direct_preview_uses_fits_loaded_before_it() {
+        let clip = video("clip");
+        let fits = crate::FileFits::from([(clip.id, MediaFit::Stretch)]);
+        let mut engine = themed_engine(Vec::new());
+        engine.dispatch(Command::SetFileFits { fits }).unwrap();
+        engine
+            .dispatch(Command::PreviewMedia {
+                media: Box::new(clip),
+            })
+            .unwrap();
+        engine.dispatch(Command::GoLive).unwrap();
+        assert_eq!(live_file_fit(&engine), Some(MediaFit::Stretch));
     }
 
     #[test]
