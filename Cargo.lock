@@ -4444,6 +4444,7 @@ dependencies = [
  "mdns-sd",
  "qrcode",
  "reqwest",
+ "rfd",
  "rustls",
  "serde",
  "serde_json",
