@@ -9,6 +9,10 @@ body {
   font-family: var(--sw-font, system-ui, sans-serif);
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior: none;
+  /* The remote is laid out for phones already: no text enlarging (see
+     ScaledCanvas in the renderer, where it shrank slides to dots). */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 #app {

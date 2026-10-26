@@ -69,5 +69,12 @@
     top: 50%;
     left: 50%;
     transform-origin: center;
+    /* Phone browsers enlarge text in blocks they think are too wide to
+       read; the canvas is 1920 px wide before it is scaled down, so iOS
+       Safari enlarged slide text, and auto-fit then shrank it to its
+       minimum: two-column scripture came out as dots on the phone remote.
+       The canvas's text is sized by the slide alone. */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
 </style>
