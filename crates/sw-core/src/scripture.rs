@@ -254,8 +254,6 @@ pub fn chars_per_column(theme: &Theme, min_font_size: f32, columns: usize) -> us
     const COLUMN_GAP: f32 = 1.2;
     /// The translation's name above each side by side column (`.translation`).
     const COLUMN_HEADING: f32 = 0.45 * 1.2 + 0.45 * 0.4;
-    /// The smallest budget, so even an odd theme shows some words per slide.
-    const MIN_BUDGET: usize = 40;
 
     let text = &theme.text;
     let font = if theme.text_box.auto_fit {
@@ -291,7 +289,9 @@ pub fn chars_per_column(theme: &Theme, min_font_size: f32, columns: usize) -> us
     let lines = (height / (font * text.line_height.max(0.8)))
         .floor()
         .max(1.0);
-    ((per_line * lines * WRAP_LOSS) as usize).max(MIN_BUDGET)
+    // No floor: a box that holds very little at the minimum size gets very
+    // little per slide, rather than text shrunk below that size.
+    (per_line * lines * WRAP_LOSS) as usize
 }
 
 /// [`slides`] with an explicit number of characters per column.
@@ -792,6 +792,27 @@ mod tests {
             chars_per_column(&fixed, 30.0, 1),
             chars_per_column(&theme(), fixed.text.font_size, 1)
         );
+    }
+
+    #[test]
+    fn a_box_too_small_for_any_text_still_moves_on_word_by_word() {
+        assert_eq!(
+            split_long_verse("For God so loved", 0),
+            ["For", "God", "so", "loved"]
+        );
+        let kjv = translation("KJV", &[(3, 16, "For God"), (3, 17, "so loved")]);
+        let slides = slides_with_budget(&passage(), &[kjv], ScriptureOptions::default(), 0);
+        assert_eq!(slides.len(), 4, "one word a slide, and it finishes");
+    }
+
+    #[test]
+    fn a_narrow_box_is_not_given_more_than_it_fits() {
+        let mut narrow = theme();
+        narrow.text_box.left = 860.0;
+        narrow.text_box.right = 860.0;
+        narrow.text_box.top = 480.0;
+        narrow.text_box.bottom = 480.0;
+        assert!(chars_per_column(&narrow, 48.0, 1) < 40);
     }
 
     #[test]
