@@ -7,14 +7,30 @@
 //! **Never edit a migration that has shipped.** Add a new file instead.
 
 use rusqlite::Connection;
-use rusqlite_migration::{M, Migrations};
+use rusqlite_migration::{M, Migrations, SchemaVersion};
 
 use crate::DbError;
 
-/// Brings the schema of `conn` up to the latest version.
+/// Brings the schema of `conn` up to the latest version. A library a newer
+/// SimpleWorship has upgraded past what this one knows is
+/// [`DbError::NewerLibrary`], and is left exactly as it is.
 pub fn run(conn: &mut Connection) -> Result<(), DbError> {
-    migrations().to_latest(conn)?;
-    Ok(())
+    migrations().to_latest(conn).map_err(|error| match error {
+        rusqlite_migration::Error::MigrationDefinition(
+            rusqlite_migration::MigrationDefinitionError::DatabaseTooFarAhead,
+        ) => DbError::NewerLibrary,
+        other => DbError::Migration(other),
+    })
+}
+
+/// Fails with [`DbError::NewerLibrary`] if a newer SimpleWorship has
+/// upgraded `conn` past what this one knows. Only reads, so it is checked
+/// before anything else touches the file.
+pub fn check_known(conn: &Connection) -> Result<(), DbError> {
+    match migrations().current_version(conn)? {
+        SchemaVersion::Outside(_) => Err(DbError::NewerLibrary),
+        SchemaVersion::NoneSet | SchemaVersion::Inside(_) => Ok(()),
+    }
 }
 
 fn migrations() -> Migrations<'static> {
@@ -39,6 +55,41 @@ fn migrations() -> Migrations<'static> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_library_from_a_newer_version_is_refused_and_left_alone() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        run(&mut conn).unwrap();
+        // As if a newer SimpleWorship had added a migration.
+        conn.pragma_update(None, "user_version", 999).unwrap();
+        assert!(matches!(run(&mut conn), Err(DbError::NewerLibrary)));
+        let version: i64 = conn
+            .pragma_query_value(None, "user_version", |row| row.get(0))
+            .unwrap();
+        assert_eq!(version, 999, "not touched");
+    }
+
+    #[test]
+    fn a_newer_library_file_is_opened_without_changing_it() {
+        let path = std::env::temp_dir().join(format!("sw-newer-{}.sqlite", std::process::id()));
+        {
+            let mut conn = Connection::open(&path).unwrap();
+            run(&mut conn).unwrap();
+            conn.pragma_update(None, "journal_mode", "DELETE").unwrap();
+            conn.pragma_update(None, "user_version", 999).unwrap();
+        }
+        assert!(matches!(
+            crate::Database::open(&path),
+            Err(DbError::NewerLibrary)
+        ));
+        let conn = Connection::open(&path).unwrap();
+        let mode: String = conn
+            .pragma_query_value(None, "journal_mode", |row| row.get(0))
+            .unwrap();
+        drop(conn);
+        std::fs::remove_file(&path).unwrap();
+        assert_eq!(mode, "delete", "not switched to WAL");
+    }
 
     #[test]
     fn migrations_are_valid() {

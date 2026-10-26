@@ -47,6 +47,8 @@ impl Database {
     /// up to date.
     pub fn open(path: impl AsRef<Path>) -> Result<Self, DbError> {
         let conn = Connection::open(path)?;
+        // Before changing anything: a newer version's library stays as it is.
+        migrations::check_known(&conn)?;
         // WAL lets the UI read while a long import is writing.
         conn.pragma_update(None, "journal_mode", "WAL")?;
         Self::init(conn)
