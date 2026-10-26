@@ -69,28 +69,36 @@ class MediaStore {
   /**
    * SimpleWorship 0.5.x kept each file's Scaling in this window's browser
    * storage, where the screens and other computers could not see it. Moves
-   * any found there into the library, once.
+   * any found there into the library. A choice that could not be saved
+   * stays in storage and is tried again the next time the window opens;
+   * choices for files no longer in the library are dropped.
    */
   async #moveOldFits(): Promise<void> {
     const key = "simpleworship.media_fit";
     let saved: Record<string, string>;
     try {
-      saved = JSON.parse(localStorage.getItem(key) ?? "{}");
+      saved = JSON.parse(localStorage.getItem(key) ?? "null") ?? {};
     } catch {
-      saved = {};
+      return;
     }
     const known = new Set(this.list.map((item) => item.id));
     const valid = new Set<string>(["stretch", "maintain", "zoom"]);
-    // Each file is saved on its own, so they can all be saved at once.
-    await Promise.all(
-      Object.entries(saved)
-        .filter(([id, scaling]) => known.has(id) && valid.has(scaling))
-        .map(([id, scaling]) => api.setMediaScaling(id, scaling as MediaScaling).catch(() => {})),
+    const moving = Object.entries(saved).filter(
+      ([id, scaling]) => known.has(id) && valid.has(scaling),
     );
+    // Each file is saved on its own, so they can all be saved at once.
+    const results = await Promise.allSettled(
+      moving.map(([id, scaling]) => api.setMediaScaling(id, scaling as MediaScaling)),
+    );
+    const failed = moving.filter((_, index) => results[index]?.status === "rejected");
     try {
-      localStorage.removeItem(key);
+      if (failed.length === 0) {
+        localStorage.removeItem(key);
+      } else {
+        localStorage.setItem(key, JSON.stringify(Object.fromEntries(failed)));
+      }
     } catch {
-      // Storage can be unavailable; then there was nothing to move either.
+      // Storage can be unavailable; then the old choices stay where they are.
     }
   }
 
