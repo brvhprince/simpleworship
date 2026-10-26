@@ -34,14 +34,15 @@ export {
   textBoxStyle as elementBoxStyle,
   verticalJustify,
 } from "./elements.ts";
+export {
+  backgroundFit,
+  type FileFitLookup,
+  getFileFitLookup,
+  scalingFit,
+  setFileFitLookup,
+} from "./file-fit.ts";
 export { frameAt } from "./frames.ts";
 export { getMediaUrls, type MediaUrls, setMediaUrls } from "./media.ts";
-export {
-  getMediaFitPreference,
-  type MediaFitPreference,
-  resolveFitClass,
-  setMediaFitPreference,
-} from "./media-fit.ts";
 export { default as OutputView } from "./OutputView.svelte";
 export { default as ScaledCanvas } from "./ScaledCanvas.svelte";
 export { default as SlideView } from "./SlideView.svelte";

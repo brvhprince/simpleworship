@@ -881,7 +881,7 @@
   "transitions.other": "Biribiara a ɛka ho",
   "updates.checkFailed": "Antumi anhwɛ sɛ nsakraeɛ foforɔ aba a: {error}",
   "updates.downloading": "Ɛretwe… {percent}%",
-  "updates.fromStore": "",
+  "updates.fromStore": "Sɛ wopɛ nsakraeɛ foforɔ a, di akwankyerɛ a ɛfiri baabi a wonyaa SimpleWorship yi no akyi.",
   "updates.install": "Hyɛ Mu na San Bue",
   "updates.installFailed": "Antumi anhyɛ nsakraeɛ foforɔ no mu: {error}",
   "updates.installMessage": "SimpleWorship bɛto mu na asan abue. Sɛ woayɛ nsesaeɛ wɔ wo nhyehyɛeɛ mu a, fa sie ansa.",

@@ -110,10 +110,11 @@ pub fn run() {
             menu::update_recent(app.handle(), &recent)?;
             bibles::install_bundled(app.handle());
 
-            // Give the engine the theme library and the logo.
+            // Give the engine the theme library, the logo and the files' own fits.
             let state = app.state::<AppState>();
             commands::themes::sync_themes(app.handle(), &state)?;
             commands::themes::sync_logo(app.handle(), &state)?;
+            commands::media::sync_file_fits(app.handle(), &state)?;
             commands::themes::sync_settings(app.handle(), &state)?;
 
             remote::start_if_enabled(app.handle());
@@ -170,6 +171,7 @@ pub fn run() {
             commands::media::media_update_details,
             commands::media::media_save_thumbnail,
             commands::media::media_rename,
+            commands::media::media_set_scaling,
             commands::media::media_delete,
             commands::media::media_show_in_preview,
             commands::media::schedule_add_media,

@@ -7,7 +7,14 @@
  * schedule file) gets one the first time its thumbnail fails to load.
  */
 
-import type { MediaItem, MediaProgress, MediaRef } from "@simpleworship/protocol";
+import type {
+  MediaFit,
+  MediaItem,
+  MediaProgress,
+  MediaRef,
+  MediaScaling,
+} from "@simpleworship/protocol";
+import { scalingFit } from "@simpleworship/renderer";
 import { listen } from "@tauri-apps/api/event";
 import * as api from "./api.ts";
 import { engine } from "./engine.svelte.ts";
@@ -25,6 +32,20 @@ class MediaStore {
   progress: MediaProgress | null = $state(null);
   /** Bumped when thumbnails change, so `<img>` tags reload them. */
   thumbnailVersion = $state(0);
+  /**
+   * Each file's own fit (its Scaling in the Media tab), by id, for files not
+   * on automatic. The theme designer and slide editor draw backgrounds with
+   * it (see `setFileFitLookup` in `App.svelte`); the engine does the same
+   * for the screens.
+   */
+  fileFits: Map<string, MediaFit> = $derived(
+    new Map(
+      this.list.flatMap((item) => {
+        const fit = scalingFit(item.scaling);
+        return fit ? [[item.id, fit] as const] : [];
+      }),
+    ),
+  );
 
   /** Items whose thumbnail is being made, so it is only made once. */
   #preparing = new Set<string>();
@@ -38,10 +59,47 @@ class MediaStore {
       this.progress = payload.copied < payload.total ? payload : null;
     });
     await this.refresh();
+    if (!link.joined) await this.#moveOldFits();
     return () => {
       stopChanges();
       stopProgress();
     };
+  }
+
+  /**
+   * SimpleWorship 0.5.x kept each file's Scaling in this window's browser
+   * storage, where the screens and other computers could not see it. Moves
+   * any found there into the library. A choice that could not be saved
+   * stays in storage and is tried again the next time the window opens;
+   * choices for files no longer in the library are dropped.
+   */
+  async #moveOldFits(): Promise<void> {
+    const key = "simpleworship.media_fit";
+    let saved: Record<string, string>;
+    try {
+      saved = JSON.parse(localStorage.getItem(key) ?? "null") ?? {};
+    } catch {
+      return;
+    }
+    const known = new Set(this.list.map((item) => item.id));
+    const valid = new Set<string>(["stretch", "maintain", "zoom"]);
+    const moving = Object.entries(saved).filter(
+      ([id, scaling]) => known.has(id) && valid.has(scaling),
+    );
+    // Each file is saved on its own, so they can all be saved at once.
+    const results = await Promise.allSettled(
+      moving.map(([id, scaling]) => api.setMediaScaling(id, scaling as MediaScaling)),
+    );
+    const failed = moving.filter((_, index) => results[index]?.status === "rejected");
+    try {
+      if (failed.length === 0) {
+        localStorage.removeItem(key);
+      } else {
+        localStorage.setItem(key, JSON.stringify(Object.fromEntries(failed)));
+      }
+    } catch {
+      // Storage can be unavailable; then the old choices stay where they are.
+    }
   }
 
   async refresh(): Promise<void> {
