@@ -32,37 +32,130 @@ export async function imageDetails(url: string): Promise<MediaDetails> {
   image.src = url;
   await image.decode();
   return {
-    jpeg: await drawThumbnail(image, image.naturalWidth, image.naturalHeight),
+    jpeg: await encode(drawFrame(image, image.naturalWidth, image.naturalHeight)),
     width: image.naturalWidth,
     height: image.naturalHeight,
     durationMs: null,
   };
 }
 
+/** How long a file may take to open or to show a frame before giving up. */
+const TIMEOUT_MS = 15_000;
+/** Average brightness (0–255) below which a frame counts as black. */
+const DARK = 18;
+
 /**
- * Draws a thumbnail of a video (a frame a little way in, to skip a black
- * first frame) and measures it. Rejects if the webview cannot play it.
+ * Draws a thumbnail of a video and measures it. Rejects if the webview
+ * cannot play it, or it takes too long.
+ *
+ * The frame comes from a little way in (videos often start black). It is
+ * drawn only once it has really been decoded: WebKit reports a seek as done
+ * before the frame is ready, which drew black thumbnails. If the frame is
+ * still nearly black (a slow fade in), later points are tried, and the
+ * brightest is kept.
  */
 export async function videoDetails(url: string): Promise<MediaDetails> {
   const video = document.createElement("video");
   video.crossOrigin = "anonymous";
   video.muted = true;
   video.preload = "auto";
+  video.playsInline = true;
+  // On the page (though not seen), so its frames are really presented and
+  // the webview reports them (see `seek`).
+  Object.assign(video.style, {
+    position: "fixed",
+    left: "0",
+    top: "0",
+    width: "2px",
+    height: "2px",
+    opacity: "0",
+    pointerEvents: "none",
+  });
+  document.body.append(video);
   video.src = url;
 
-  await waitFor(video, "loadedmetadata");
-  video.currentTime = Math.min(1, video.duration / 3) || 0;
-  await waitFor(video, "seeked");
+  try {
+    await waitFor(video, "loadedmetadata");
+    const duration = Number.isFinite(video.duration) ? video.duration : 0;
+    const times = [Math.min(1, duration / 3), duration * 0.1, duration * 0.25, duration * 0.5];
 
-  const details = {
-    jpeg: await drawThumbnail(video, video.videoWidth, video.videoHeight),
-    width: video.videoWidth,
-    height: video.videoHeight,
-    durationMs: Number.isFinite(video.duration) ? Math.round(video.duration * 1000) : null,
-  };
-  video.removeAttribute("src");
-  video.load();
-  return details;
+    let best: { canvas: HTMLCanvasElement; brightness: number } | null = null;
+    for (const time of new Set(times.map((time) => Math.max(0, time)))) {
+      await seek(video, time);
+      const canvas = drawFrame(video, video.videoWidth, video.videoHeight);
+      const brightness = averageBrightness(canvas);
+      if (!best || brightness > best.brightness) best = { canvas, brightness };
+      if (brightness >= DARK) break;
+    }
+    if (!best) throw new Error(t("thumbs.failed"));
+
+    return {
+      jpeg: await encode(best.canvas),
+      width: video.videoWidth,
+      height: video.videoHeight,
+      durationMs: duration ? Math.round(duration * 1000) : null,
+    };
+  } finally {
+    video.removeAttribute("src");
+    video.load();
+    video.remove();
+  }
+}
+
+/** Seeks to `time` and waits until that frame has been decoded. */
+async function seek(video: HTMLVideoElement, time: number): Promise<void> {
+  const seeked = waitFor(video, "seeked");
+  video.currentTime = time;
+  await seeked;
+  // At least the current frame's data, then the frame itself presented.
+  if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) await waitFor(video, "loadeddata");
+  await framePresented(video);
+}
+
+/** How long to wait for a webview to say the sought frame was presented. */
+const FRAME_WAIT_MS = 2_000;
+/** The wait for webviews that cannot say so at all. */
+const FRAME_GUESS_MS = 400;
+
+/**
+ * Waits until the video's current frame has been presented, where the
+ * webview reports it (`requestVideoFrameCallback`), else for a moment.
+ *
+ * Even where it is supported, a frame that never comes (a webview that
+ * does not report frames of a paused video) only ends the wait, after
+ * {@link FRAME_WAIT_MS}, instead of failing the thumbnail: the frame's data
+ * is already there by then (`HAVE_CURRENT_DATA`), and a black result is
+ * caught by the brightness check and retried at a later point.
+ */
+function framePresented(video: HTMLVideoElement): Promise<void> {
+  return new Promise((resolve) => {
+    if (!video.requestVideoFrameCallback) {
+      setTimeout(resolve, FRAME_GUESS_MS);
+      return;
+    }
+    const timer = setTimeout(resolve, FRAME_WAIT_MS);
+    video.requestVideoFrameCallback(() => {
+      clearTimeout(timer);
+      resolve();
+    });
+  });
+}
+
+/**
+ * Whether the thumbnail at `url` is nearly black, like those made before
+ * thumbnails waited for the video's frame. A missing or unreadable one
+ * counts as not dark: it is made again when it fails to show.
+ */
+export async function isDarkThumbnail(url: string): Promise<boolean> {
+  try {
+    const image = new Image();
+    image.crossOrigin = "anonymous";
+    image.src = url;
+    await image.decode();
+    return averageBrightness(drawFrame(image, image.naturalWidth, image.naturalHeight)) < DARK;
+  } catch {
+    return false;
+  }
 }
 
 /** Measures a sound file's length. Audio has no thumbnail. */
@@ -76,22 +169,46 @@ export async function audioDetails(url: string): Promise<{ durationMs: number | 
   return { durationMs };
 }
 
-/** Resolves on `event`, rejects if the element reports an error first. */
+/**
+ * Resolves on `event`; rejects if the element reports an error first, or
+ * nothing happens within {@link TIMEOUT_MS} (a stalled file would otherwise
+ * be waited on for ever).
+ */
 function waitFor(element: HTMLMediaElement, event: string): Promise<void> {
   return new Promise((resolve, reject) => {
-    element.addEventListener(event, () => resolve(), { once: true });
-    element.addEventListener("error", () => reject(new Error(t("thumbs.cannotPlay"))), {
-      once: true,
-    });
+    const timer = setTimeout(() => reject(new TimedOut()), TIMEOUT_MS);
+    element.addEventListener(
+      event,
+      () => {
+        clearTimeout(timer);
+        resolve();
+      },
+      { once: true },
+    );
+    element.addEventListener(
+      "error",
+      () => {
+        clearTimeout(timer);
+        reject(new Error(t("thumbs.cannotPlay")));
+      },
+      { once: true },
+    );
   });
 }
 
-/** Draws `source` scaled to cover the thumbnail, and encodes it as JPEG. */
-async function drawThumbnail(source: CanvasImageSource, width: number, height: number) {
+/** A file that took too long: worth trying again later, unlike one that cannot play. */
+export class TimedOut extends Error {
+  constructor() {
+    super(t("thumbs.timedOut"));
+  }
+}
+
+/** Draws `source` scaled to cover a thumbnail-sized canvas. */
+function drawFrame(source: CanvasImageSource, width: number, height: number): HTMLCanvasElement {
   const canvas = document.createElement("canvas");
   canvas.width = WIDTH;
   canvas.height = HEIGHT;
-  const context = canvas.getContext("2d");
+  const context = canvas.getContext("2d", { willReadFrequently: true });
   if (!context) throw new Error(t("thumbs.cannotDraw"));
 
   const scale = Math.max(WIDTH / width, HEIGHT / height);
@@ -106,7 +223,26 @@ async function drawThumbnail(source: CanvasImageSource, width: number, height: n
     drawWidth,
     drawHeight,
   );
+  return canvas;
+}
 
+/** The average brightness of `canvas`, 0 (black) to 255, from a sample of its pixels. */
+function averageBrightness(canvas: HTMLCanvasElement): number {
+  const context = canvas.getContext("2d", { willReadFrequently: true });
+  if (!context) return 255;
+  const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
+  let total = 0;
+  let count = 0;
+  // Every 16th pixel is plenty for "is it black?".
+  for (let at = 0; at < data.length; at += 64) {
+    total += 0.299 * (data[at] ?? 0) + 0.587 * (data[at + 1] ?? 0) + 0.114 * (data[at + 2] ?? 0);
+    count += 1;
+  }
+  return count ? total / count : 0;
+}
+
+/** Encodes `canvas` as a JPEG. */
+async function encode(canvas: HTMLCanvasElement): Promise<Uint8Array> {
   const blob = await new Promise<Blob | null>((resolve) =>
     canvas.toBlob(resolve, "image/jpeg", 0.8),
   );
