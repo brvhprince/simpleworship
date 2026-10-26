@@ -9,7 +9,7 @@
   import { setCameraUse, setFileFitLookup, setMediaUrls } from "@simpleworship/renderer";
   import { convertFileSrc } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
-  import { i18n } from "./lib/i18n/i18n.svelte.ts";
+  import { i18n } from "@simpleworship/i18n";
   import { link } from "./lib/link.svelte.ts";
   import { media } from "./lib/media.svelte.ts";
   import NdiPage from "./ndi/NdiPage.svelte";
