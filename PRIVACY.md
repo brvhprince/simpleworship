@@ -71,17 +71,23 @@ button needs goes to the service you chose:
 - **Tidy Lyrics** and **Translate:** the lyrics in front of you.
 - **From Sermon Notes:** the notes you paste.
 
-That text is then handled by the service under its own terms and privacy
-policy ([Anthropic](https://www.anthropic.com/legal/privacy),
-[OpenAI](https://openai.com/policies/privacy-policy),
-[Google](https://policies.google.com/privacy)), as part of your church's
-account with it. Do not paste anything into the assistant that you would not
-share with that service.
+That text then goes to the service as part of your church's account with
+it, and is handled under the terms for its API (not its consumer apps):
+[Anthropic](https://www.anthropic.com/legal/commercial-terms) (see also its
+[privacy centre](https://privacy.anthropic.com/)),
+[OpenAI](https://openai.com/enterprise-privacy/) and
+[Google](https://ai.google.dev/gemini-api/terms). Check the terms for your
+plan: with some free plans the service may use what is sent to improve its
+products; on Gemini's unpaid tier, for example, Google says people may read
+it. Do not send anything through the assistant that you would not share with
+that service.
 
 ## 6. Internet connections the app makes
 
 SimpleWorship connects to the internet only for these. Each service sees the
-computer's IP address, as with any download; no personal information is sent.
+computer's IP address, as with any download. Update checks and downloads send
+no personal information; the assistant sends only what you choose to send it
+(section 5).
 
 - **Updates:** at start-up and once a day, if allowed in Settings, and when
   you click Check for Updates, the app asks GitHub
