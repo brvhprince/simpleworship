@@ -2275,6 +2275,11 @@ export type TextRun = {
    * CSS font family list.
    */
   fontFamily?: string | null;
+  /**
+   * Font weight (100 thin to 900 black) for these words alone. Wins over
+   * `bold`; without it, `bold` makes the words bolder than the box.
+   */
+  fontWeight?: number | null;
 };
 
 /**

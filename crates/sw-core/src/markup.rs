@@ -48,6 +48,11 @@ pub struct TextRun {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional = nullable)]
     pub font_family: Option<String>,
+    /// Font weight (100 thin to 900 black) for these words alone. Wins over
+    /// `bold`; without it, `bold` makes the words bolder than the box.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional = nullable)]
+    pub font_weight: Option<u16>,
 }
 
 /// The markers, longest first so `**` is not read as two `*`.

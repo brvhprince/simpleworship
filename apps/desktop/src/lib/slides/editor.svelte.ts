@@ -182,7 +182,12 @@ export class SlideEditor {
 
   /** The style shown in the toolbar: of the selected words, or the box's. */
   get currentStyle():
-    | (RunStyle & { boxFontSize: number; boxColor: string; boxFont: string })
+    | (RunStyle & {
+        boxFontSize: number;
+        boxColor: string;
+        boxFont: string;
+        boxFontWeight: number;
+      })
     | null {
     const box = this.textBox;
     if (!box) return null;
@@ -194,13 +199,14 @@ export class SlideEditor {
       boxFontSize: box.content.style.fontSize,
       boxColor: box.content.style.color,
       boxFont: box.content.style.fontFamily,
+      boxFontWeight: box.content.style.fontWeight,
     };
   }
 
   /**
    * Applies a text style to the selected words, or to the whole box when
-   * no words are selected. For the whole box, colour, size and font go on
-   * the box itself and any word-level differences are cleared.
+   * no words are selected. For the whole box, colour, size, font and
+   * weight go on the box itself and any word-level differences are cleared.
    */
   formatText(patch: StylePatch): void {
     const box = this.textBox;
@@ -224,6 +230,10 @@ export class SlideEditor {
         if (patch.fontFamily) content.style = { ...content.style, fontFamily: patch.fontFamily };
         cleared.fontFamily = null;
       }
+      if (patch.fontWeight !== undefined) {
+        if (patch.fontWeight) content.style = { ...content.style, fontWeight: patch.fontWeight };
+        cleared.fontWeight = null;
+      }
       for (const key of ["bold", "italic", "underline"] as const) {
         if (patch[key] !== undefined) cleared[key] = patch[key];
       }
@@ -241,7 +251,19 @@ export class SlideEditor {
       this.stylingWords && this.textSelection ? this.textSelection : { start: 0, end: Infinity };
     const total = runs.reduce((sum, run) => sum + run.text.length, 0);
     const on = allHave(runs, range.start, Math.min(range.end, total), key);
-    this.formatText({ [key]: !on });
+    // Bold on or off replaces any weight chosen for those words.
+    this.formatText(key === "bold" ? { bold: !on, fontWeight: null } : { [key]: !on });
+  }
+
+  /**
+   * Sets the font weight (100–900) of the selected words, or of the whole
+   * box when no words are selected. For words it replaces bold, so the
+   * toolbar and the text agree.
+   */
+  setFontWeight(weight: number): void {
+    this.formatText(
+      this.stylingWords ? { fontWeight: weight, bold: false } : { fontWeight: weight },
+    );
   }
 
   // ── Elements ───────────────────────────────────────────────────────────

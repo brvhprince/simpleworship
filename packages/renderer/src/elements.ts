@@ -52,7 +52,8 @@ export function runStyle(run: TextRun, base: TextStyle): string {
     color: run.color,
     "font-size": run.fontSize ? `${round(run.fontSize / base.fontSize)}em` : null,
     "font-family": run.fontFamily,
-    "font-weight": run.bold ? "bolder" : null,
+    // A weight chosen for these words wins; bold makes them bolder than the box.
+    "font-weight": run.fontWeight ? String(run.fontWeight) : run.bold ? "bolder" : null,
     "font-style": run.italic ? "italic" : null,
     "text-decoration": run.underline ? "underline" : null,
   });
