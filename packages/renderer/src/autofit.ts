@@ -1,9 +1,13 @@
 /**
- * Shrinks slide text until it fits its text box.
+ * Sizes slide text to its text box.
  *
- * The theme's font size is the *largest* size to use. When the text is too
- * long for the box at that size, the size is reduced (never below
+ * Normally the given font size is the *largest* size to use: when the text
+ * is too long for the box at that size, the size is reduced (never below
  * {@link MIN_FONT_SIZE}) until it fits.
+ *
+ * With `scaleUp` (EasyWorship's "scale to fit"), short text also grows past
+ * that size until it fills the box, so "Call to Worship" is not left small
+ * in the middle of the screen. It is opt-in, per theme or per text box.
  */
 
 import { tick } from "svelte";
@@ -42,13 +46,22 @@ export function largestFittingSize(
   return best;
 }
 
+/**
+ * The largest font size to try. Without `scaleUp` it is `maxSize`; with it,
+ * the box's height, since even one line cannot be taller than that (the
+ * width check in {@link autofit} stops long words from growing too far).
+ */
+export function fitLimit(maxSize: number, scaleUp: boolean, boxHeight: number): number {
+  return scaleUp ? Math.max(maxSize, Math.floor(boxHeight)) : maxSize;
+}
+
 /** Options for the {@link autofit} action. */
 export interface AutofitOptions {
-  /** Shrink to fit. When `false`, the text is always `maxSize`. */
+  /** Shrink to fit. When `false` (and not `scaleUp`), the text is always `maxSize`. */
   enabled: boolean;
-  /** The theme's font size, in reference pixels. */
+  /** The font size it was given, in reference pixels. */
   maxSize: number;
-  /** Scale up beyond `maxSize` to fill the container when text is short. */
+  /** Also grow short text past `maxSize` until it fills the box. */
   scaleUp?: boolean;
   /** Anything that changes the text's size (the text itself, the font…).
    *  The fit is recomputed whenever it changes. */
@@ -80,10 +93,10 @@ export const autofit: Action<HTMLElement, AutofitOptions> = (box, initial) => {
       return text.scrollHeight <= box.clientHeight && text.scrollWidth <= box.clientWidth;
     };
 
-    const limit = options.scaleUp
-      ? Math.max(options.maxSize, Math.min(box.clientHeight ? box.clientHeight * 0.85 : 240, 240))
-      : options.maxSize;
-    apply(options.enabled ? largestFittingSize(fits, limit) : options.maxSize);
+    const scaleUp = options.scaleUp ?? false;
+    const fitting = options.enabled || scaleUp;
+    const limit = fitLimit(options.maxSize, scaleUp, box.clientHeight);
+    apply(fitting ? largestFittingSize(fits, limit) : options.maxSize);
   }
 
   fitText();

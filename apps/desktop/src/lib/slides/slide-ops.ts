@@ -51,6 +51,7 @@ export function newTextBox(style: TextStyle, text = ""): SlideElement {
     style: { ...style },
     verticalAlign: "middle",
     autoFit: true,
+    scaleUp: false,
     padding: 0,
     fill: null,
     cornerRadius: 0,
