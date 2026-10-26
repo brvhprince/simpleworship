@@ -134,6 +134,7 @@ mod tests {
             size_bytes: 10,
             created_at: 0,
             collection: Some(collection),
+            scaling: sw_core::MediaScaling::Automatic,
         }
     }
 

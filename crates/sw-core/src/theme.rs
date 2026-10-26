@@ -84,9 +84,15 @@ pub enum Background {
     Image {
         /// The image in the media library.
         media: MediaRef,
-        /// How the image fills the screen.
+        /// How the image fills the screen, as the theme or slide asks.
         #[serde(default)]
         fit: MediaFit,
+        /// The file's own choice (its [`MediaScaling`](crate::MediaScaling)
+        /// in the Media tab), which wins over `fit`. Filled in by the engine
+        /// for the screens; `None` when the file is left on automatic.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[ts(optional = nullable)]
+        file_fit: Option<MediaFit>,
         /// How see-through it is, from 0 (invisible) to 1 (solid). Lower
         /// values fade it into black, so text on top stands out.
         #[serde(default = "full_opacity")]
@@ -108,9 +114,14 @@ pub enum Background {
     Video {
         /// The video in the media library.
         media: MediaRef,
-        /// How the video fills the screen.
+        /// How the video fills the screen, as the theme or slide asks.
         #[serde(default)]
         fit: MediaFit,
+        /// The file's own choice, which wins over `fit` (see
+        /// [`Background::Image`]).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[ts(optional = nullable)]
+        file_fit: Option<MediaFit>,
         /// Restart the video when it ends.
         #[serde(rename = "loop")]
         looping: bool,
@@ -121,6 +132,22 @@ pub enum Background {
         #[serde(default = "full_opacity")]
         opacity: f32,
     },
+}
+
+impl Background {
+    /// Records the file's own fit from `fits` (or clears it, for a file
+    /// left on automatic). Only pictures and videos have one.
+    pub fn apply_file_fits(&mut self, fits: &crate::FileFits) {
+        if let Self::Image {
+            media, file_fit, ..
+        }
+        | Self::Video {
+            media, file_fit, ..
+        } = self
+        {
+            *file_fit = fits.get(&media.id).copied();
+        }
+    }
 }
 
 /// The width of the canvas everything is laid out on, in reference pixels

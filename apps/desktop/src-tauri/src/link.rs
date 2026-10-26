@@ -861,6 +861,7 @@ mod tests {
             size_bytes: 0,
             created_at: 0,
             collection: None,
+            scaling: sw_core::MediaScaling::Automatic,
         };
         engine
             .dispatch(Command::PreviewMedia {
