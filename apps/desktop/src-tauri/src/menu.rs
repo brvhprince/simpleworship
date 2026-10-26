@@ -223,13 +223,19 @@ fn build(
             "menu.moving",
             "Moving from EasyWorship",
         )?)
-        .separator()
-        .item(&text(
+        .separator();
+    // The Microsoft Store updates a Store copy; it has nothing to check.
+    let help = if crate::distribution::installed_from_store() {
+        help
+    } else {
+        help.item(&text(
             "check-updates",
             "menu.checkUpdates",
             "Check for Updates…",
         )?)
         .separator()
+    };
+    let help = help
         .item(&text("help-report", "menu.report", "Report a Problem…")?)
         .item(&text("help-logs", "menu.logs", "Open Logs Folder")?);
     // On macOS, About is in the app menu.

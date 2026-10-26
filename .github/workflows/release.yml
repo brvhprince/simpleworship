@@ -137,18 +137,21 @@ jobs:
             --config src-tauri/tauri.release.conf.json
             ${{ runner.os == 'Windows' && format('--config {0}', env.SIGNING_CONFIG) || '' }}
 
+      # The Microsoft Store package. Partner Center signs it on upload, so it
+      # is unsigned here and is not attached to the GitHub release (nobody
+      # could install it from there): download it from the run's artifacts
+      # and upload it in Partner Center. Store copies never update themselves
+      # (see apps/desktop/src-tauri/src/distribution.rs).
       - name: Package MSIX for Microsoft Store
         if: runner.os == 'Windows'
         shell: powershell
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_REF_NAME: ${{ github.ref_name }}
         run: |
           $identity = if ("${{ secrets.MS_STORE_IDENTITY_NAME }}") { "${{ secrets.MS_STORE_IDENTITY_NAME }}" } else { "SimpleWorship" }
           $publisher = if ("${{ secrets.MS_STORE_PUBLISHER_ID }}") { "${{ secrets.MS_STORE_PUBLISHER_ID }}" } else { "CN=SimpleWorship" }
           $pubName = if ("${{ secrets.MS_STORE_PUBLISHER_NAME }}") { "${{ secrets.MS_STORE_PUBLISHER_NAME }}" } else { "SimpleWorship" }
-
-          $tag = "${{ github.ref_name }}"
-          $version = $tag -replace '^v', ''
+          $version = $env:RELEASE_REF_NAME -replace '^v', ''
 
           .\scripts\package-msix.ps1 `
             -IdentityName $identity `
@@ -157,20 +160,10 @@ jobs:
             -Version $version `
             -OutputDir "dist-store"
 
-          $msixFiles = Get-ChildItem -Path "dist-store\*.msix"
-          foreach ($file in $msixFiles) {
-            Write-Host "Uploading $($file.FullName) to GitHub Release..."
-            try {
-              gh release upload "${{ github.ref_name }}" $file.FullName --clobber
-            } catch {
-              Write-Warning "Failed to upload to GitHub Release via gh CLI: $_"
-            }
-          }
-
       - name: Upload Store MSIX Artifact
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
           name: simpleworship-store-package-${{ github.ref_name }}
           path: dist-store/*.msix
-          if-no-files-found: ignore
+          if-no-files-found: error

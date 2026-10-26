@@ -16,6 +16,7 @@
   import { i18n, LANGUAGES, type Language, t } from "../lib/i18n/i18n.svelte.ts";
   import { link } from "../lib/link.svelte.ts";
   import { ROLES, remote } from "../lib/remote.svelte.ts";
+  import { updates } from "../lib/updates.svelte.ts";
   import AssistantSettings from "./AssistantSettings.svelte";
   import StreamSettings from "./StreamSettings.svelte";
   import ColorField from "./themes/ColorField.svelte";
@@ -133,14 +134,18 @@
 
       <section>
         <h3>{t("settings.updates")}</h3>
-        <label class="option">
-          <input type="checkbox" bind:checked={settings.checkForUpdates}>
-          {t("settings.autoUpdates")}
-        </label>
-        <div class="option">
-          <span class="hint">{t("settings.thisVersion", { version })}</span>
-          <UpdateButton label={t("settings.checkNow")} />
-        </div>
+        {#if updates.fromStore}
+          <p class="hint">{t("settings.thisVersion", { version })} · {t("updates.fromStore")}</p>
+        {:else}
+          <label class="option">
+            <input type="checkbox" bind:checked={settings.checkForUpdates}>
+            {t("settings.autoUpdates")}
+          </label>
+          <div class="option">
+            <span class="hint">{t("settings.thisVersion", { version })}</span>
+            <UpdateButton label={t("settings.checkNow")} />
+          </div>
+        {/if}
       </section>
 
       {#if !link.joined}
