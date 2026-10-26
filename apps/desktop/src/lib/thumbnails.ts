@@ -106,6 +106,23 @@ async function seek(video: HTMLVideoElement, time: number): Promise<void> {
   });
 }
 
+/**
+ * Whether the thumbnail at `url` is nearly black, like those made before
+ * thumbnails waited for the video's frame. A missing or unreadable one
+ * counts as not dark: it is made again when it fails to show.
+ */
+export async function isDarkThumbnail(url: string): Promise<boolean> {
+  try {
+    const image = new Image();
+    image.crossOrigin = "anonymous";
+    image.src = url;
+    await image.decode();
+    return averageBrightness(drawFrame(image, image.naturalWidth, image.naturalHeight)) < DARK;
+  } catch {
+    return false;
+  }
+}
+
 /** Measures a sound file's length. Audio has no thumbnail. */
 export async function audioDetails(url: string): Promise<{ durationMs: number | null }> {
   const audio = new Audio();

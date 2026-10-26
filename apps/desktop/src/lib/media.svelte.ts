@@ -19,11 +19,23 @@ import { listen } from "@tauri-apps/api/event";
 import * as api from "./api.ts";
 import { engine } from "./engine.svelte.ts";
 import { link } from "./link.svelte.ts";
-import { audioDetails, imageDetails, TimedOut, videoDetails } from "./thumbnails.ts";
+import {
+  audioDetails,
+  imageDetails,
+  isDarkThumbnail,
+  TimedOut,
+  videoDetails,
+} from "./thumbnails.ts";
 
 /** Must match `MEDIA_EVENT` and `MEDIA_PROGRESS_EVENT` in `src-tauri/src/media.rs`. */
 const MEDIA_EVENT = "media://changed";
 const MEDIA_PROGRESS_EVENT = "media://progress";
+
+/** How the store finds a file and its thumbnail (see `setMediaUrls`). */
+type MediaFileUrls = {
+  file(media: MediaRef): string;
+  thumbnail(media: MediaRef): string;
+};
 
 /**
  * How many files are prepared (thumbnail and measurements) at once. WebKit
@@ -64,17 +76,20 @@ class MediaStore {
   #running = 0;
   /** How many times each item was tried this session (see {@link MAX_TRIES}). */
   #tries = new Map<string, number>();
-  #urls: { file(media: MediaRef): string } | null = null;
+  #urls: MediaFileUrls | null = null;
 
   /** Starts following changes. `urls` builds file URLs (from `App.svelte`). */
-  async connect(urls: { file(media: MediaRef): string }): Promise<() => void> {
+  async connect(urls: MediaFileUrls): Promise<() => void> {
     this.#urls = urls;
     const stopChanges = await listen(MEDIA_EVENT, () => void this.refresh());
     const stopProgress = await listen<MediaProgress>(MEDIA_PROGRESS_EVENT, ({ payload }) => {
       this.progress = payload.copied < payload.total ? payload : null;
     });
     await this.refresh();
-    if (!link.joined) await this.#moveOldFits();
+    if (!link.joined) {
+      await this.#moveOldFits();
+      void this.#repairDarkThumbnails();
+    }
     return () => {
       stopChanges();
       stopProgress();
@@ -161,6 +176,35 @@ class MediaStore {
   remake(item: MediaItem): Promise<void> {
     if (!this.#queued.has(item.id)) this.#tries.delete(item.id);
     return this.prepare(item);
+  }
+
+  /**
+   * Once on each computer: makes again the video thumbnails that came out
+   * black before thumbnails waited for the frame (0.5.x). Runs in the
+   * background, through the same queue; marked done only when the whole
+   * pass has finished, so an interrupted one runs again next time.
+   */
+  async #repairDarkThumbnails(): Promise<void> {
+    const key = "simpleworship.thumbnails_repaired";
+    try {
+      if (localStorage.getItem(key)) return;
+    } catch {
+      return;
+    }
+    const urls = this.#urls;
+    if (!urls) return;
+    const remakes: Promise<void>[] = [];
+    for (const item of this.list.filter((item) => item.kind === "video")) {
+      if (await isDarkThumbnail(urls.thumbnail({ id: item.id, file: item.file }))) {
+        remakes.push(this.remake(item));
+      }
+    }
+    await Promise.all(remakes);
+    try {
+      localStorage.setItem(key, "1");
+    } catch {
+      // Storage can be unavailable; then the check runs again next time.
+    }
   }
 
   /** Starts the next waiting items, while fewer than {@link AT_ONCE} run. */
