@@ -6,13 +6,18 @@
 //! update themselves from elsewhere, and running the NSIS installer from a
 //! Store copy would put a second, separate SimpleWorship on the computer
 //! (Store apps keep their settings in their own package folder).
+//!
+//! Detection also includes sideloaded MSIX packages. The repository has no
+//! supported MSIX update path, so all packaged copies disable the app's
+//! updater and show neutral guidance to update through their install source.
 
 use std::path::Path;
 use std::sync::OnceLock;
 
-/// Whether this copy was installed from the Microsoft Store (an MSIX
-/// package), so updates come from the Store and the app's own updater stays
-/// off. Always `false` outside Windows. Worked out once, then remembered.
+/// Whether this copy is packaged as MSIX, including sideloaded packages.
+/// The name is historical: package detection cannot establish Store origin.
+/// The app's own updater stays off for all packaged copies. Always `false`
+/// outside Windows. Worked out once, then remembered.
 pub fn installed_from_store() -> bool {
     static FROM_STORE: OnceLock<bool> = OnceLock::new();
     *FROM_STORE.get_or_init(|| {
@@ -21,7 +26,7 @@ pub fn installed_from_store() -> bool {
                 .map(|exe| is_packaged_exe(&exe))
                 .unwrap_or(false);
         if from_store {
-            log::info!("installed from the Microsoft Store: updates come from the Store");
+            log::info!("MSIX package detected: update through the original install source");
         }
         from_store
     })
@@ -43,8 +48,8 @@ fn is_packaged_exe(exe: &Path) -> bool {
     in_windows_apps || has_manifest
 }
 
-/// Whether updates come from the Microsoft Store, for the web UI: it then
-/// hides Check for Updates and the automatic-update setting.
+/// Whether this copy is packaged, for the web UI: it hides Check for Updates
+/// and the automatic-update setting, and shows install-source guidance.
 #[tauri::command]
 pub fn updates_from_store() -> bool {
     installed_from_store()

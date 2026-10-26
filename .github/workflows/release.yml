@@ -145,11 +145,13 @@ jobs:
       - name: Package MSIX for Microsoft Store
         if: runner.os == 'Windows'
         shell: powershell
+        env:
+          RELEASE_REF_NAME: ${{ github.ref_name }}
         run: |
           $identity = if ("${{ secrets.MS_STORE_IDENTITY_NAME }}") { "${{ secrets.MS_STORE_IDENTITY_NAME }}" } else { "SimpleWorship" }
           $publisher = if ("${{ secrets.MS_STORE_PUBLISHER_ID }}") { "${{ secrets.MS_STORE_PUBLISHER_ID }}" } else { "CN=SimpleWorship" }
           $pubName = if ("${{ secrets.MS_STORE_PUBLISHER_NAME }}") { "${{ secrets.MS_STORE_PUBLISHER_NAME }}" } else { "SimpleWorship" }
-          $version = "${{ github.ref_name }}" -replace '^v', ''
+          $version = $env:RELEASE_REF_NAME -replace '^v', ''
 
           .\scripts\package-msix.ps1 `
             -IdentityName $identity `
