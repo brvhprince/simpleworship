@@ -13,21 +13,26 @@
 //! downloaded by the app (see the desktop app's `listen.rs`).
 //!
 //! Inside, a capture thread takes sound from the device (in whatever
-//! format it gives) and a worker thread turns it into 16 kHz pieces of
-//! speech ([`audio`]) and then into words ([`transcribe`]).
+//! format it gives), an audio thread turns it into 16 kHz pieces of speech
+//! ([`audio`]), and a third thread hands each piece to Whisper
+//! ([`transcribe`]) in a helper process ([`worker`]), so that a crash in
+//! Whisper ends only the helper: it is started again, and the app and its
+//! screens carry on.
 
 pub mod audio;
 pub mod transcribe;
+pub mod worker;
 
-use std::path::Path;
-use std::sync::mpsc;
+use std::collections::VecDeque;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError, mpsc};
 use std::time::{Duration, Instant};
 
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{FromSample, SampleFormat, SizedSample};
 
 use crate::audio::{Resampler, Segmenter};
-use crate::transcribe::Transcriber;
+use crate::worker::{Helper, HelperCommand, HelperSlot, SpeechToText, stop_helper};
 
 /// Something went wrong listening.
 #[derive(Debug, thiserror::Error)]
@@ -44,6 +49,9 @@ pub enum Error {
     /// Whisper failed on a piece of speech.
     #[error("speech to text failed: {0}")]
     Transcribe(String),
+    /// The speech to text helper process stopped or could not start.
+    #[error("speech to text stopped: {0}")]
+    Helper(String),
 }
 
 /// A microphone or audio input.
@@ -99,29 +107,41 @@ pub enum Event {
 const LEVEL_EVERY: Duration = Duration::from_millis(100);
 /// How long a device may take to start.
 const START_TIMEOUT: Duration = Duration::from_secs(10);
-/// Stack size for the whisper transcription worker thread (16 MiB).
-/// Windows defaults spawned threads to 1 MiB, which is insufficient for
-/// GGML/whisper.cpp matrix computations and causes stack overflow crashes.
-const TRANSCRIBE_STACK_SIZE: usize = 16 * 1024 * 1024;
-/// Stack size for audio capture and preprocessing threads (4 MiB).
+/// Stack size for the audio capture and processing threads (4 MiB).
 const WORKER_STACK_SIZE: usize = 4 * 1024 * 1024;
+/// How often the helper may stop within [`RESTART_WINDOW`] and be started
+/// again. After that, listening stops and says why: something is wrong
+/// that starting again will not fix.
+const MAX_RESTARTS: usize = 3;
+/// See [`MAX_RESTARTS`].
+const RESTART_WINDOW: Duration = Duration::from_secs(10 * 60);
+/// A piece of speech is at most about ten seconds long. A helper still on
+/// one after this long has frozen: it is ended, and started again.
+const FROZEN_AFTER: Duration = Duration::from_secs(60);
 
 /// Listening to a microphone. Stops when dropped.
 pub struct Listener {
     stop: Option<mpsc::Sender<()>>,
+    /// The helper process doing speech to text, ended on drop.
+    helper: HelperSlot,
+    /// Set on drop, so the helper ending is not taken for a crash.
+    stopping: Arc<AtomicBool>,
 }
 
 impl Listener {
     /// Starts listening to `device` (an [`InputDevice::id`], or the
-    /// system's default), with the Whisper model at `model`. Loading the
-    /// model takes a second or two, so call this off the main thread.
+    /// system's default), with speech to text in the helper process that
+    /// `helper` starts (see [`worker`]). Starting the helper loads the
+    /// model, which takes a second or two, so call this off the main thread.
     pub fn start(
         device: Option<&str>,
-        model: &Path,
+        helper: &HelperCommand,
         on_event: impl Fn(Event) + Send + Sync + 'static,
     ) -> Result<Self, Error> {
-        let transcriber = Transcriber::load(model)?;
-        let on_event = std::sync::Arc::new(on_event);
+        let slot = HelperSlot::default();
+        let speech = Helper::start(helper, slot.clone())?;
+        let stopping = Arc::new(AtomicBool::new(false));
+        let on_event = Arc::new(on_event);
 
         let (stop, stopped) = mpsc::channel::<()>();
         // Bounded channel so capture thread never leaks memory or hangs:
@@ -156,12 +176,15 @@ impl Listener {
 
         // Bounded speech queue: if whisper takes time, don't lag behind real-time.
         let (speech_tx, speech_rx) = mpsc::sync_channel::<Vec<f32>>(2);
-        let on_event_transcribe = on_event.clone();
-
+        let transcribing = Transcribing {
+            command: helper.clone(),
+            slot: slot.clone(),
+            stopping: stopping.clone(),
+            on_event: on_event.clone(),
+        };
         std::thread::Builder::new()
             .name("listen-transcribe".into())
-            .stack_size(TRANSCRIBE_STACK_SIZE)
-            .spawn(move || transcribe_worker(speech_rx, transcriber, on_event_transcribe))
+            .spawn(move || transcribing.run(speech_rx, speech))
             .map_err(|error| Error::Device(error.to_string()))?;
 
         std::thread::Builder::new()
@@ -170,15 +193,22 @@ impl Listener {
             .spawn(move || audio_worker(rate, heard, speech_tx, on_event))
             .map_err(|error| Error::Device(error.to_string()))?;
 
-        Ok(Self { stop: Some(stop) })
+        Ok(Self {
+            stop: Some(stop),
+            helper: slot,
+            stopping,
+        })
     }
 }
 
 impl Drop for Listener {
     fn drop(&mut self) {
+        self.stopping.store(true, Ordering::SeqCst);
         if let Some(stop) = self.stop.take() {
             let _ = stop.send(());
         }
+        // Even if it is in the middle of a piece of speech.
+        stop_helper(&self.helper);
     }
 }
 
@@ -332,34 +362,96 @@ fn audio_worker(
     }
 }
 
-/// The transcription worker: pieces of speech in, words out via Whisper.
-fn transcribe_worker(
-    speech_rx: mpsc::Receiver<Vec<f32>>,
-    mut transcriber: Transcriber,
-    on_event: std::sync::Arc<dyn Fn(Event) + Send + Sync>,
-) {
-    while let Ok(piece) = speech_rx.recv() {
-        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            transcriber.transcribe(&piece)
-        }));
-        match result {
-            Ok(Ok(words)) if !words.is_empty() => on_event(Event::Words(words)),
-            Ok(Ok(_)) => {}
-            Ok(Err(error)) => {
-                log::warn!("transcribe failed: {error}");
-                on_event(Event::Failed(error.to_string()));
-                return;
-            }
-            Err(payload) => {
-                let msg = payload
-                    .downcast_ref::<&str>()
-                    .copied()
-                    .or_else(|| payload.downcast_ref::<String>().map(|s| s.as_str()))
-                    .unwrap_or("unknown panic in transcribe worker");
-                log::error!("transcribe worker panicked: {msg}");
-                on_event(Event::Failed(format!("transcription panicked: {msg}")));
-                return;
+/// The transcription thread's part: pieces of speech in, words out, from
+/// the helper process, which is started again if it stops.
+struct Transcribing {
+    command: HelperCommand,
+    slot: HelperSlot,
+    stopping: Arc<AtomicBool>,
+    on_event: Arc<dyn Fn(Event) + Send + Sync>,
+}
+
+impl Transcribing {
+    fn run(self, speech_rx: mpsc::Receiver<Vec<f32>>, mut speech: Helper) {
+        let busy_since = Arc::new(Mutex::new(None));
+        let done = Arc::new(AtomicBool::new(false));
+        self.watch(busy_since.clone(), done.clone());
+
+        let mut stops: VecDeque<Instant> = VecDeque::new();
+        while let Ok(piece) = speech_rx.recv() {
+            *lock(&busy_since) = Some(Instant::now());
+            let result = speech.transcribe(&piece);
+            *lock(&busy_since) = None;
+            match result {
+                Ok(words) if !words.is_empty() => (self.on_event)(Event::Words(words)),
+                Ok(_) => {}
+                // Whisper could not make sense of one piece: carry on.
+                Err(Error::Transcribe(problem)) => log::warn!("listen: {problem}"),
+                Err(problem) => {
+                    if self.stopping.load(Ordering::SeqCst) {
+                        break;
+                    }
+                    log::error!("listen: {problem}");
+                    match self.restart(&mut stops) {
+                        // Stopped meanwhile: dropping the new helper ends it.
+                        Ok(_) if self.stopping.load(Ordering::SeqCst) => break,
+                        Ok(helper) => speech = helper,
+                        Err(problem) => {
+                            (self.on_event)(Event::Failed(problem.to_string()));
+                            break;
+                        }
+                    }
+                }
             }
         }
+        done.store(true, Ordering::SeqCst);
     }
+
+    /// Watches for a helper that has frozen on a piece of speech (see
+    /// [`FROZEN_AFTER`]) and ends it, so [`Transcribing::run`] starts it
+    /// again instead of waiting for ever.
+    fn watch(&self, busy_since: Arc<Mutex<Option<Instant>>>, done: Arc<AtomicBool>) {
+        let slot = self.slot.clone();
+        let stopping = self.stopping.clone();
+        let _ = std::thread::Builder::new()
+            .name("listen-watchdog".into())
+            .spawn(move || {
+                while !done.load(Ordering::SeqCst) && !stopping.load(Ordering::SeqCst) {
+                    std::thread::sleep(Duration::from_secs(1));
+                    let frozen =
+                        lock(&busy_since).is_some_and(|since| since.elapsed() > FROZEN_AFTER);
+                    if frozen {
+                        log::error!("listen: speech to text froze on a piece of speech; ending it");
+                        *lock(&busy_since) = None;
+                        stop_helper(&slot);
+                    }
+                }
+            });
+    }
+
+    /// Starts the helper again, unless it has stopped too often lately.
+    fn restart(&self, stops: &mut VecDeque<Instant>) -> Result<Helper, Error> {
+        let now = Instant::now();
+        stops.push_back(now);
+        while stops
+            .front()
+            .is_some_and(|&stop| now.duration_since(stop) > RESTART_WINDOW)
+        {
+            stops.pop_front();
+        }
+        if stops.len() > MAX_RESTARTS {
+            return Err(Error::Helper(format!(
+                "it stopped {} times in ten minutes; see the log",
+                stops.len()
+            )));
+        }
+        log::warn!("listen: starting speech to text again");
+        Helper::start(&self.command, self.slot.clone())
+    }
+}
+
+/// Locks `mutex`, carrying on if a thread panicked while holding it (the
+/// values kept here are always usable).
+fn lock<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
+    mutex.lock().unwrap_or_else(PoisonError::into_inner)
 }

@@ -1,0 +1,660 @@
+//! Speech to text in a helper process, so a crash in it cannot take the
+//! projector down.
+//!
+//! Whisper (whisper.cpp) is C++: if it runs out of stack, fails one of its
+//! own checks (`GGML_ASSERT`) or reads memory it should not, the process
+//! ends there and then, and nothing in Rust can catch it. During a service
+//! that must never close SimpleWorship. So Whisper runs in a second copy of
+//! the app's own executable, started with [`HELPER_FLAG`] (see the desktop
+//! app's `main.rs`), and the two talk over the helper's standard input and
+//! output:
+//!
+//! - The app sends each piece of 16 kHz speech: its number of samples as a
+//!   4-byte little-endian integer, then the samples as little-endian `f32`s.
+//! - The helper answers each piece with one line: `words <text>` (possibly
+//!   empty) or `error <message>`. Once the model has loaded, before any
+//!   piece, it sends `ready` (or `error <message>` and stops).
+//!
+//! What the helper writes to standard error (Rust's message for a panic or
+//! a stack overflow, whisper.cpp's for a failed check) goes to the app's
+//! log, and so does how it ended, so a crash can be understood afterwards.
+//! [`Helper`] is the app's side; [`serve`] is the helper's.
+
+use std::ffi::OsString;
+use std::io::{self, BufRead, BufReader, BufWriter, Read, Write};
+use std::path::{Path, PathBuf};
+use std::process::{Child, ChildStdin, ChildStdout, Command, ExitStatus, Stdio};
+use std::sync::{Arc, Mutex, PoisonError, mpsc};
+use std::time::Duration;
+
+use crate::Error;
+use crate::audio::SAMPLE_RATE;
+use crate::transcribe::Transcriber;
+
+/// The command-line flag that starts the executable as the helper:
+/// `<app> --listen-helper <model file>`.
+pub const HELPER_FLAG: &str = "--listen-helper";
+
+/// Stack for the helper's Whisper thread. whisper.cpp needs far more than
+/// the 1 MiB Windows gives a program's threads by default.
+const HELPER_STACK_SIZE: usize = 16 * 1024 * 1024;
+
+/// How long the helper may take to load its model and say it is ready.
+/// The largest model loads in a few seconds even on a slow computer; a
+/// minute means the helper is stuck, and is ended.
+const READY_TIMEOUT: Duration = Duration::from_secs(60);
+
+/// The longest piece of speech accepted, a safety limit against a garbled
+/// length (the app sends at most about ten seconds).
+const MAX_PIECE_SAMPLES: usize = SAMPLE_RATE as usize * 60;
+
+/// Something that turns 16 kHz speech into words.
+pub trait SpeechToText {
+    /// The words in a piece of 16 kHz mono speech.
+    fn transcribe(&mut self, audio: &[f32]) -> Result<String, Error>;
+}
+
+impl SpeechToText for Transcriber {
+    fn transcribe(&mut self, audio: &[f32]) -> Result<String, Error> {
+        Transcriber::transcribe(self, audio)
+    }
+}
+
+// ── The helper's side ────────────────────────────────────────────────────
+
+/// Runs the helper: loads the model at `model`, then answers pieces of
+/// speech on standard input until it closes. Returns the process's exit
+/// code. Whisper runs on a thread with a large stack (see
+/// [`HELPER_STACK_SIZE`]).
+pub fn serve(model: &Path) -> i32 {
+    let model = model.to_owned();
+    let worker = std::thread::Builder::new()
+        .name("listen-helper".into())
+        .stack_size(HELPER_STACK_SIZE)
+        .spawn(move || {
+            let mut output = io::stdout().lock();
+            let mut transcriber = match Transcriber::load(&model) {
+                Ok(transcriber) => transcriber,
+                Err(error) => {
+                    let _ = reply(&mut output, Err(&error));
+                    return 1;
+                }
+            };
+            match serve_with(&mut transcriber, io::stdin().lock(), output) {
+                Ok(()) => 0,
+                Err(error) => {
+                    eprintln!("listen helper: {error}");
+                    1
+                }
+            }
+        });
+    match worker.map(std::thread::JoinHandle::join) {
+        Ok(Ok(code)) => code,
+        _ => 1,
+    }
+}
+
+/// Answers pieces of speech from `input` on `output` with `speech`, after
+/// saying it is ready, until `input` closes.
+pub fn serve_with(
+    speech: &mut impl SpeechToText,
+    mut input: impl Read,
+    mut output: impl Write,
+) -> io::Result<()> {
+    writeln!(output, "ready")?;
+    output.flush()?;
+    while let Some(piece) = read_piece(&mut input)? {
+        reply(&mut output, speech.transcribe(&piece).as_deref())?;
+    }
+    Ok(())
+}
+
+/// Writes the answer for one piece (see the [module docs](self)).
+fn reply(output: &mut impl Write, result: Result<&str, &Error>) -> io::Result<()> {
+    match result {
+        Ok(words) => writeln!(output, "words {}", one_line(words))?,
+        Err(error) => writeln!(output, "error {}", one_line(&error.to_string()))?,
+    }
+    output.flush()
+}
+
+fn one_line(text: &str) -> String {
+    text.split_whitespace().collect::<Vec<_>>().join(" ")
+}
+
+/// Sends one piece of speech (see the [module docs](self)).
+fn write_piece(output: &mut impl Write, audio: &[f32]) -> io::Result<()> {
+    let count = u32::try_from(audio.len())
+        .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "piece too long"))?;
+    output.write_all(&count.to_le_bytes())?;
+    for sample in audio {
+        output.write_all(&sample.to_le_bytes())?;
+    }
+    output.flush()
+}
+
+/// Reads one piece of speech, or `None` when the input has closed.
+fn read_piece(input: &mut impl Read) -> io::Result<Option<Vec<f32>>> {
+    let mut count = [0; 4];
+    match input.read_exact(&mut count) {
+        Ok(()) => {}
+        Err(error) if error.kind() == io::ErrorKind::UnexpectedEof => return Ok(None),
+        Err(error) => return Err(error),
+    }
+    let count = u32::from_le_bytes(count) as usize;
+    if count > MAX_PIECE_SAMPLES {
+        return Err(io::Error::new(
+            io::ErrorKind::InvalidData,
+            format!("a piece of {count} samples is too long"),
+        ));
+    }
+    let mut bytes = vec![0; count * 4];
+    input.read_exact(&mut bytes)?;
+    Ok(Some(
+        bytes
+            .chunks_exact(4)
+            .map(|b| f32::from_le_bytes([b[0], b[1], b[2], b[3]]))
+            .collect(),
+    ))
+}
+
+/// One answer from the helper.
+#[derive(Debug, PartialEq)]
+enum Answer {
+    Ready,
+    Words(String),
+    Failed(String),
+}
+
+/// Reads one answer line, or `None` when the helper has gone.
+fn read_answer(input: &mut impl BufRead) -> io::Result<Option<Answer>> {
+    let mut line = String::new();
+    if input.read_line(&mut line)? == 0 {
+        return Ok(None);
+    }
+    let line = line.trim_end_matches(['\r', '\n']);
+    let (kind, rest) = line.split_once(' ').unwrap_or((line, ""));
+    Ok(Some(match kind {
+        "ready" => Answer::Ready,
+        "words" => Answer::Words(rest.to_owned()),
+        "error" => Answer::Failed(rest.to_owned()),
+        _ => Answer::Failed(format!("unexpected answer “{line}”")),
+    }))
+}
+
+// ── The app's side ───────────────────────────────────────────────────────
+
+/// How to start the helper: a program and its arguments.
+#[derive(Clone, Debug)]
+pub struct HelperCommand {
+    /// The executable.
+    pub program: PathBuf,
+    /// Its arguments, ending with the model file.
+    pub args: Vec<OsString>,
+}
+
+impl HelperCommand {
+    /// This same executable, started as the helper for the model at
+    /// `model` (the app's `main` must hand [`HELPER_FLAG`] to [`serve`]).
+    pub fn this_executable(model: &Path) -> io::Result<Self> {
+        Ok(Self {
+            program: std::env::current_exe()?,
+            args: vec![HELPER_FLAG.into(), model.as_os_str().to_owned()],
+        })
+    }
+}
+
+/// The helper process currently running, shared so that stopping
+/// [`Listener`](crate::Listener) can end it even while a piece is being
+/// written down.
+pub(crate) type HelperSlot = Arc<Mutex<Option<Child>>>;
+
+/// Ends the helper in `slot`, whichever it is, and waits for it (for
+/// stopping Listen, and for a frozen helper).
+pub(crate) fn stop_helper(slot: &HelperSlot) {
+    let child = slot.lock().unwrap_or_else(PoisonError::into_inner).take();
+    end(child);
+}
+
+/// Takes the helper out of `slot` if it is still the one with process
+/// `id`: a [`Helper`] must never end the one started to replace it.
+fn take_own(slot: &HelperSlot, id: u32) -> Option<Child> {
+    let mut current = slot.lock().unwrap_or_else(PoisonError::into_inner);
+    if current.as_ref().is_some_and(|child| child.id() == id) {
+        current.take()
+    } else {
+        None
+    }
+}
+
+/// Ends `child`, if any, and waits for it, so it does not linger.
+fn end(child: Option<Child>) {
+    if let Some(mut child) = child {
+        let _ = child.kill();
+        let _ = child.wait();
+    }
+}
+
+/// A running helper, ready for speech (the app's side).
+pub struct Helper {
+    slot: HelperSlot,
+    /// Its process id: the slot may hold a newer helper by the time this
+    /// one is dropped.
+    id: u32,
+    input: BufWriter<ChildStdin>,
+    output: BufReader<ChildStdout>,
+    /// The last thing the helper wrote to standard error, for the message
+    /// when it stops.
+    last_complaint: Arc<Mutex<Option<String>>>,
+}
+
+impl Helper {
+    /// Starts the helper and waits until its model has loaded (a second or
+    /// two). It is kept in `slot`.
+    pub(crate) fn start(command: &HelperCommand, slot: HelperSlot) -> Result<Self, Error> {
+        Self::start_within(command, slot, READY_TIMEOUT)
+    }
+
+    /// [`Helper::start`], giving up (and ending the helper) if it has not
+    /// said it is ready within `timeout`.
+    fn start_within(
+        command: &HelperCommand,
+        slot: HelperSlot,
+        timeout: Duration,
+    ) -> Result<Self, Error> {
+        let mut child = low_priority(command)
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .map_err(|error| Error::Helper(format!("it could not be started: {error}")))?;
+
+        let last_complaint = Arc::new(Mutex::new(None));
+        if let Some(stderr) = child.stderr.take() {
+            let last = last_complaint.clone();
+            let _ = std::thread::Builder::new()
+                .name("listen-helper-log".into())
+                .spawn(move || forward_complaints(stderr, &last));
+        }
+        let (Some(input), Some(output)) = (child.stdin.take(), child.stdout.take()) else {
+            end(Some(child));
+            return Err(Error::Helper("its input and output are missing".into()));
+        };
+        let id = child.id();
+        *slot.lock().unwrap_or_else(PoisonError::into_inner) = Some(child);
+
+        // Wait for "ready" on a thread of its own, so a helper that hangs
+        // while loading cannot hold up starting Listen for ever. Ending it
+        // closes its output, and that thread then finishes too.
+        let (answered, answer) = mpsc::channel();
+        let waiting = std::thread::Builder::new()
+            .name("listen-helper-ready".into())
+            .spawn(move || {
+                let mut output = BufReader::new(output);
+                let first = read_answer(&mut output);
+                let _ = answered.send((output, first));
+            });
+        let received = match waiting {
+            Ok(_) => answer.recv_timeout(timeout).ok(),
+            Err(_) => None,
+        };
+        let Some((output, first)) = received else {
+            end(take_own(&slot, id));
+            return Err(Error::Helper(format!(
+                "it was not ready within {} seconds",
+                timeout.as_secs()
+            )));
+        };
+
+        let mut helper = Self {
+            slot,
+            id,
+            input: BufWriter::new(input),
+            output,
+            last_complaint,
+        };
+        match first {
+            Ok(Some(Answer::Ready)) => Ok(helper),
+            Ok(Some(Answer::Failed(message))) => Err(Error::Model(message)),
+            Ok(Some(Answer::Words(_))) => {
+                Err(Error::Helper("it answered before it was ready".into()))
+            }
+            Ok(None) | Err(_) => Err(helper.stopped()),
+        }
+    }
+
+    /// Why the helper is no longer answering: how it ended, and the last
+    /// thing it complained about.
+    fn stopped(&mut self) -> Error {
+        let ended = match take_own(&self.slot, self.id) {
+            Some(child) => reap(child),
+            // Taken by `stop_helper`: listening was stopped, or the
+            // helper had frozen.
+            None => "it was stopped".into(),
+        };
+        // Give the log thread a moment to read its last words.
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        let complaint = self
+            .last_complaint
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .take();
+        Error::Helper(match complaint {
+            Some(complaint) => format!("{ended} ({complaint})"),
+            None => ended,
+        })
+    }
+}
+
+impl SpeechToText for Helper {
+    fn transcribe(&mut self, audio: &[f32]) -> Result<String, Error> {
+        if write_piece(&mut self.input, audio).is_err() {
+            return Err(self.stopped());
+        }
+        match read_answer(&mut self.output) {
+            Ok(Some(Answer::Words(words))) => Ok(words),
+            Ok(Some(Answer::Failed(message))) => Err(Error::Transcribe(message)),
+            Ok(Some(Answer::Ready)) => Err(Error::Helper("it answered out of turn".into())),
+            Ok(None) | Err(_) => Err(self.stopped()),
+        }
+    }
+}
+
+impl Drop for Helper {
+    fn drop(&mut self) {
+        end(take_own(&self.slot, self.id));
+    }
+}
+
+/// The command for `helper`, set to run at a lower priority than the app,
+/// so the computer gives the sound and the operator window their time
+/// first and Whisper all the rest. On Windows it also has no console
+/// window.
+fn low_priority(helper: &HelperCommand) -> Command {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const BELOW_NORMAL_PRIORITY_CLASS: u32 = 0x0000_4000;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        let mut command = Command::new(&helper.program);
+        command
+            .args(&helper.args)
+            .creation_flags(BELOW_NORMAL_PRIORITY_CLASS | CREATE_NO_WINDOW);
+        command
+    }
+    #[cfg(unix)]
+    {
+        // `nice` starts the helper in its own place (same process), at a
+        // lower priority. Without it, the helper runs at the normal one.
+        const NICE: &str = "/usr/bin/nice";
+        let mut command = if Path::new(NICE).exists() {
+            let mut command = Command::new(NICE);
+            command.args(["-n", "10"]).arg(&helper.program);
+            command
+        } else {
+            Command::new(&helper.program)
+        };
+        command.args(&helper.args);
+        command
+    }
+}
+
+/// How long a helper that stopped answering has to end by itself before
+/// it is ended: closing its output usually means it is on its way out.
+const EXIT_GRACE: Duration = Duration::from_secs(1);
+
+/// Waits for a helper that stopped answering to end, and says how it
+/// ended. One that is still running after [`EXIT_GRACE`] (it closed its
+/// output but carried on) is ended, so nothing waits on it for ever.
+fn reap(mut child: Child) -> String {
+    let deadline = std::time::Instant::now() + EXIT_GRACE;
+    loop {
+        match child.try_wait() {
+            Ok(Some(status)) => return describe_exit(status),
+            Ok(None) if std::time::Instant::now() < deadline => {
+                std::thread::sleep(Duration::from_millis(20));
+            }
+            Ok(None) => break,
+            Err(error) => return error.to_string(),
+        }
+    }
+    let _ = child.kill();
+    let _ = child.wait();
+    "it stopped answering, so it was ended".into()
+}
+
+/// Copies what the helper writes to standard error into the app's log,
+/// keeping the last line for [`Helper::stopped`].
+fn forward_complaints(stderr: impl Read, last: &Mutex<Option<String>>) {
+    for line in BufReader::new(stderr).lines() {
+        let Ok(line) = line else { break };
+        let line = line.trim();
+        if line.is_empty() {
+            continue;
+        }
+        log::warn!("listen helper: {line}");
+        *last.lock().unwrap_or_else(PoisonError::into_inner) = Some(line.to_owned());
+    }
+}
+
+/// How a helper ended, in words, e.g. "it ran out of stack space".
+fn describe_exit(status: ExitStatus) -> String {
+    #[cfg(windows)]
+    if let Some(code) = status.code() {
+        // Windows reports a crash as an NTSTATUS exit code.
+        return match code as u32 {
+            0xC000_00FD => "it ran out of stack space (0xC00000FD)".into(),
+            0xC000_0005 => "it read memory it should not have (0xC0000005)".into(),
+            0xC000_0409 => "it stopped itself after a failed check (0xC0000409)".into(),
+            0xC000_001D => "it used an instruction this processor lacks (0xC000001D)".into(),
+            3 => "it stopped itself after a failed check (abort)".into(),
+            other => format!("it ended with code {other:#010X}"),
+        };
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::ExitStatusExt;
+        if let Some(signal) = status.signal() {
+            return match signal {
+                6 => "it stopped itself after a failed check (SIGABRT)".into(),
+                11 => "it read memory it should not have (SIGSEGV)".into(),
+                4 => "it used an instruction this processor lacks (SIGILL)".into(),
+                9 => "it was stopped (SIGKILL)".into(),
+                other => format!("it ended with signal {other}"),
+            };
+        }
+    }
+    format!("it ended ({status})")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Instant;
+
+    /// Speech to text that answers with how many samples it heard.
+    struct Counting;
+
+    impl SpeechToText for Counting {
+        fn transcribe(&mut self, audio: &[f32]) -> Result<String, Error> {
+            if audio.is_empty() {
+                return Err(Error::Transcribe("nothing\\nto hear".into()));
+            }
+            Ok(format!("heard {} samples", audio.len()))
+        }
+    }
+
+    #[test]
+    fn pieces_and_answers_go_back_and_forth() {
+        let mut sent = Vec::new();
+        write_piece(&mut sent, &[0.5; 16_000]).unwrap();
+        write_piece(&mut sent, &[]).unwrap();
+        write_piece(&mut sent, &[-0.25, 0.125]).unwrap();
+
+        let mut answered = Vec::new();
+        serve_with(&mut Counting, sent.as_slice(), &mut answered).unwrap();
+
+        let mut answers = answered.as_slice();
+        let mut next = || read_answer(&mut answers).unwrap();
+        assert_eq!(next(), Some(Answer::Ready));
+        assert_eq!(next(), Some(Answer::Words("heard 16000 samples".into())));
+        assert_eq!(
+            next(),
+            Some(Answer::Failed(
+                "speech to text failed: nothing\\nto hear".into()
+            ))
+        );
+        assert_eq!(next(), Some(Answer::Words("heard 2 samples".into())));
+        assert_eq!(next(), None, "the helper stops when its input closes");
+    }
+
+    #[test]
+    fn samples_arrive_exactly() {
+        let samples = [0.0, 1.0, -1.0, 0.333, f32::MIN_POSITIVE];
+        let mut sent = Vec::new();
+        write_piece(&mut sent, &samples).unwrap();
+        let mut input = sent.as_slice();
+        assert_eq!(read_piece(&mut input).unwrap().unwrap(), samples);
+        assert_eq!(read_piece(&mut input).unwrap(), None);
+    }
+
+    #[test]
+    fn a_garbled_length_is_refused_rather_than_allocated() {
+        let mut input = &u32::MAX.to_le_bytes()[..];
+        assert!(read_piece(&mut input).is_err());
+    }
+
+    #[test]
+    fn answers_stay_on_one_line() {
+        let mut out = Vec::new();
+        reply(&mut out, Ok("John 3:16\nsays")).unwrap();
+        assert_eq!(out, b"words John 3:16 says\n");
+    }
+
+    /// A stand-in helper: says it is ready, then reads until told to stop.
+    #[cfg(unix)]
+    fn stand_in() -> HelperCommand {
+        HelperCommand {
+            program: "/bin/sh".into(),
+            args: vec!["-c".into(), "echo ready; cat > /dev/null".into()],
+        }
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn replacing_a_helper_keeps_the_new_one_running() {
+        let slot = HelperSlot::default();
+        let old = Helper::start(&stand_in(), slot.clone()).unwrap();
+        let new = Helper::start(&stand_in(), slot.clone()).unwrap();
+        // What `Transcribing::run` does after a restart: `speech = helper`.
+        drop(old);
+        let mut current = slot.lock().unwrap();
+        let child = current
+            .as_mut()
+            .expect("the new helper is still in the slot");
+        assert_eq!(child.id(), new.id);
+        assert!(child.try_wait().unwrap().is_none(), "and still running");
+        drop(current);
+
+        drop(new);
+        assert!(slot.lock().unwrap().is_none(), "dropping it ends it");
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn a_helper_that_never_gets_ready_is_ended() {
+        let silent = HelperCommand {
+            program: "/bin/sh".into(),
+            args: vec!["-c".into(), "sleep 30".into()],
+        };
+        let slot = HelperSlot::default();
+        let started = Instant::now();
+        let result = Helper::start_within(&silent, slot.clone(), Duration::from_millis(300));
+        assert!(
+            matches!(&result, Err(Error::Helper(why)) if why.contains("not ready")),
+            "got {:?}",
+            result.err()
+        );
+        assert!(
+            started.elapsed() < Duration::from_secs(5),
+            "it gave up in time"
+        );
+        assert!(slot.lock().unwrap().is_none(), "and the helper was ended");
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn a_helper_that_closes_its_output_but_carries_on_is_ended() {
+        // Closes standard output, then keeps running.
+        let mute = HelperCommand {
+            program: "/bin/sh".into(),
+            args: vec!["-c".into(), "exec >&-; sleep 30".into()],
+        };
+        let slot = HelperSlot::default();
+        let started = Instant::now();
+        let result = Helper::start_within(&mute, slot.clone(), Duration::from_secs(20));
+        assert!(
+            matches!(&result, Err(Error::Helper(why)) if why.contains("stopped answering")),
+            "got {:?}",
+            result.err()
+        );
+        assert!(
+            started.elapsed() < Duration::from_secs(5),
+            "it did not wait for ever"
+        );
+        assert!(slot.lock().unwrap().is_none(), "and the helper was ended");
+    }
+
+    /// Runs a real helper: the app's executable with a downloaded model and
+    /// a 16 kHz, 16-bit mono WAV recording. Run with
+    /// `SW_HELPER_PROGRAM=target/debug/SimpleWorship SW_HELPER_MODEL=…/ggml-small.en.bin
+    /// SW_HELPER_WAV=sermon.wav cargo test -p sw-listen -- --ignored`.
+    #[test]
+    #[ignore = "needs the built app, a speech model and a recording"]
+    #[cfg(unix)]
+    fn a_real_helper_writes_down_speech_and_reports_a_crash() {
+        let var = |name| std::env::var_os(name).unwrap_or_else(|| panic!("set {name:?}"));
+        let command = HelperCommand {
+            program: PathBuf::from(var("SW_HELPER_PROGRAM")),
+            args: vec![HELPER_FLAG.into(), var("SW_HELPER_MODEL")],
+        };
+        let wav = std::fs::read(var("SW_HELPER_WAV")).unwrap();
+        let speech: Vec<f32> = wav[44..]
+            .chunks_exact(2)
+            .map(|b| f32::from(i16::from_le_bytes([b[0], b[1]])) / 32_768.0)
+            .collect();
+
+        let slot = HelperSlot::default();
+        let mut helper = Helper::start(&command, slot.clone()).unwrap();
+        let words = helper.transcribe(&speech).unwrap();
+        assert!(words.contains("John"), "heard: {words}");
+
+        // A crash in Whisper, as a failed GGML_ASSERT ends it. (A SIGSEGV
+        // sent from outside is no use for this: Rust's own handler, there
+        // to catch stack overflows, lets the process carry on.)
+        let pid = slot.lock().unwrap().as_ref().unwrap().id();
+        let killed = Command::new("kill")
+            .args(["-ABRT", &pid.to_string()])
+            .status();
+        assert!(killed.unwrap().success());
+        let after = helper.transcribe(&speech);
+        let Err(Error::Helper(why)) = after else {
+            panic!("a crashed helper should be reported, got {after:?}");
+        };
+        assert!(why.contains("SIGABRT"), "reported: {why}");
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn a_crash_is_described_in_words() {
+        use std::os::unix::process::ExitStatusExt;
+        // A raw wait status of n (below 128) means "ended by signal n".
+        let ended_by = |signal| describe_exit(ExitStatus::from_raw(signal));
+        assert!(ended_by(6).contains("failed check"));
+        assert!(ended_by(11).contains("memory"));
+        assert_eq!(
+            describe_exit(ExitStatus::from_raw(1 << 8)),
+            "it ended (exit status: 1)"
+        );
+    }
+}
