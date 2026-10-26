@@ -24,7 +24,8 @@ use std::ffi::OsString;
 use std::io::{self, BufRead, BufReader, BufWriter, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, ChildStdout, Command, ExitStatus, Stdio};
-use std::sync::{Arc, Mutex, PoisonError};
+use std::sync::{Arc, Mutex, PoisonError, mpsc};
+use std::time::Duration;
 
 use crate::Error;
 use crate::audio::SAMPLE_RATE;
@@ -37,6 +38,11 @@ pub const HELPER_FLAG: &str = "--listen-helper";
 /// Stack for the helper's Whisper thread. whisper.cpp needs far more than
 /// the 1 MiB Windows gives a program's threads by default.
 const HELPER_STACK_SIZE: usize = 16 * 1024 * 1024;
+
+/// How long the helper may take to load its model and say it is ready.
+/// The largest model loads in a few seconds even on a slow computer; a
+/// minute means the helper is stuck, and is ended.
+const READY_TIMEOUT: Duration = Duration::from_secs(60);
 
 /// The longest piece of speech accepted, a safety limit against a garbled
 /// length (the app sends at most about ten seconds).
@@ -246,6 +252,16 @@ impl Helper {
     /// Starts the helper and waits until its model has loaded (a second or
     /// two). It is kept in `slot`.
     pub(crate) fn start(command: &HelperCommand, slot: HelperSlot) -> Result<Self, Error> {
+        Self::start_within(command, slot, READY_TIMEOUT)
+    }
+
+    /// [`Helper::start`], giving up (and ending the helper) if it has not
+    /// said it is ready within `timeout`.
+    fn start_within(
+        command: &HelperCommand,
+        slot: HelperSlot,
+        timeout: Duration,
+    ) -> Result<Self, Error> {
         let mut child = low_priority(command)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -267,14 +283,37 @@ impl Helper {
         let id = child.id();
         *slot.lock().unwrap_or_else(PoisonError::into_inner) = Some(child);
 
+        // Wait for "ready" on a thread of its own, so a helper that hangs
+        // while loading cannot hold up starting Listen for ever. Ending it
+        // closes its output, and that thread then finishes too.
+        let (answered, answer) = mpsc::channel();
+        let waiting = std::thread::Builder::new()
+            .name("listen-helper-ready".into())
+            .spawn(move || {
+                let mut output = BufReader::new(output);
+                let first = read_answer(&mut output);
+                let _ = answered.send((output, first));
+            });
+        let received = match waiting {
+            Ok(_) => answer.recv_timeout(timeout).ok(),
+            Err(_) => None,
+        };
+        let Some((output, first)) = received else {
+            end(take_own(&slot, id));
+            return Err(Error::Helper(format!(
+                "it was not ready within {} seconds",
+                timeout.as_secs()
+            )));
+        };
+
         let mut helper = Self {
             slot,
             id,
             input: BufWriter::new(input),
-            output: BufReader::new(output),
+            output,
             last_complaint,
         };
-        match read_answer(&mut helper.output) {
+        match first {
             Ok(Some(Answer::Ready)) => Ok(helper),
             Ok(Some(Answer::Failed(message))) => Err(Error::Model(message)),
             Ok(Some(Answer::Words(_))) => {
@@ -410,6 +449,7 @@ fn describe_exit(status: ExitStatus) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::Instant;
 
     /// Speech to text that answers with how many samples it heard.
     struct Counting;
@@ -497,6 +537,28 @@ mod tests {
 
         drop(new);
         assert!(slot.lock().unwrap().is_none(), "dropping it ends it");
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn a_helper_that_never_gets_ready_is_ended() {
+        let silent = HelperCommand {
+            program: "/bin/sh".into(),
+            args: vec!["-c".into(), "sleep 30".into()],
+        };
+        let slot = HelperSlot::default();
+        let started = Instant::now();
+        let result = Helper::start_within(&silent, slot.clone(), Duration::from_millis(300));
+        assert!(
+            matches!(&result, Err(Error::Helper(why)) if why.contains("not ready")),
+            "got {:?}",
+            result.err()
+        );
+        assert!(
+            started.elapsed() < Duration::from_secs(5),
+            "it gave up in time"
+        );
+        assert!(slot.lock().unwrap().is_none(), "and the helper was ended");
     }
 
     /// Runs a real helper: the app's executable with a downloaded model and
