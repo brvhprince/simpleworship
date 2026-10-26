@@ -98,6 +98,10 @@ fn install_missing_bundled(app: &AppHandle) -> AppResult<()> {
                 .set_bundled_source(bundled.key, bundled.source)?;
             continue;
         }
+        // Deleted by the operator: left out, as they wanted.
+        if database.bibles().was_removed(bundled.key)? {
+            continue;
+        }
         let path = app.path().resolve(bundled.file, BaseDirectory::Resource)?;
         let mut bible = read(&path)?;
         bible.name = bundled.name.to_owned();
