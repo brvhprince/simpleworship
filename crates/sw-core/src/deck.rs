@@ -87,6 +87,42 @@ pub struct DeckSlide {
     pub style: SlideStyle,
 }
 
+/// The role of a template slide's title box. Matches `TITLE_ROLE` in
+/// `apps/desktop/src/lib/slides/slide-ops.ts`.
+pub const TITLE_ROLE: &str = "00000000-0000-7000-8000-000000000010";
+/// The role of a template slide's body box. Matches `BODY_ROLE` in
+/// `apps/desktop/src/lib/slides/slide-ops.ts`.
+pub const BODY_ROLE: &str = "00000000-0000-7000-8000-000000000011";
+
+/// Reads an element's `role`. Unlike other ids, a role that is not a UUID
+/// is accepted, because SimpleWorship 0.5.0 saved its template boxes with
+/// the roles `"title"` and `"body"`: those become [`TITLE_ROLE`] and
+/// [`BODY_ROLE`], an empty role a role of its own, and any other text the
+/// same made-up id every time (so boxes that shared it still share one).
+fn role_id<'de, D>(deserializer: D) -> Result<Id, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let text = String::deserialize(deserializer)?;
+    Ok(legacy_role(&text))
+}
+
+/// The role for a saved `role` string (see [`role_id`]).
+fn legacy_role(text: &str) -> Id {
+    let text = match text.trim() {
+        "title" => TITLE_ROLE,
+        "body" => BODY_ROLE,
+        "" => return Id::new(),
+        other => other,
+    };
+    text.parse().unwrap_or_else(|_| {
+        Id::from_uuid(uuid::Uuid::new_v5(
+            &uuid::Uuid::NAMESPACE_OID,
+            text.as_bytes(),
+        ))
+    })
+}
+
 /// One thing on a slide: a text box, a shape or a picture.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -97,6 +133,7 @@ pub struct SlideElement {
     /// Shared by "the same" element on different slides (the title box,
     /// the logo), so a change can be applied to all slides. Copied when a
     /// slide's layout is reused.
+    #[serde(deserialize_with = "role_id")]
     pub role: Id,
     /// Where it is, in canvas pixels.
     pub frame: Frame,
@@ -431,6 +468,41 @@ mod tests {
         let deck: SlideDeck = serde_json::from_str(json).unwrap();
         assert!(deck.slides[0].style.is_empty());
         assert_eq!(deck.auto_advance, None);
+    }
+
+    /// A rectangle with the given `role` and element `id`, as saved JSON.
+    fn element_json(id: &str, role: &str) -> String {
+        format!(
+            r#"{{"id":"{id}","role":"{role}",
+            "frame":{{"x":0,"y":0,"width":10,"height":10}},
+            "content":{{"type":"shape","shape":"rectangle","fill":null,"stroke":null}}}}"#
+        )
+    }
+
+    const ELEMENT_ID: &str = "01920c7e-0000-7000-8000-000000000003";
+
+    #[test]
+    fn roles_saved_by_0_5_0_still_load() {
+        let role = |text: &str| -> Id {
+            let json = element_json(ELEMENT_ID, text);
+            serde_json::from_str::<SlideElement>(&json).unwrap().role
+        };
+        assert_eq!(role("title").to_string(), TITLE_ROLE);
+        assert_eq!(role("body").to_string(), BODY_ROLE);
+        // Any other text: the same made-up role each time, so boxes that
+        // shared it still do.
+        assert_eq!(role("logo"), role("logo"));
+        assert_ne!(role("logo"), role("footer"));
+        // An empty role is a role of its own.
+        assert_ne!(role(""), role(""));
+        // Real roles are kept as they are.
+        assert_eq!(role(ELEMENT_ID).to_string(), ELEMENT_ID);
+    }
+
+    #[test]
+    fn other_ids_must_be_real_uuids() {
+        let json = element_json("title", TITLE_ROLE);
+        assert!(serde_json::from_str::<SlideElement>(&json).is_err());
     }
 
     #[test]

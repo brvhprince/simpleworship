@@ -28,7 +28,9 @@ rusqlite_migration = "2.6"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
-ts-rs = { version = "12", features = ["uuid-impl", "serde-json-impl"] }
+# no-serde-warnings: ts-rs warns about serde attributes it does not read,
+# such as `deserialize_with`, which never change the TypeScript type.
+ts-rs = { version = "12", features = ["uuid-impl", "serde-json-impl", "no-serde-warnings"] }
 uuid = { version = "1", features = ["v5", "v7", "serde"] }
 # Pure-Rust deflate only: no C compiler needed on any platform.
 zip = { version = "9", default-features = false, features = ["deflate-flate2-zlib-rs"] }
