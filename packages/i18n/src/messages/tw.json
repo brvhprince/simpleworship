@@ -164,6 +164,9 @@
   "connect.step2": "Fa fon no kamera scan kood yi na bue link no.",
   "connect.step3": "Ma fon no din na mia Fa Bɔ Ho; SimpleWorship bɛbisa wo deɛ ɛtumi yɛ.",
   "connect.title": "Fa Fon Bɔ Ho",
+  "context.moveUp": "Fa Kɔ Soro",
+  "context.moveDown": "Fa Kɔ Fam",
+  "context.removeFromSchedule": "Yi Firi Som Nhyehyɛeɛ Mu",
   "count.bibles": {
     "one": "Twerɛ Kronkron 1",
     "other": "Twerɛ Kronkron {count}"

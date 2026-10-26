@@ -8,6 +8,7 @@
   import { ScaledCanvas, SlideView } from "@simpleworship/renderer";
   import { Button } from "@simpleworship/ui";
   import { deleteTheme, saveTheme, setThemeDefaults, uuidV7 } from "../../lib/api.ts";
+  import { showContextMenu } from "../../lib/context-menu.ts";
   import { engine } from "../../lib/engine.svelte.ts";
   import { t } from "../../lib/i18n/i18n.svelte.ts";
   import { prompts } from "../../lib/prompts.svelte.ts";
@@ -113,6 +114,25 @@
     }
   }
 
+  /** The right-click menu of a theme: the toolbar's actions, on it. */
+  function themeMenu(event: MouseEvent, theme: ThemeRecord) {
+    selectedId = theme.id;
+    void showContextMenu(event, [
+      { label: t("common.edit"), action: () => (editing = theme) },
+      { label: t("themes.duplicate"), action: duplicate },
+      {
+        label: t("themes.useFor", { name: theme.theme.name }),
+        submenu: KINDS.map(([kind, label]) => ({
+          label,
+          checked: defaults[kind] === theme.id,
+          action: () => useFor(kind, theme),
+        })),
+      },
+      "separator",
+      { label: t("common.delete"), action: () => remove(theme) },
+    ]);
+  }
+
   /** Which kinds of content use `theme` by default, e.g. ["Songs"]. */
   function usedFor(theme: ThemeRecord): string[] {
     return KINDS.filter(([kind]) => defaults[kind] === theme.id).map(([, label]) => label);
@@ -175,6 +195,7 @@
           class:selected={theme.id === selectedId}
           onclick={() => (selectedId = theme.id)}
           ondblclick={() => (editing = theme)}
+          oncontextmenu={(event) => themeMenu(event, theme)}
         >
           <ScaledCanvas>
             <SlideView

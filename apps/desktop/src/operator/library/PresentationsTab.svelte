@@ -30,6 +30,7 @@
     showPresentationInPreview,
     uuidV7,
   } from "../../lib/api.ts";
+  import { showContextMenu } from "../../lib/context-menu.ts";
   import { PRESENTATION_DRAG_TYPE } from "../../lib/drag.ts";
   import { engine } from "../../lib/engine.svelte.ts";
   import { frameAt } from "../../lib/frames.ts";
@@ -165,6 +166,25 @@
     }
   }
 
+  /** The right-click menu of a presentation: the toolbar's actions, on it. */
+  function deckMenu(event: MouseEvent, deck: SlideDeck) {
+    selectedId = deck.id;
+    void showContextMenu(event, [
+      {
+        label: t("common.showInPreview"),
+        action: () => attempt(() => showPresentationInPreview(deck.id)),
+      },
+      {
+        label: t("common.addToSchedule"),
+        action: () => attempt(() => addPresentationToSchedule(deck.id)),
+      },
+      // Presentations are changed on the main computer.
+      !link.joined && "separator",
+      !link.joined && { label: t("common.edit"), action: () => edit(deck) },
+      !link.joined && { label: t("common.delete"), action: () => remove(deck) },
+    ]);
+  }
+
   function startDrag(event: DragEvent, deck: SlideDeck) {
     event.dataTransfer?.setData(PRESENTATION_DRAG_TYPE, deck.id);
     if (event.dataTransfer) event.dataTransfer.effectAllowed = "copy";
@@ -225,6 +245,7 @@
           ondragstart={(event) => startDrag(event, deck)}
           onclick={() => (selectedId = deck.id)}
           ondblclick={() => attempt(() => showPresentationInPreview(deck.id))}
+          oncontextmenu={(event) => deckMenu(event, deck)}
         >
           <span class="picture">
             {#if cover}

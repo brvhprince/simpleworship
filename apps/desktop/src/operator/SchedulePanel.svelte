@@ -33,6 +33,7 @@
     missingScheduleSongs,
     scheduleItemThumbnail,
   } from "../lib/api.ts";
+  import { showContextMenu } from "../lib/context-menu.ts";
   import {
     dropTarget,
     finalIndex,
@@ -149,6 +150,28 @@
 
   function remove(item: ScheduleItem) {
     engine.dispatch({ type: "removeScheduleItem", id: item.id });
+  }
+
+  /** Moves an item one place up (`-1`) or down (`1`) the order of service. */
+  function move(item: ScheduleItem, index: number, step: -1 | 1) {
+    engine.dispatch({ type: "moveScheduleItem", id: item.id, to: index + step });
+  }
+
+  /** The right-click menu of a schedule item. */
+  function itemMenu(event: MouseEvent, item: ScheduleItem, index: number) {
+    void showContextMenu(event, [
+      { label: t("common.showInPreview"), action: () => preview(item) },
+      { label: t("pane.goLive"), action: () => show(item) },
+      "separator",
+      { label: t("context.moveUp"), enabled: index > 0, action: () => move(item, index, -1) },
+      {
+        label: t("context.moveDown"),
+        enabled: index < items.length - 1,
+        action: () => move(item, index, 1),
+      },
+      "separator",
+      { label: t("context.removeFromSchedule"), action: () => remove(item) },
+    ]);
   }
 
   function setNotes(item: ScheduleItem, notes: string) {
@@ -412,6 +435,7 @@
         ondragover={(event) => dragOverRow(event, index)}
         onclick={() => preview(item)}
         ondblclick={() => show(item)}
+        oncontextmenu={(event) => itemMenu(event, item, index)}
       >
         {#if layout === "grid"}
           <!-- A card: the first slide, then the number and title under it. -->
