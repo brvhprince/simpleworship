@@ -1,8 +1,9 @@
 <!--
   @component
-  The text toolbar: font, size, colour, bold, italic, underline, and the
-  box's alignment. While typing with words selected it styles those words
-  (e.g. one line in yellow); otherwise it styles the whole box.
+  The text toolbar: font, weight, size, colour, bold, italic, underline,
+  and the box's alignment. While typing with words selected it styles those
+  words (e.g. one line in yellow, or one word in black weight); otherwise
+  it styles the whole box.
 -->
 <script lang="ts">
   import type { HorizontalAlign, VerticalAlign } from "@simpleworship/protocol";
@@ -24,25 +25,22 @@
   const font = $derived(firstFamily(current?.fontFamily ?? current?.boxFont ?? ""));
   const size = $derived(Math.round(current?.fontSize ?? current?.boxFontSize ?? 0));
   const color = $derived(current?.color ?? current?.boxColor ?? "#ffffff");
-  const fontWeight = $derived(box?.content.style.fontWeight ?? (current?.bold ? 700 : 400));
+  /** The weights to choose from, as in the theme designer. */
+  const WEIGHTS = [
+    [300, "designer.light"],
+    [400, "designer.regular"],
+    [600, "designer.semibold"],
+    [700, "designer.bold"],
+    [900, "designer.black"],
+  ] as const;
+  /** The weight of the selected words (bold counts as 700), or of the box. */
+  const fontWeight = $derived(
+    current?.fontWeight ?? (current?.bold ? 700 : (current?.boxFontWeight ?? 400)),
+  );
 
   /** Keeps the caret in the text box when a toolbar button is pressed. */
   function keepFocus(event: MouseEvent) {
     event.preventDefault();
-  }
-
-  function setFontWeight(weight: number) {
-    const target = box;
-    if (!target) return;
-    editor.checkpoint("format:fontWeight");
-    target.content.style = {
-      ...target.content.style,
-      fontWeight: weight,
-    };
-    if (editor.stylingWords) {
-      editor.formatText({ bold: weight >= 700 });
-    }
-    editor.textVersion += 1;
   }
 
   function setAlign(align: HorizontalAlign) {
@@ -85,13 +83,15 @@
     disabled={!box}
     aria-label={t("designer.weight")}
     title={t("designer.weight")}
-    onchange={(e) => setFontWeight(Number(e.currentTarget.value))}
+    onchange={(e) => editor.setFontWeight(Number(e.currentTarget.value))}
   >
-    <option value="300">{t("designer.light")}</option>
-    <option value="400">{t("designer.regular")}</option>
-    <option value="600">{t("designer.semibold")}</option>
-    <option value="700">{t("designer.bold")}</option>
-    <option value="900">{t("designer.black")}</option>
+    {#if !WEIGHTS.some(([weight]) => weight === fontWeight)}
+      <!-- A weight from an imported presentation. -->
+      <option value={String(fontWeight)}>{fontWeight}</option>
+    {/if}
+    {#each WEIGHTS as [weight, label] (weight)}
+      <option value={String(weight)}>{t(label)}</option>
+    {/each}
   </select>
   <input
     class="size"

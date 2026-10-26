@@ -22,6 +22,7 @@ export type StylePatch = {
   color?: string | null;
   fontSize?: number | null;
   fontFamily?: string | null;
+  fontWeight?: number | null;
 };
 
 /** No styling: plain text in the box's own style. */
@@ -38,6 +39,7 @@ export function styleOf(run: RunStyle): RunStyle {
   if (run.color) style.color = run.color;
   if (run.fontSize) style.fontSize = run.fontSize;
   if (run.fontFamily) style.fontFamily = run.fontFamily;
+  if (run.fontWeight) style.fontWeight = run.fontWeight;
   return style;
 }
 

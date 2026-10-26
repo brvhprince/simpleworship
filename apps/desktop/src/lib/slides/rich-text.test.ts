@@ -31,6 +31,17 @@ describe("applyStyle", () => {
     expect(applyStyle(styled, 0, 6, { color: null })).toEqual([plain("abcdef")]);
   });
 
+  it("gives some words their own weight, and keeps it through the editable HTML", () => {
+    const runs = applyStyle([plain("Call to Worship")], 8, 15, { fontWeight: 900, bold: false });
+    expect(runs.map((run) => [run.text, run.fontWeight ?? null])).toEqual([
+      ["Call to ", null],
+      ["Worship", 900],
+    ]);
+    const root = document.createElement("div");
+    root.innerHTML = runsToHtml(runs, base);
+    expect(runsFromDom(root)).toEqual(runs);
+  });
+
   it("keeps a styled empty run in an empty box, for typing", () => {
     expect(applyStyleToAll([plain("")], { bold: true })).toEqual([{ ...plain(""), bold: true }]);
   });

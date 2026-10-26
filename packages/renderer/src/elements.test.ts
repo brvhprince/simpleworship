@@ -18,6 +18,11 @@ describe("runStyle", () => {
     );
     expect(style).toBe("color: gold; font-weight: bolder; text-decoration: underline");
   });
+
+  it("gives words their own weight, which wins over bold", () => {
+    const run = { text: "x", bold: true, italic: false, underline: false, fontWeight: 300 };
+    expect(runStyle(run, base)).toBe("font-weight: 300");
+  });
 });
 
 describe("frameStyle", () => {
