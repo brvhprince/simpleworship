@@ -99,6 +99,12 @@ pub enum Event {
 const LEVEL_EVERY: Duration = Duration::from_millis(100);
 /// How long a device may take to start.
 const START_TIMEOUT: Duration = Duration::from_secs(10);
+/// Stack size for the whisper transcription worker thread (16 MiB).
+/// Windows defaults spawned threads to 1 MiB, which is insufficient for
+/// GGML/whisper.cpp matrix computations and causes stack overflow crashes.
+const TRANSCRIBE_STACK_SIZE: usize = 16 * 1024 * 1024;
+/// Stack size for audio capture and preprocessing threads (4 MiB).
+const WORKER_STACK_SIZE: usize = 4 * 1024 * 1024;
 
 /// Listening to a microphone. Stops when dropped.
 pub struct Listener {
@@ -125,6 +131,7 @@ impl Listener {
         let failed = on_event.clone();
         std::thread::Builder::new()
             .name("listen-capture".into())
+            .stack_size(WORKER_STACK_SIZE)
             .spawn(move || {
                 // The stream lives on this thread (it cannot move between
                 // threads on every system) until told to stop.
@@ -153,11 +160,13 @@ impl Listener {
 
         std::thread::Builder::new()
             .name("listen-transcribe".into())
+            .stack_size(TRANSCRIBE_STACK_SIZE)
             .spawn(move || transcribe_worker(speech_rx, transcriber, on_event_transcribe))
             .map_err(|error| Error::Device(error.to_string()))?;
 
         std::thread::Builder::new()
             .name("listen-audio".into())
+            .stack_size(WORKER_STACK_SIZE)
             .spawn(move || audio_worker(rate, heard, speech_tx, on_event))
             .map_err(|error| Error::Device(error.to_string()))?;
 
@@ -195,7 +204,7 @@ fn open(
         .default_input_config()
         .map_err(|error| Error::Device(error.to_string()))?;
     let channels = usize::from(config.channels()).max(1);
-    let rate = config.sample_rate().max(16_000);
+    let rate = config.sample_rate();
     let format = config.sample_format();
     let config = config.config();
 
@@ -287,18 +296,38 @@ fn audio_worker(
     let mut last_level = Instant::now();
 
     while let Ok(sound) = heard.recv() {
-        let samples = resampler.process(&sound);
-        loudest = loudest.max(audio::level(&samples));
-        if last_level.elapsed() >= LEVEL_EVERY {
-            // Speech is around 0.05–0.3; show it across most of the meter.
-            on_event(Event::Level((loudest * 4.0).min(1.0)));
-            loudest = 0.0;
-            last_level = Instant::now();
-        }
-        for piece in segmenter.push(&samples) {
-            // If the transcriber is still busy with previous speech and queue is full,
-            // try_send will drop this piece to avoid falling behind real-time.
-            let _ = speech_tx.try_send(piece);
+        let panic_result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let samples = resampler.process(&sound);
+            let piece_loudness = audio::level(&samples);
+            let pieces = segmenter.push(&samples);
+            (samples, piece_loudness, pieces)
+        }));
+
+        match panic_result {
+            Ok((_samples, piece_loudness, pieces)) => {
+                loudest = loudest.max(piece_loudness);
+                if last_level.elapsed() >= LEVEL_EVERY {
+                    // Speech is around 0.05–0.3; show it across most of the meter.
+                    on_event(Event::Level((loudest * 4.0).min(1.0)));
+                    loudest = 0.0;
+                    last_level = Instant::now();
+                }
+                for piece in pieces {
+                    // If the transcriber is still busy with previous speech and queue is full,
+                    // try_send will drop this piece to avoid falling behind real-time.
+                    let _ = speech_tx.try_send(piece);
+                }
+            }
+            Err(payload) => {
+                let msg = payload
+                    .downcast_ref::<&str>()
+                    .copied()
+                    .or_else(|| payload.downcast_ref::<String>().map(|s| s.as_str()))
+                    .unwrap_or("unknown panic in audio worker");
+                log::error!("audio worker panicked: {msg}");
+                on_event(Event::Failed(format!("audio worker error: {msg}")));
+                return;
+            }
         }
     }
 }
@@ -310,11 +339,25 @@ fn transcribe_worker(
     on_event: std::sync::Arc<dyn Fn(Event) + Send + Sync>,
 ) {
     while let Ok(piece) = speech_rx.recv() {
-        match transcriber.transcribe(&piece) {
-            Ok(words) if !words.is_empty() => on_event(Event::Words(words)),
-            Ok(_) => {}
-            Err(error) => {
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            transcriber.transcribe(&piece)
+        }));
+        match result {
+            Ok(Ok(words)) if !words.is_empty() => on_event(Event::Words(words)),
+            Ok(Ok(_)) => {}
+            Ok(Err(error)) => {
+                log::warn!("transcribe failed: {error}");
                 on_event(Event::Failed(error.to_string()));
+                return;
+            }
+            Err(payload) => {
+                let msg = payload
+                    .downcast_ref::<&str>()
+                    .copied()
+                    .or_else(|| payload.downcast_ref::<String>().map(|s| s.as_str()))
+                    .unwrap_or("unknown panic in transcribe worker");
+                log::error!("transcribe worker panicked: {msg}");
+                on_event(Event::Failed(format!("transcription panicked: {msg}")));
                 return;
             }
         }

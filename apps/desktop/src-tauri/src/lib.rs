@@ -83,6 +83,12 @@ pub fn run() {
         .manage(assistant::AssistantState::default())
         .manage(link::LinkState::default())
         .setup(|app| {
+            let default_panic = std::panic::take_hook();
+            std::panic::set_hook(Box::new(move |info| {
+                log::error!("unhandled panic: {info}");
+                default_panic(info);
+            }));
+
             log::info!("SimpleWorship {} starting", app.package_info().version);
             let state = AppState::load(app.handle())?;
             let recent = state.recent().list();

@@ -19,6 +19,7 @@ const NOT_SPEECH: f32 = 0.6;
 
 /// A loaded Whisper model, ready to turn pieces of speech into text.
 pub struct Transcriber {
+    _context: WhisperContext,
     state: WhisperState,
     threads: i32,
 }
@@ -41,11 +42,31 @@ impl Transcriber {
         let threads = (cores / 2).clamp(1, 4) as i32;
         #[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
         let threads = (cores / 3).clamp(1, 2) as i32;
-        Ok(Self { state, threads })
+        Ok(Self {
+            _context: context,
+            state,
+            threads,
+        })
     }
 
     /// The words in a piece of 16 kHz speech.
     pub fn transcribe(&mut self, audio: &[f32]) -> Result<String, Error> {
+        // Sanitize any non-finite floats (NaN/Inf) which can cause GGML assertions to abort.
+        let mut sanitized;
+        let audio = if audio.iter().any(|s| !s.is_finite()) {
+            sanitized = audio.to_vec();
+            for s in &mut sanitized {
+                if !s.is_finite() {
+                    *s = 0.0;
+                } else {
+                    *s = s.clamp(-1.0, 1.0);
+                }
+            }
+            &sanitized[..]
+        } else {
+            audio
+        };
+
         // Whisper needs at least a second.
         let mut padded;
         let audio = if audio.len() < SAMPLE_RATE as usize {

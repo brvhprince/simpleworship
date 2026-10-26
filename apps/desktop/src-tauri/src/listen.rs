@@ -364,7 +364,7 @@ async fn start(app: &AppHandle) -> AppResult<()> {
 
 /// What the listener reports, passed on to the windows.
 fn on_event(app: &AppHandle, event: sw_listen::Event) {
-    match event {
+    let _ = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| match event {
         sw_listen::Event::Level(level) => {
             let _ = app.emit(LEVEL_EVENT, level);
         }
@@ -389,7 +389,7 @@ fn on_event(app: &AppHandle, event: sw_listen::Event) {
             }
             announce(app);
         }
-    }
+    }));
 }
 
 /// Downloads a speech model, reporting progress in the status, and checks
