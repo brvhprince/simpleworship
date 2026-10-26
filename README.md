@@ -35,9 +35,9 @@
 <br>
 
 <p align="center">
-  <img src="docs/images/hero.png" alt="The SimpleWorship operator window during a service: the schedule on the left, the next song in preview, a verse of Amazing Grace live, and the song library along the bottom" width="100%">
+  <img src="docs/images/hero.jpg" alt="The SimpleWorship operator window during a Sunday service: the order of service on the left, the chorus of When We Walk with the Lord in preview, its first verse live on a red background, and the song library along the bottom" width="100%">
   <br>
-  <sub>Schedule on the left, preview in the middle, live on the right, and the library along the bottom.</sub>
+  <sub>A Sunday service: the schedule on the left, the next slide in preview, the live slide on the right, and the library along the bottom.</sub>
 </p>
 
 <p align="center">
@@ -80,65 +80,103 @@
 <table>
   <tr>
     <td width="50%" valign="top">
-      <img src="docs/images/scripture.png" alt="The Scripture tab with John 3:16-18 typed in, shown in preview in the King James Version and the Asante Twi Bible side by side" width="100%">
+      <img src="docs/images/scripture.jpg" alt="The Scripture tab with John 3:16-18 typed in, shown in preview in the King James Version and the Asante Twi Bible side by side, with the chapter's verses listed below" width="100%">
       <br>
       <sub>John 3:16–18 in the KJV and the Asante Twi Bible, side by side.</sub>
       <h3>Scripture as fast as it is said</h3>
-      Type a reference the way you would say it (<code>jn 3:16-18</code>, <code>1 cor 13</code>, <code>ps 23</code>) or pick book, chapter and verses. Show two translations side by side. Long passages flow onto the next slide before the words get too small to read.
-      <br><br>
-      Four Bibles are included, and <b>Get More Bibles</b> downloads any of eBible.org's freely shared translations: over 1,200, in more than 130 languages.
+      Type a reference the way you would say it (<code>jn 3:16-18</code>, <code>1 cor 13</code>, <code>ps 23</code>) or pick book, chapter and verses. Show two translations side by side. Long passages flow onto the next slide before the words get too small to read, at a minimum size you choose.
     </td>
     <td width="50%" valign="top">
-      <img src="docs/images/listen.png" alt="Listen at work: the references the preacher read appear at the top of the Scripture tab, the newest one previewed" width="100%">
+      <img src="docs/images/listen.jpg" alt="Listen at work: John 5:14, John 5, Isaiah 60:22 and Isaiah 60:21 heard during the sermon, listed at the top of the Scripture tab, with Isaiah 60:22 in preview and John 5:14 live" width="100%">
       <br>
-      <sub>Every reference the preacher reads, waiting at the top of the Scripture tab.</sub>
+      <sub>Every reference the preacher read, waiting at the top of the Scripture tab.</sub>
       <h3>Listen: it hears the preacher</h3>
-      Choose the mixer's feed, and every passage that is read ("John chapter three, verse sixteen", "Romans 8:28 to 30", "verse seventeen") appears in the Scripture tab. Press <b>H</b> to preview the newest; double-click to send it live. Nothing goes live by itself.
+      Choose the mixer's feed, and every passage that is read ("John chapter five, verse fourteen", "Isaiah 60:22", "verse twenty-one") appears in the Scripture tab. Press <b>H</b> to preview the newest; double-click to send it live. Nothing goes live by itself.
       <br><br>
       Speech to text (Whisper) runs on the computer, so it works offline and no sound leaves the church.
     </td>
   </tr>
   <tr>
     <td width="50%" valign="top">
-      <img src="docs/images/themes.png" alt="The theme designer: a scripture theme with a photo background, the text box dragged into place, and the reference placed under the verses" width="100%">
+      <img src="docs/images/get-more-bibles.jpg" alt="The Get More Bibles window listing freely shared English Bibles from eBible.org, one of them downloading" width="100%">
       <br>
-      <sub>Designing a scripture theme, with the reference under the verses.</sub>
+      <sub>Get More Bibles: search eBible.org's freely shared translations and download one.</sub>
+      <h3>Over a thousand Bibles, a click away</h3>
+      The King James Version, the World English Bible, the Asante Twi Bible and the French Louis Segond are included. <b>Get More Bibles</b> downloads any of eBible.org's freely shared translations: over 1,200, in more than 130 languages, including Akuapem Twi.
+      <br><br>
+      You can also bring Bibles across from EasyWorship, or import OSIS, Zefania, OpenSong, USX and USFM files.
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/images/themes.jpg" alt="The theme designer: a scripture theme with a moving video background, the text area outlined for dragging, and settings for fonts, shadow, verse numbers and the reference" width="100%">
+      <br>
+      <sub>A scripture theme with a video background, in the theme designer.</sub>
       <h3>Themes that look like your church</h3>
-      Fonts, colours, outline and shadow, a text box you drag into place, and a colour, gradient, picture, looping video or live camera behind it. Themes are made for songs, scripture, presentations or text, and show only the settings that matter for each.
+      Fonts, colours, outline and shadow, a text area you drag into place, and a colour, gradient, picture, looping video or live camera behind it. Themes are made for songs, scripture, presentations or text, and show only the settings that matter for each.
       <br><br>
       Short words can grow to fill the screen, and every picture or video keeps its own scaling (stretch, fit or fill) wherever it is used.
     </td>
+  </tr>
+  <tr>
     <td width="50%" valign="top">
-      <img src="docs/images/presentations.png" alt="The presentation editor: an announcement slide with a title, a body text box and a picture, with the format bar and the Inspector open" width="100%">
+      <img src="docs/images/presentations.jpg" alt="The presentation editor: a church announcement slide with a gold heading and some words picked out in gold, the slide list on the left and the Inspector on the right" width="100%">
       <br>
-      <sub>An announcement slide in the presentation editor.</sub>
+      <sub>Announcements in the presentation editor, with some words picked out in gold.</sub>
       <h3>Presentations without PowerPoint</h3>
       A slide editor for announcements, prayer points and sermon notes: text boxes, shapes, pictures and videos anywhere on the slide, with snap guides. Give any words their own font, weight, size or colour. New Slide reuses the layout, so the next prayer point is just typing.
       <br><br>
       PDF slides import page by page, and PowerPoint and Keynote files too when LibreOffice is installed.
     </td>
-  </tr>
-  <tr>
     <td width="50%" valign="top">
-      <img src="docs/images/songs.png" alt="The song editor with Amazing Grace: sections tagged Verse 1 to Verse 6 on the left, the live slide preview on the right" width="100%">
+      <img src="docs/images/songs.jpg" alt="The song editor with When We Walk with the Lord: title, author, CCLI song number and lyrics with section tags, and a preview of every slide on the right" width="100%">
       <br>
-      <sub>The song editor, with a live preview of every slide.</sub>
+      <sub>The song editor, with a preview of every slide.</sub>
       <h3>Songs in two letters</h3>
       Search titles, writers and every line of the lyrics. Jump to a section with a key: <b>V 2</b> for verse two, <b>C</b> for the chorus. Fix a typo mid-service and it is fixed on the screen too.
       <br><br>
       Bring your library across from EasyWorship 6/7, OpenLP, ProPresenter, OpenLyrics, ChordPro and SongSelect. Every song shown is logged for your CCLI report.
     </td>
+  </tr>
+  <tr>
     <td width="50%" valign="top">
-      <img src="docs/images/stream.png" alt="OBS showing the camera with the lyrics as a lower third from SimpleWorship's stream output" width="100%">
+      <img src="docs/images/schedule-grid.jpg" alt="The schedule in its picture layout, each item shown by its first slide, with the media library of looping videos and pictures below" width="100%">
       <br>
-      <sub>The stream output as a lower third over the camera in OBS.</sub>
-      <h3>Every screen in the building</h3>
-      The projector, a stage display with the speaker's timer, and a look of its own for the livestream: a lower third on a see-through background for OBS, vMix or Streamlabs, as a browser source, a window or <b>NDI</b>.
+      <sub>The schedule as pictures, and the media library below.</sub>
+      <h3>Run the service your way</h3>
+      Build the order of service by dragging, and see it as a list, as cards, or as pictures of each item's first slide. Next carries on into the next item, and the one after waits in preview. Quick Text is a click away from anywhere.
       <br><br>
-      Phones and tablets on the church Wi-Fi become remotes, and a second computer can join as another operator or take over if the first one stops.
+      Pictures, looping videos and cameras for backgrounds or on their own, a video as the church logo, and background music with a fade-out.
+    </td>
+    <td width="50%" valign="top">
+      <img src="docs/images/alert.jpg" alt="An alert, Parent of child #22, please come to the nursery, shown along the bottom of the live slide while the sermon slides continue" width="100%">
+      <br>
+      <sub>A nursery alert over the live slide.</sub>
+      <h3>Alerts, countdowns and the stage</h3>
+      A nursery or car-park message over the slides, scrolling or still; saved templates take a number in one step. Countdowns to the start of the service. A stage display with the speaker's timer and messages only the stage sees.
+      <br><br>
+      Black, Logo, Clear Text and Clear Background are one key each: F6 to F9.
     </td>
   </tr>
 </table>
+
+<br>
+
+### Every screen in the building
+
+<p align="center">
+  <img src="docs/images/stream.jpg" alt="OBS showing SimpleWorship's stream output over NDI: John 2:1 in the KJV and Akuapem Twi as a lower third on a see-through background" width="100%">
+  <br>
+  <sub>The livestream look in OBS over NDI: scripture as a lower third on a see-through background, ready to sit over the camera.</sub>
+</p>
+
+The projector, a stage display, and a look of its own for the livestream: by default a lower third on a see-through background for OBS, vMix or Streamlabs, as a browser source, a window or <b>NDI</b>. Another SimpleWorship computer can join as a second operator or a mirror, and take over if the first one stops.
+
+<p align="center">
+  <img src="docs/images/phones.jpg" alt="The phone remote on five screens: the live slide with Previous and Next, the schedule, the song library, a Bible reference ready to go live, and alerts" width="100%">
+  <br>
+  <sub>The phone remote: live controls, the schedule, songs, the Bible and alerts, in the phone's browser.</sub>
+</p>
+
+Phones and tablets on the church Wi-Fi become remotes: scan a QR code, nothing to install. Each phone gets a role, from full control to just Next and Previous for the preacher or alerts for the nursery.
 
 <br>
 
