@@ -321,6 +321,13 @@ async fn start(app: &AppHandle) -> AppResult<()> {
     if !is_ready(app, settings.model) {
         return Err(AppError::Listen("download the speech model first".into()));
     }
+    // Whisper runs in a helper process: this same app, started with
+    // `--listen-helper` (see `main.rs`), so a crash in it cannot close the
+    // app during a service. Worked out before marking Listen as starting,
+    // so a failure here cannot leave it stuck "starting".
+    let path = model_path(app, settings.model)?;
+    let helper = sw_listen::worker::HelperCommand::this_executable(&path)
+        .map_err(|error| AppError::Listen(error.to_string()))?;
     {
         let mut listening = lock(app);
         if listening.starting {
@@ -332,20 +339,17 @@ async fn start(app: &AppHandle) -> AppResult<()> {
     }
     announce(app);
 
-    let path = model_path(app, settings.model)?;
-    // Whisper runs in a helper process: this same app, started with
-    // `--listen-helper` (see `main.rs`), so a crash in it cannot close the
-    // app during a service.
-    let helper = sw_listen::worker::HelperCommand::this_executable(&path)
-        .map_err(|error| AppError::Listen(error.to_string()))?;
     let events = app.clone();
+    // From here on every outcome goes through `started`, which clears
+    // `starting` below.
     let started = tauri::async_runtime::spawn_blocking(move || {
         sw_listen::Listener::start(settings.device.as_deref(), &helper, move |event| {
             on_event(&events, event);
         })
     })
     .await
-    .map_err(|error| AppError::Listen(error.to_string()))?;
+    .map_err(|error| sw_listen::Error::Device(error.to_string()))
+    .and_then(|started| started);
 
     let result = {
         let mut listening = lock(app);

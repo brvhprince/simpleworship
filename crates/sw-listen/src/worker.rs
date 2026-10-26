@@ -203,9 +203,26 @@ impl HelperCommand {
 /// written down.
 pub(crate) type HelperSlot = Arc<Mutex<Option<Child>>>;
 
-/// Ends the helper in `slot`, if there is one, and waits for it.
+/// Ends the helper in `slot`, whichever it is, and waits for it (for
+/// stopping Listen, and for a frozen helper).
 pub(crate) fn stop_helper(slot: &HelperSlot) {
     let child = slot.lock().unwrap_or_else(PoisonError::into_inner).take();
+    end(child);
+}
+
+/// Takes the helper out of `slot` if it is still the one with process
+/// `id`: a [`Helper`] must never end the one started to replace it.
+fn take_own(slot: &HelperSlot, id: u32) -> Option<Child> {
+    let mut current = slot.lock().unwrap_or_else(PoisonError::into_inner);
+    if current.as_ref().is_some_and(|child| child.id() == id) {
+        current.take()
+    } else {
+        None
+    }
+}
+
+/// Ends `child`, if any, and waits for it, so it does not linger.
+fn end(child: Option<Child>) {
     if let Some(mut child) = child {
         let _ = child.kill();
         let _ = child.wait();
@@ -215,6 +232,9 @@ pub(crate) fn stop_helper(slot: &HelperSlot) {
 /// A running helper, ready for speech (the app's side).
 pub struct Helper {
     slot: HelperSlot,
+    /// Its process id: the slot may hold a newer helper by the time this
+    /// one is dropped.
+    id: u32,
     input: BufWriter<ChildStdin>,
     output: BufReader<ChildStdout>,
     /// The last thing the helper wrote to standard error, for the message
@@ -241,12 +261,15 @@ impl Helper {
                 .spawn(move || forward_complaints(stderr, &last));
         }
         let (Some(input), Some(output)) = (child.stdin.take(), child.stdout.take()) else {
+            end(Some(child));
             return Err(Error::Helper("its input and output are missing".into()));
         };
+        let id = child.id();
         *slot.lock().unwrap_or_else(PoisonError::into_inner) = Some(child);
 
         let mut helper = Self {
             slot,
+            id,
             input: BufWriter::new(input),
             output: BufReader::new(output),
             last_complaint,
@@ -264,17 +287,13 @@ impl Helper {
     /// Why the helper is no longer answering: how it ended, and the last
     /// thing it complained about.
     fn stopped(&mut self) -> Error {
-        let child = self
-            .slot
-            .lock()
-            .unwrap_or_else(PoisonError::into_inner)
-            .take();
-        let ended = match child {
+        let ended = match take_own(&self.slot, self.id) {
             Some(mut child) => match child.wait() {
                 Ok(status) => describe_exit(status),
                 Err(error) => error.to_string(),
             },
-            // Taken by `stop_helper`: listening was stopped on purpose.
+            // Taken by `stop_helper`: listening was stopped, or the
+            // helper had frozen.
             None => "it was stopped".into(),
         };
         // Give the log thread a moment to read its last words.
@@ -307,7 +326,7 @@ impl SpeechToText for Helper {
 
 impl Drop for Helper {
     fn drop(&mut self) {
-        stop_helper(&self.slot);
+        end(take_own(&self.slot, self.id));
     }
 }
 
@@ -449,6 +468,35 @@ mod tests {
         let mut out = Vec::new();
         reply(&mut out, Ok("John 3:16\nsays")).unwrap();
         assert_eq!(out, b"words John 3:16 says\n");
+    }
+
+    /// A stand-in helper: says it is ready, then reads until told to stop.
+    #[cfg(unix)]
+    fn stand_in() -> HelperCommand {
+        HelperCommand {
+            program: "/bin/sh".into(),
+            args: vec!["-c".into(), "echo ready; cat > /dev/null".into()],
+        }
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn replacing_a_helper_keeps_the_new_one_running() {
+        let slot = HelperSlot::default();
+        let old = Helper::start(&stand_in(), slot.clone()).unwrap();
+        let new = Helper::start(&stand_in(), slot.clone()).unwrap();
+        // What `Transcribing::run` does after a restart: `speech = helper`.
+        drop(old);
+        let mut current = slot.lock().unwrap();
+        let child = current
+            .as_mut()
+            .expect("the new helper is still in the slot");
+        assert_eq!(child.id(), new.id);
+        assert!(child.try_wait().unwrap().is_none(), "and still running");
+        drop(current);
+
+        drop(new);
+        assert!(slot.lock().unwrap().is_none(), "dropping it ends it");
     }
 
     /// Runs a real helper: the app's executable with a downloaded model and
