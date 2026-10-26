@@ -106,8 +106,9 @@ fn install_missing_bundled(app: &AppHandle) -> AppResult<()> {
             copyright.clone_into(&mut bible.copyright);
         }
 
-        let info = database.bibles().import(&bible, Some(bundled.key))?;
-        database.bibles().set_source(info.id, bundled.source)?;
+        database
+            .bibles()
+            .import_from(&bible, Some(bundled.key), Some(bundled.source))?;
         announce(app);
     }
     Ok(())

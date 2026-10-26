@@ -64,6 +64,18 @@ impl<'db> Bibles<'db> {
         bible: &BibleData,
         bundled_key: Option<&str>,
     ) -> Result<BibleInfo, DbError> {
+        self.import_from(bible, bundled_key, None)
+    }
+
+    /// Like [`Bibles::import`], also recording where the Bible came from
+    /// (see [`Bibles::set_source`]) in the same transaction, so a Bible is
+    /// never stored without it.
+    pub fn import_from(
+        &self,
+        bible: &BibleData,
+        bundled_key: Option<&str>,
+        source: Option<&str>,
+    ) -> Result<BibleInfo, DbError> {
         let id = Id::new();
         let now = time::now();
         let transaction = self.conn.unchecked_transaction()?;
@@ -71,8 +83,8 @@ impl<'db> Bibles<'db> {
         transaction
             .prepare_cached(
                 "INSERT INTO bibles (id, name, abbreviation, language, copyright, bundled_key,
-                                     created_at, updated_at)
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7)",
+                                     source, created_at, updated_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?8)",
             )?
             .execute(params![
                 id.to_string(),
@@ -81,6 +93,7 @@ impl<'db> Bibles<'db> {
                 bible.language,
                 bible.copyright,
                 bundled_key,
+                source,
                 now,
             ])?;
         let bible_seq = transaction.last_insert_rowid();
@@ -322,6 +335,12 @@ mod tests {
 
         assert!(bibles.set_source(info.id, "ebible:twi").unwrap());
         assert_eq!(bibles.sources().unwrap(), ["ebible:twi"]);
+
+        let other = bibles
+            .import_from(&sample(), None, Some("ebible:engbsb"))
+            .unwrap();
+        assert_eq!(bibles.sources().unwrap().len(), 2, "recorded on import");
+        bibles.delete(other.id).unwrap();
 
         bibles.delete(info.id).unwrap();
         assert!(bibles.sources().unwrap().is_empty(), "deleting forgets it");

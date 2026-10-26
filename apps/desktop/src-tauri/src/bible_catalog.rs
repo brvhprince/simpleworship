@@ -12,7 +12,9 @@
 //! and copyright line, and remembers where it came from (`ebible:<id>`), so
 //! the catalogue can show it as installed.
 
+use std::collections::HashSet;
 use std::path::PathBuf;
+use std::sync::{Mutex, OnceLock, PoisonError};
 use std::time::{Duration, SystemTime};
 
 use serde::{Deserialize, Serialize};
@@ -118,9 +120,22 @@ pub async fn bible_catalog(app: AppHandle, refresh: bool) -> AppResult<BibleCata
         (std::fs::read_to_string(&path)?, false)
     } else {
         match fetch_catalog().await {
-            Ok(text) => {
+            // Only a real catalogue replaces the kept one: an error page
+            // would otherwise look fresh for a week and list nothing.
+            Ok(text) if has_catalog_columns(&text) => {
                 crate::files::write_atomically(&path, text.as_bytes())?;
                 (text, false)
+            }
+            Ok(_) => {
+                log::warn!("bibles: eBible.org sent something that is not its catalogue");
+                match std::fs::read_to_string(&path) {
+                    Ok(text) => (text, true),
+                    Err(_) => {
+                        return Err(AppError::Download(
+                            "eBible.org did not send its list of Bibles".into(),
+                        ));
+                    }
+                }
             }
             Err(error) => {
                 log::warn!("bibles: could not fetch eBible.org's catalogue: {error}");
@@ -144,6 +159,9 @@ pub async fn bible_catalog(app: AppHandle, refresh: bool) -> AppResult<BibleCata
 /// progress as [`DOWNLOAD_EVENT`]. Resolves to the new Bible.
 #[tauri::command]
 pub async fn bible_catalog_install(app: AppHandle, id: String) -> AppResult<BibleInfo> {
+    // One download of each Bible at a time: two at once could both find it
+    // missing, share one zip, and import it twice.
+    let _installing = Installing::start(&id)?;
     // Only what the kept catalogue offers: this also keeps `id` to the
     // letters, digits and dashes eBible.org uses, so it is safe in a URL
     // and a file name.
@@ -181,6 +199,38 @@ pub async fn bible_catalog_install(app: AppHandle, id: String) -> AppResult<Bibl
     result
 }
 
+/// A Bible being downloaded and imported; dropping it ends that. See
+/// [`Installing::start`].
+struct Installing(String);
+
+impl Installing {
+    /// Marks the Bible `id` as being installed, or fails if it already is.
+    fn start(id: &str) -> AppResult<Self> {
+        let mut busy = installing().lock().unwrap_or_else(PoisonError::into_inner);
+        if !busy.insert(id.to_owned()) {
+            return Err(AppError::Download(
+                "that Bible is already downloading".into(),
+            ));
+        }
+        Ok(Self(id.to_owned()))
+    }
+}
+
+impl Drop for Installing {
+    fn drop(&mut self) {
+        installing()
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .remove(&self.0);
+    }
+}
+
+/// The ids of the Bibles being installed right now.
+fn installing() -> &'static Mutex<HashSet<String>> {
+    static INSTALLING: OnceLock<Mutex<HashSet<String>>> = OnceLock::new();
+    INSTALLING.get_or_init(Mutex::default)
+}
+
 /// Imports the downloaded `zip` of `entry`, with the catalogue's name and
 /// copyright, and remembers where it came from.
 fn install(app: &AppHandle, zip: &std::path::Path, entry: &CatalogBible) -> AppResult<BibleInfo> {
@@ -192,10 +242,8 @@ fn install(app: &AppHandle, zip: &std::path::Path, entry: &CatalogBible) -> AppR
         entry.language_code.clone_into(&mut bible.language);
     }
     let database = Database::open(&app.state::<AppState>().database_path)?;
-    let info = database.bibles().import(&bible, None)?;
-    database
-        .bibles()
-        .set_source(info.id, &format!("{SOURCE_PREFIX}{}", entry.id))?;
+    let source = format!("{SOURCE_PREFIX}{}", entry.id);
+    let info = database.bibles().import_from(&bible, None, Some(&source))?;
     bibles::announce(app);
     log::info!("bibles: installed {} from eBible.org", entry.id);
     Ok(info)
@@ -278,6 +326,37 @@ fn installed_ids(app: &AppHandle) -> AppResult<Vec<String>> {
         .into_iter()
         .filter_map(|source| source.strip_prefix(SOURCE_PREFIX).map(str::to_owned))
         .collect())
+}
+
+/// The columns of `translations.csv` the catalogue is read from.
+const COLUMNS: [&str; 12] = [
+    "translationId",
+    "languageCode",
+    "languageName",
+    "languageNameInEnglish",
+    "title",
+    "shortTitle",
+    "Copyright",
+    "Redistributable",
+    "downloadable",
+    "OTbooks",
+    "NTbooks",
+    "textDirection",
+];
+
+/// Whether `text` starts with the header of eBible.org's catalogue (all of
+/// [`COLUMNS`]). A catalogue may still list nothing after filtering, so
+/// this, not the number of entries, tells a good download from a bad one.
+fn has_catalog_columns(text: &str) -> bool {
+    let first_line = text
+        .trim_start_matches('\u{feff}')
+        .lines()
+        .next()
+        .unwrap_or("");
+    let header = csv_rows(first_line).into_iter().next().unwrap_or_default();
+    COLUMNS
+        .iter()
+        .all(|wanted| header.iter().any(|column| column == wanted))
 }
 
 /// The downloadable, freely shared translations in eBible.org's
@@ -471,6 +550,26 @@ mod tests {
             "the title when there is no short one"
         );
         assert_eq!(bibles[1].coverage, Coverage::NewTestament);
+    }
+
+    #[test]
+    fn only_a_real_catalogue_replaces_the_kept_one() {
+        assert!(has_catalog_columns(HEADER));
+        assert!(has_catalog_columns(&format!("{HEADER}\"eng\",\"x\"\n")));
+        assert!(!has_catalog_columns(
+            "<html><body>Service unavailable</body></html>"
+        ));
+        assert!(!has_catalog_columns("\"translationId\",\"title\"\n"));
+        assert!(!has_catalog_columns(""));
+    }
+
+    #[test]
+    fn a_bible_installs_once_at_a_time() {
+        let first = Installing::start("engbsb").unwrap();
+        assert!(Installing::start("engbsb").is_err(), "not twice at once");
+        assert!(Installing::start("twi").is_ok(), "others may");
+        drop(first);
+        assert!(Installing::start("engbsb").is_ok(), "and again once done");
     }
 
     #[test]
