@@ -105,10 +105,11 @@
     overflow-wrap: normal;
   }
 
-  /* Scripture: translations side by side, sharing one font size. */
+  /* Scripture: translations side by side, sharing one font size. The gap
+     is a share of the width, not em: see ScriptureText for why. */
   .columns {
     display: flex;
-    gap: 1.2em;
+    gap: 4%;
     white-space: normal;
   }
 
@@ -116,8 +117,9 @@
     white-space: pre-line;
   }
 
+  /* A share of the width, not em, for the same reason as the columns' gap. */
   .content > .label:first-of-type {
-    margin-top: 0.4em;
+    margin-top: 2%;
   }
 
   .bold {

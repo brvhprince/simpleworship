@@ -30,7 +30,8 @@
     <p>
       {#each column.verses as line, index (index)}
         {#if showNumbers && !line.continued}
-          <span class="number" style={numberStyle}>{line.number}</span>
+          <!-- A thin space, not a margin: it scales with the number (see the styles). -->
+          <span class="number" style={numberStyle}>{line.number}{"\u2009"}</span>
         {/if}
         {line.text}{" "}
       {/each}
@@ -44,18 +45,22 @@
     min-width: 0;
   }
 
+  /*
+   * No lengths in em here other than font sizes. The text is sized by
+   * autofit, which changes the box's font size many times in a row, and
+   * iOS 27's WebKit does not update em-based gaps, margins and letter
+   * spacing for those changes: they kept the values of autofit's first,
+   * largest try, which squeezed two-translation scripture into narrow
+   * columns at the edges of the phone remote's preview. Spacing comes from
+   * line height, percentages and characters instead.
+   */
   .translation {
     font-size: 0.45em;
-    letter-spacing: 0.08em;
+    line-height: 1.8;
     opacity: 0.75;
-    margin-bottom: 0.4em;
   }
 
   p {
     margin: 0;
-  }
-
-  .number {
-    margin-right: 0.15em;
   }
 </style>
