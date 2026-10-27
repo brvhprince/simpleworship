@@ -296,7 +296,8 @@ fn read_bible(row: &Row<'_>) -> rusqlite::Result<BibleInfo> {
         name: row.get(1)?,
         abbreviation: row.get(2)?,
         language: row.get(3)?,
-        copyright: row.get(4)?,
+        // Bibles imported from EasyWorship before 0.7.1 kept the notice as RTF.
+        copyright: sw_rtf::plain_line(&row.get::<_, String>(4)?),
         bundled: row.get(5)?,
         verse_count: row.get(6)?,
     })

@@ -18,6 +18,7 @@ sw-db = { path = "crates/sw-db" }
 sw-files = { path = "crates/sw-files" }
 sw-import = { path = "crates/sw-import" }
 sw-ndi = { path = "crates/sw-ndi" }
+sw-rtf = { path = "crates/sw-rtf" }
 sw-server = { path = "crates/sw-server" }
 
 # Shared third-party crates

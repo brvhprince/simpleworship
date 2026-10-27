@@ -66,7 +66,8 @@ pub fn read(path: &Path) -> Result<BibleData, ImportError> {
             bible.name = text(0)?;
             bible.abbreviation = text(1)?;
             bible.language = text(2)?.to_lowercase();
-            bible.copyright = text(3)?;
+            // EasyWorship keeps the notice as RTF: show its words only.
+            bible.copyright = sw_rtf::plain_line(&text(3)?);
             Ok(())
         },
     )
@@ -268,5 +269,20 @@ mod tests {
         let path = folder.path().join("TWI.ewb");
         make_ewb(&path, &VERSES, true);
         assert_eq!(texts(&read(&path).unwrap()), VERSES);
+    }
+
+    #[test]
+    fn reads_a_copyright_kept_as_rtf_as_plain_words() {
+        let folder = tempfile::tempdir().unwrap();
+        let path = folder.path().join("HCSB.ewb");
+        make_ewb(&path, &VERSES, false);
+        Connection::open(&path)
+            .unwrap()
+            .execute(
+                "UPDATE header SET copyright = ?1",
+                [r"{\rtf1\ansi\deff0{\fonttbl{\f0\fnil Courier New;}}\pard\f0 Holman Bible Publishers\par}"],
+            )
+            .unwrap();
+        assert_eq!(read(&path).unwrap().copyright, "Holman Bible Publishers");
     }
 }
