@@ -29,6 +29,7 @@
     sampleScripture,
     sampleText,
   } from "../../lib/samples.ts";
+  import { validMinFontSize } from "../../lib/scripture-state.svelte.ts";
   import BackgroundEditor from "./BackgroundEditor.svelte";
   import ColorField from "./ColorField.svelte";
   import LabelEditor from "./LabelEditor.svelte";
@@ -491,6 +492,36 @@
             >
             {t("designer.everySlide")}
           </label>
+          <div class="row">
+            <label class="inline" title={t("scripture.autoFlowHint")}>
+              <input
+                type="checkbox"
+                checked={draft.theme.scripture.autoFlow}
+                onchange={(e) =>
+                  (draft.theme.scripture = {
+                    ...draft.theme.scripture,
+                    autoFlow: e.currentTarget.checked,
+                  })}
+              >
+              {t("scripture.autoFlow")}
+            </label>
+            {#if draft.theme.scripture.autoFlow}
+              <label class="inline" title={t("scripture.minFontSizeHint")}>
+                {t("scripture.minFontSize")}
+                <input
+                  type="number"
+                  min="16"
+                  max="120"
+                  value={draft.theme.scripture.minFontSize}
+                  onchange={(e) =>
+                    (draft.theme.scripture = {
+                      ...draft.theme.scripture,
+                      minFontSize: validMinFontSize(e.currentTarget.value),
+                    })}
+                >
+              </label>
+            {/if}
+          </div>
         </section>
 
         <section>

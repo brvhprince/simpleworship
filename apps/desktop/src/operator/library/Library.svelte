@@ -112,7 +112,7 @@
         onclick={() => (quickTextOpen = !quickTextOpen)}
         title={t("library.quickTextHint")}
       >
-        ⚡ {t("library.quickText")}
+        + {t("library.quickText")}
       </button>
 
       {#if quickTextOpen}

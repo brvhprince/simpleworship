@@ -34,7 +34,7 @@
   import { t } from "../../lib/i18n/i18n.svelte.ts";
   import { link } from "../../lib/link.svelte.ts";
   import { type Heard, listen } from "../../lib/listen.svelte.ts";
-  import { scriptureState, validMinFontSize } from "../../lib/scripture-state.svelte.ts";
+  import { scriptureState } from "../../lib/scripture-state.svelte.ts";
   import HeardStrip from "./HeardStrip.svelte";
   import ManageBibles from "./ManageBibles.svelte";
 
@@ -44,8 +44,6 @@
   let primaryId: string | null = $state(scriptureState.primaryId);
   let secondaryId: string | null = $state(scriptureState.secondaryId);
   let maxVerses = $state(scriptureState.maxVerses);
-  let autoFlow = $state(scriptureState.autoFlow);
-  let minFontSize = $state(scriptureState.minFontSize);
   let verseNumbers = $state<boolean | null>(scriptureState.verseNumbers);
 
   let query = $state(scriptureState.query);
@@ -70,8 +68,6 @@
     scriptureState.primaryId = primaryId;
     scriptureState.secondaryId = secondaryId;
     scriptureState.maxVerses = maxVerses;
-    scriptureState.autoFlow = autoFlow;
-    scriptureState.minFontSize = minFontSize;
     scriptureState.saveSettings();
   });
 
@@ -91,8 +87,6 @@
     maxVerses,
     maxChars: 300,
     verseNumbers,
-    autoFlow,
-    minFontSize: validMinFontSize(minFontSize),
   });
 
   /** Whether the scripture theme shows verse numbers. */
@@ -457,23 +451,6 @@
       >
       {t("scripture.verseNumbers")}
     </label>
-    <label class="option" title={t("scripture.autoFlowHint")}>
-      <input type="checkbox" bind:checked={autoFlow}>
-      {t("scripture.autoFlow")}
-    </label>
-    {#if autoFlow}
-      <label class="option" title={t("scripture.minFontSizeHint")}>
-        {t("scripture.minFontSize")}
-        <input
-          type="number"
-          min="16"
-          max="120"
-          class="min-font-size"
-          bind:value={minFontSize}
-          onchange={() => (minFontSize = validMinFontSize(minFontSize))}
-        >
-      </label>
-    {/if}
 
     <span class="spacer"></span>
     {#if !link.joined}
@@ -741,14 +718,5 @@
   .hint {
     padding: var(--sw-space-3);
     color: var(--sw-text-faint);
-  }
-
-  .min-font-size {
-    width: 52px;
-    padding: 2px 4px;
-    background: var(--sw-surface-raised);
-    border: 1px solid var(--sw-border);
-    border-radius: var(--sw-radius-small);
-    color: var(--sw-text);
   }
 </style>

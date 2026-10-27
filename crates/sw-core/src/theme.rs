@@ -450,13 +450,28 @@ pub struct ScriptureStyle {
     pub verse_numbers: VerseNumberStyle,
     /// Show the reference on every slide of a passage, or only on the first.
     pub reference_on_every_slide: bool,
+    /// Move text that does not fit the text box at `min_font_size` on to
+    /// more slides (EasyWorship's "Automatically flow scripture on multiple
+    /// slides"). Without it, the verses per slide chosen in the Scripture
+    /// tab go on one slide and shrink as far as they must.
+    pub auto_flow: bool,
+    /// The smallest font size, in canvas pixels (1920 × 1080), the text may
+    /// shrink to before the rest goes on the next slide. EasyWorship's
+    /// "Minimum font size before breaking slide".
+    pub min_font_size: u32,
 }
+
+/// The default smallest scripture font size: large enough to read from the
+/// back of a church on most screens.
+pub const DEFAULT_MIN_FONT_SIZE: u32 = 48;
 
 impl Default for ScriptureStyle {
     fn default() -> Self {
         Self {
             verse_numbers: VerseNumberStyle::default(),
             reference_on_every_slide: true,
+            auto_flow: true,
+            min_font_size: DEFAULT_MIN_FONT_SIZE,
         }
     }
 }
@@ -518,6 +533,16 @@ mod tests {
         assert_eq!(with_category(Some("null")).category, None);
         assert_eq!(with_category(Some(r#""hymns""#)).category, None);
         assert_eq!(with_category(Some("3")).category, None);
+    }
+
+    #[test]
+    fn a_theme_from_before_flow_settings_flows_at_the_default_size() {
+        let theme: Theme =
+            serde_json::from_str(r#"{"name":"Old","scripture":{"referenceOnEverySlide":false}}"#)
+                .unwrap();
+        assert!(theme.scripture.auto_flow);
+        assert_eq!(theme.scripture.min_font_size, DEFAULT_MIN_FONT_SIZE);
+        assert!(!theme.scripture.reference_on_every_slide);
     }
 
     #[test]

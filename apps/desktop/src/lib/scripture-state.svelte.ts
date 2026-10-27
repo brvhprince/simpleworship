@@ -3,7 +3,8 @@ import type { BookOutline, Passage, ReferenceFeedback, Verse } from "@simplewors
 const SETTINGS_KEY = "simpleworship.scripture";
 
 /** The default smallest font size before scripture flows on to another
- *  slide. Matches `DEFAULT_MIN_FONT_SIZE` in `crates/sw-core/src/scripture.rs`. */
+ *  slide (a theme setting). Matches `DEFAULT_MIN_FONT_SIZE` in
+ *  `crates/sw-core/src/theme.rs`. */
 export const DEFAULT_MIN_FONT_SIZE = 48;
 
 /**
@@ -21,8 +22,6 @@ export interface ScriptureSettings {
   primaryId: string | null;
   secondaryId: string | null;
   maxVerses: number;
-  autoFlow: boolean;
-  minFontSize: number;
 }
 
 function loadSettings(): ScriptureSettings {
@@ -33,8 +32,6 @@ function loadSettings(): ScriptureSettings {
         primaryId: null,
         secondaryId: null,
         maxVerses: 2,
-        autoFlow: true,
-        minFontSize: DEFAULT_MIN_FONT_SIZE,
       };
     }
     const parsed = JSON.parse(raw);
@@ -42,16 +39,12 @@ function loadSettings(): ScriptureSettings {
       primaryId: typeof parsed.primaryId === "string" ? parsed.primaryId : null,
       secondaryId: typeof parsed.secondaryId === "string" ? parsed.secondaryId : null,
       maxVerses: Math.max(1, Math.min(10, Number(parsed.maxVerses) || 2)),
-      autoFlow: parsed.autoFlow !== undefined ? Boolean(parsed.autoFlow) : true,
-      minFontSize: validMinFontSize(parsed.minFontSize),
     };
   } catch {
     return {
       primaryId: null,
       secondaryId: null,
       maxVerses: 2,
-      autoFlow: true,
-      minFontSize: DEFAULT_MIN_FONT_SIZE,
     };
   }
 }
@@ -60,8 +53,6 @@ class ScriptureStateStore {
   primaryId: string | null = $state(null);
   secondaryId: string | null = $state(null);
   maxVerses: number = $state(2);
-  autoFlow: boolean = $state(true);
-  minFontSize: number = $state(DEFAULT_MIN_FONT_SIZE);
   verseNumbers: boolean | null = $state(null);
 
   query: string = $state("");
@@ -80,8 +71,6 @@ class ScriptureStateStore {
     this.primaryId = saved.primaryId;
     this.secondaryId = saved.secondaryId;
     this.maxVerses = saved.maxVerses;
-    this.autoFlow = saved.autoFlow;
-    this.minFontSize = saved.minFontSize;
   }
 
   saveSettings() {
@@ -92,8 +81,6 @@ class ScriptureStateStore {
           primaryId: this.primaryId,
           secondaryId: this.secondaryId,
           maxVerses: this.maxVerses,
-          autoFlow: this.autoFlow,
-          minFontSize: this.minFontSize,
         }),
       );
     } catch {

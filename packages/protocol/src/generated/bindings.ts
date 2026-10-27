@@ -1697,18 +1697,6 @@ export type ScriptureOptions = {
    * says (see [`VerseNumberStyle`](crate::theme::VerseNumberStyle)).
    */
   verseNumbers: boolean | null;
-  /**
-   * Move text that does not fit the theme's text box at
-   * `min_font_size` on to more slides. Without it, everything up to
-   * `max_verses` goes on one slide and shrinks as far as it must.
-   */
-  autoFlow: boolean;
-  /**
-   * The smallest font size, in canvas pixels (1920 × 1080), the text may
-   * shrink to before the rest goes on the next slide. EasyWorship's
-   * "Minimum font size before breaking slide".
-   */
-  minFontSize: number;
 };
 
 /**
@@ -1737,6 +1725,19 @@ export type ScriptureStyle = {
    * Show the reference on every slide of a passage, or only on the first.
    */
   referenceOnEverySlide: boolean;
+  /**
+   * Move text that does not fit the text box at `min_font_size` on to
+   * more slides (EasyWorship's "Automatically flow scripture on multiple
+   * slides"). Without it, the verses per slide chosen in the Scripture
+   * tab go on one slide and shrink as far as they must.
+   */
+  autoFlow: boolean;
+  /**
+   * The smallest font size, in canvas pixels (1920 × 1080), the text may
+   * shrink to before the rest goes on the next slide. EasyWorship's
+   * "Minimum font size before breaking slide".
+   */
+  minFontSize: number;
 };
 
 /**
