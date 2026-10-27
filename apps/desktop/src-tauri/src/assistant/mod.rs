@@ -542,12 +542,17 @@ pub async fn assistant_sermon_slides(app: AppHandle, notes: String) -> AppResult
         Task {
             system: "You turn a preacher's sermon notes into what a church shows on screen, \
                      in the order of the sermon: the main points as text slides, and every \
-                     Bible passage the notes refer to. A point has a short heading (the \
-                     sermon title, or \"1. …\" for numbered points) and one to four short \
-                     lines of text taken from the notes. A passage is its reference only, in \
-                     the usual English form with the book's full name, such as \"Romans \
-                     8:28-30\". Use only what is in the notes: add nothing, and keep the \
-                     preacher's words.",
+                     Bible passage the notes refer to. The sermon's title, if it has one, is \
+                     the first point, on its own (its text may be the series or date line). \
+                     Every other point has its OWN heading: the point itself, shortened to a \
+                     few words, numbered (\"1. …\") when the notes number them. Never use the \
+                     sermon title as another point's heading, and never repeat a heading. A \
+                     point's text is one to four short lines taken from the notes: its \
+                     explanation and sub-points. A passage is its reference only, in the \
+                     usual English form with the book's full name, such as \"Romans \
+                     8:28-30\", placed right after the point that uses it; list each \
+                     passage once. Verse text pasted into the notes is not a point. Use only \
+                     what is in the notes: add nothing, and keep the preacher's words.",
             prompt: notes,
             tool: "sermon_slides",
             description: "The slides and passages, in order.",
@@ -560,7 +565,7 @@ pub async fn assistant_sermon_slides(app: AppHandle, notes: String) -> AppResult
                             "type": "object",
                             "properties": {
                                 "kind": { "type": "string", "enum": ["point", "scripture"] },
-                                "title": { "type": "string", "description": "For a point." },
+                                "title": { "type": "string", "description": "For a point: its own heading (the sermon title only on the first item)." },
                                 "text": { "type": "string", "description": "For a point." },
                                 "reference": { "type": "string", "description": "For a passage." }
                             },
