@@ -235,6 +235,7 @@
     padding: 2px var(--sw-space-2);
     border-radius: var(--sw-radius-small);
     background: var(--pane-color);
+    color: #fff;   /* PREVIEW / LIVE: white on blue or red in both appearances */
     font-size: var(--sw-font-size-small);
     font-weight: 700;
     text-transform: uppercase;
