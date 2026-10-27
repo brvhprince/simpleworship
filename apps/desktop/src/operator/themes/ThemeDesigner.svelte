@@ -9,6 +9,7 @@
     HorizontalAlign,
     TextBox,
     TextStyle,
+    ThemeCategory,
     ThemeRecord,
     VerseNumberStyle,
     VerticalAlign,
@@ -61,7 +62,7 @@
   let saving = $state(false);
   let error: string | null = $state(null);
 
-  function onCategoryChange(cat: "song" | "scripture" | "presentation" | "text") {
+  function onCategoryChange(cat: ThemeCategory) {
     draft.theme.category = cat;
     if (cat === "scripture") {
       sample = "scripture";
@@ -192,10 +193,7 @@
             {t("designer.category")}
             <select
               value={draft.theme.category ?? "song"}
-              onchange={(e) =>
-                onCategoryChange(
-                  e.currentTarget.value as "song" | "scripture" | "presentation" | "text",
-                )}
+              onchange={(e) => onCategoryChange(e.currentTarget.value as ThemeCategory)}
             >
               <option value="song">{t("designer.categorySong")}</option>
               <option value="scripture">{t("designer.categoryScripture")}</option>

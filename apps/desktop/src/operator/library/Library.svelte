@@ -55,11 +55,33 @@
     }
   }
 
+  /** The Quick Text button and its popover, for closing it on a click outside. */
+  let quickTextTool: HTMLElement | undefined = $state();
+  /** The popover's text box, focused when it opens: it opens to be typed in. */
+  let quickTextBox: HTMLTextAreaElement | undefined = $state();
+
+  $effect(() => {
+    if (quickTextOpen) quickTextBox?.focus();
+  });
+
+  /**
+   * Closes the Quick Text popover on a click or tap anywhere else, as
+   * `Popover` does. The path is fixed when the click happens, so a button
+   * that removes itself still counts as a click inside.
+   */
+  function closeQuickTextOutside(event: PointerEvent) {
+    if (quickTextOpen && quickTextTool && !event.composedPath().includes(quickTextTool)) {
+      quickTextOpen = false;
+    }
+  }
+
   // The H key shows the newest reference heard: in the Scripture tab.
   $effect(() => {
     if (listen.request) current = "scripture";
   });
 </script>
+
+<svelte:window onpointerdown={closeQuickTextOutside} />
 
 <section class="library" aria-label={t("library.title")}>
   <div class="tabs" role="tablist">
@@ -79,7 +101,7 @@
 
     <span class="tab-spacer"></span>
 
-    <div class="quick-text-tool">
+    <div class="quick-text-tool" bind:this={quickTextTool}>
       <button
         type="button"
         class="quick-text-btn"
@@ -91,8 +113,21 @@
       </button>
 
       {#if quickTextOpen}
-        <div class="quick-text-popover">
+        <div
+          class="quick-text-popover"
+          role="dialog"
+          aria-label={t("library.quickText")}
+          tabindex="-1"
+          onkeydown={(event) => {
+            if (event.key === "Escape") {
+              // Closes the popover only, not whatever else listens for Esc.
+              event.stopPropagation();
+              quickTextOpen = false;
+            }
+          }}
+        >
           <textarea
+            bind:this={quickTextBox}
             bind:value={quickText}
             placeholder={t("library.quickTextPlaceholder")}
             rows="2"

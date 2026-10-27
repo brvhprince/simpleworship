@@ -2362,10 +2362,17 @@ export type Theme = {
    */
   scripture: ScriptureStyle;
   /**
-   * Target category: "song", "scripture", "presentation", "text", or None.
+   * The kind of content it is made for, which the Themes tab files it
+   * under and the designer previews; `None` for themes from before
+   * categories (the Themes tab then goes by what it is the default for).
    */
-  category: string | null;
+  category: ThemeCategory | null;
 };
+
+/**
+ * The kinds of content a theme can be made for.
+ */
+export type ThemeCategory = "song" | "scripture" | "presentation" | "text";
 
 /**
  * Which theme each kind of content uses by default.

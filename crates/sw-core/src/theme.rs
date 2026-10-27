@@ -32,9 +32,36 @@ pub struct Theme {
     pub caption: FooterStyle,
     /// Settings that only apply to scripture.
     pub scripture: ScriptureStyle,
-    /// Target category: "song", "scripture", "presentation", "text", or None.
-    #[serde(default)]
-    pub category: Option<String>,
+    /// The kind of content it is made for, which the Themes tab files it
+    /// under and the designer previews; `None` for themes from before
+    /// categories (the Themes tab then goes by what it is the default for).
+    #[serde(deserialize_with = "known_category")]
+    pub category: Option<ThemeCategory>,
+}
+
+/// The kinds of content a theme can be made for.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "bindings.ts")]
+pub enum ThemeCategory {
+    /// Song lyrics.
+    Song,
+    /// Bible passages.
+    Scripture,
+    /// Presentations.
+    Presentation,
+    /// Quick text and announcements.
+    Text,
+}
+
+/// Reads a theme's category, taking anything unknown (a theme from a newer
+/// version, or one edited by hand) as none rather than refusing the theme.
+fn known_category<'de, D>(deserializer: D) -> Result<Option<ThemeCategory>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let value = Option::<serde_json::Value>::deserialize(deserializer)?;
+    Ok(value.and_then(|value| serde_json::from_value(value).ok()))
 }
 
 impl Default for Theme {
@@ -460,5 +487,46 @@ impl Default for VerseNumberStyle {
             superscript: true,
             bold: false,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A theme saved with the given `category` JSON (or none).
+    fn with_category(category: Option<&str>) -> Theme {
+        let field = category.map_or(String::new(), |value| format!(r#","category":{value}"#));
+        serde_json::from_str(&format!(r#"{{"name":"Test"{field}}}"#)).unwrap()
+    }
+
+    #[test]
+    fn reads_the_known_categories() {
+        assert_eq!(
+            with_category(Some(r#""scripture""#)).category,
+            Some(ThemeCategory::Scripture)
+        );
+        assert_eq!(
+            with_category(Some(r#""text""#)).category,
+            Some(ThemeCategory::Text)
+        );
+    }
+
+    #[test]
+    fn takes_a_missing_or_unknown_category_as_none() {
+        assert_eq!(with_category(None).category, None);
+        assert_eq!(with_category(Some("null")).category, None);
+        assert_eq!(with_category(Some(r#""hymns""#)).category, None);
+        assert_eq!(with_category(Some("3")).category, None);
+    }
+
+    #[test]
+    fn saves_the_category_in_camel_case() {
+        let theme = Theme {
+            category: Some(ThemeCategory::Presentation),
+            ..Theme::default()
+        };
+        let json = serde_json::to_value(&theme).unwrap();
+        assert_eq!(json["category"], "presentation");
     }
 }

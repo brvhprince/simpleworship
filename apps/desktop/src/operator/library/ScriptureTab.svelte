@@ -64,13 +64,19 @@
     list: { reference: string; why: string; passage: Passage }[];
   } | null = $state(scriptureState.ideas);
 
-  // Sync to persistent singleton store so tab switches retain state.
+  // The settings are remembered between sessions. Only they are read
+  // here, so this runs when one changes, not on every key typed.
   $effect(() => {
     scriptureState.primaryId = primaryId;
     scriptureState.secondaryId = secondaryId;
     scriptureState.maxVerses = maxVerses;
     scriptureState.autoFlow = autoFlow;
     scriptureState.minFontSize = minFontSize;
+    scriptureState.saveSettings();
+  });
+
+  // The rest is kept in the store too, so switching tabs keeps it.
+  $effect(() => {
     scriptureState.verseNumbers = verseNumbers;
     scriptureState.query = query;
     scriptureState.feedback = feedback;
@@ -79,7 +85,6 @@
     scriptureState.chapterVerses = chapterVerses;
     scriptureState.searchResults = searchResults;
     scriptureState.ideas = ideas;
-    scriptureState.saveSettings();
   });
 
   const options: ScriptureOptions = $derived({
