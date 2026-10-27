@@ -8,6 +8,7 @@
  * `ThemesTab`); this file only turns them into a native menu at the mouse.
  */
 
+import { LogicalPosition } from "@tauri-apps/api/dpi";
 import {
   type CheckMenuItemOptions,
   Menu,
@@ -53,6 +54,8 @@ export async function showContextMenu(
   event.preventDefault();
   event.stopPropagation();
   const request = ++latest;
+  // Taken now: the pointer can move while the menu is made.
+  const at = anchor(event);
   const shown = tidy(entries.filter((entry): entry is MenuEntry => Boolean(entry)));
   if (shown.length === 0) return;
 
@@ -66,7 +69,23 @@ export async function showContextMenu(
   // frees what the system kept for it.
   void open?.close();
   open = menu;
-  await menu.popup();
+  await menu.popup(at);
+}
+
+/**
+ * Where the menu opens, in the window (the webview fills it, unzoomed):
+ * where the right-click was, or, for the keyboard's menu key (which has no
+ * pointer position), under the item it was pressed on.
+ */
+function anchor(event: MouseEvent): LogicalPosition | undefined {
+  if (event.clientX !== 0 || event.clientY !== 0) {
+    return new LogicalPosition(event.clientX, event.clientY);
+  }
+  if (event.target instanceof Element) {
+    const box = event.target.getBoundingClientRect();
+    return new LogicalPosition(box.left, box.bottom);
+  }
+  return undefined;
 }
 
 /** Drops separators at the ends and next to each other (exported for tests). */
