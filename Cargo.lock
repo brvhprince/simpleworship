@@ -4644,6 +4644,7 @@ dependencies = [
  "quick-xml 0.42.0",
  "rusqlite",
  "serde",
+ "sw-rtf",
  "tempfile",
  "thiserror 2.0.21",
  "ts-rs",
@@ -4672,6 +4673,7 @@ dependencies = [
  "serde_json",
  "sw-bible",
  "sw-core",
+ "sw-rtf",
  "thiserror 2.0.21",
 ]
 
@@ -4696,6 +4698,7 @@ dependencies = [
  "rusqlite",
  "serde",
  "sw-core",
+ "sw-rtf",
  "tempfile",
  "thiserror 2.0.21",
  "ts-rs",
@@ -4731,6 +4734,10 @@ dependencies = [
  "webview2-com",
  "windows",
 ]
+
+[[package]]
+name = "sw-rtf"
+version = "0.7.0"
 
 [[package]]
 name = "sw-server"

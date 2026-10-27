@@ -12,6 +12,7 @@ flate2.workspace = true
 quick-xml.workspace = true
 rusqlite.workspace = true
 serde.workspace = true
+sw-rtf.workspace = true
 thiserror.workspace = true
 ts-rs.workspace = true
 zip.workspace = true

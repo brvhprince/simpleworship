@@ -1,0 +1,11 @@
+[package]
+name = "sw-rtf"
+description = "SimpleWorship's small, forgiving RTF reader: EasyWorship and ProPresenter text to plain text."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[lints]
+workspace = true

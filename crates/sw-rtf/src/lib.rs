@@ -1,6 +1,7 @@
 //! Turning RTF into plain lines of text.
 //!
-//! EasyWorship and ProPresenter store lyrics as RTF. We need only the
+//! EasyWorship and ProPresenter store lyrics as RTF, and EasyWorship Bibles
+//! keep their copyright notice as RTF too (see [`plain_line`]). We need only the
 //! words and where the lines break, so this is a small, forgiving reader
 //! rather than a full RTF implementation:
 //!
@@ -33,6 +34,22 @@ const SKIPPED_DESTINATIONS: &[&str] = &[
     "datastore",
     "latentstyles",
 ];
+
+/// A one-line plain text version of a short note that may be RTF, such as
+/// an EasyWorship Bible's copyright notice: RTF is read and its paragraphs
+/// joined with spaces; anything else is returned as it is, trimmed.
+pub fn plain_line(text: &str) -> String {
+    let trimmed = text.trim();
+    if !trimmed.starts_with("{\\rtf") {
+        return trimmed.to_owned();
+    }
+    to_text(trimmed)
+        .split('\n')
+        .map(str::trim)
+        .filter(|line| !line.is_empty())
+        .collect::<Vec<_>>()
+        .join(" ")
+}
 
 /// Converts RTF to plain text, one line per paragraph (`\n` between them).
 pub fn to_text(rtf: &str) -> String {
@@ -249,6 +266,27 @@ fn windows_1252(byte: u8) -> char {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_copyright_notice_in_rtf_becomes_one_plain_line() {
+        // As EasyWorship keeps a Bible's copyright (HCSB, from a real .ewb).
+        let rtf = r"{\rtf1\ansi\ansicpg1252\deff0\nouicompat{\fonttbl{\f0\fnil\fcharset0 Courier New;}}
+{\colortbl ;\red0\green0\blue0;}
+{\*\generator Riched20 10.0.19041}\viewkind4\uc1
+\pard\cf1\f0\fs20 Holman Christian Standard Bible\'ae\par
+Copyright \'a9 1999, 2000, 2002, 2003 by Holman Bible Publishers.\par
+}";
+        assert_eq!(
+            plain_line(rtf),
+            "Holman Christian Standard Bible® Copyright © 1999, 2000, 2002, 2003 by Holman Bible Publishers."
+        );
+    }
+
+    #[test]
+    fn a_plain_copyright_notice_stays_as_it_is() {
+        assert_eq!(plain_line("  Public Domain "), "Public Domain");
+        assert_eq!(plain_line(""), "");
+    }
 
     #[test]
     fn reads_easyworship_6_paragraphs() {

@@ -23,7 +23,9 @@
 pub mod duplicates;
 pub mod formats;
 pub mod lyrics;
-pub mod rtf;
+/// The RTF reader, shared with the Bible importer (EasyWorship Bibles keep
+/// their copyright notice as RTF).
+pub use sw_rtf as rtf;
 mod xml;
 
 use serde::{Deserialize, Serialize};
