@@ -20,7 +20,10 @@ use super::{AssistantProvider, ChosenModels, Task};
 use crate::error::{AppError, AppResult};
 
 /// The longest an answer may take.
-const TIMEOUT: Duration = Duration::from_secs(90);
+/// How long to wait for an answer. Reasoning models can think for a
+/// minute or more before answering, and church connections can be slow;
+/// the assistant is used while preparing, not during a service.
+const TIMEOUT: Duration = Duration::from_secs(180);
 const ANTHROPIC: &str = "https://api.anthropic.com/v1";
 const ANTHROPIC_VERSION: &str = "2023-06-01";
 const OPENAI: &str = "https://api.openai.com/v1";
@@ -262,21 +265,52 @@ pub(super) async fn ask(
                 }],
                 "tool_choice": { "type": "function", "function": { "name": task.tool } },
             })),
-        AssistantProvider::Gemini => client
-            .post(format!("{GEMINI}/models/{model}:generateContent"))
-            .header("x-goog-api-key", key)
-            .json(&json!({
-                "systemInstruction": { "parts": [{ "text": task.system }] },
-                "contents": [{ "role": "user", "parts": [{ "text": task.prompt }] }],
-                "generationConfig": {
+        AssistantProvider::Gemini => {
+            let gemini = |thinking: Option<Value>| {
+                let mut config = json!({
                     "responseMimeType": "application/json",
                     "responseJsonSchema": task.schema,
                     "maxOutputTokens": task.max_tokens * THINKING_ROOM,
-                },
-            })),
+                });
+                if let Some(thinking) = thinking {
+                    config["thinkingConfig"] = thinking;
+                }
+                client
+                    .post(format!("{GEMINI}/models/{model}:generateContent"))
+                    .header("x-goog-api-key", key)
+                    .json(&json!({
+                        "systemInstruction": { "parts": [{ "text": task.system }] },
+                        "contents": [{ "role": "user", "parts": [{ "text": task.prompt }] }],
+                        "generationConfig": config,
+                    }))
+            };
+            let reply = match read(provider, gemini(Some(gemini_thinking(model)))).await {
+                // A model that does not take this way of setting its
+                // thinking: ask again, letting it think as it likes.
+                Err(AppError::Assistant(message))
+                    if message.to_lowercase().contains("thinking") =>
+                {
+                    log::warn!("assistant: {model} refused the thinking setting: {message}");
+                    read(provider, gemini(None)).await?
+                }
+                result => result?,
+            };
+            return answer(provider, &reply, task.tool);
+        }
     };
     let reply = read(provider, request).await?;
     answer(provider, &reply, task.tool)
+}
+
+/// How much a Gemini model thinks before answering. Left to itself, it
+/// can think for over a minute, longer than the app waits; these tasks
+/// (reading notes, tidying lyrics) need little. Gemini 3 and later take a
+/// level; 2.5 takes a budget in tokens (Pro cannot think less than 128).
+fn gemini_thinking(model: &str) -> Value {
+    match version(model).first() {
+        Some(major) if *major >= 3 => json!({ "thinkingLevel": "low" }),
+        _ => json!({ "thinkingBudget": 1024 }),
+    }
 }
 
 /// The answer in a service's reply.
@@ -487,6 +521,16 @@ mod tests {
         // A newer preview is still newer.
         assert_eq!(chosen.fast, "gemini-3.9-flash-preview");
         assert_eq!(chosen.better, "gemini-3.1-pro");
+    }
+
+    #[test]
+    fn keeps_gemini_thinking_low() {
+        assert_eq!(gemini_thinking("gemini-3.8-flash")["thinkingLevel"], "low");
+        assert_eq!(
+            gemini_thinking("gemini-3-pro-preview")["thinkingLevel"],
+            "low"
+        );
+        assert_eq!(gemini_thinking("gemini-2.5-pro")["thinkingBudget"], 1024);
     }
 
     #[test]
