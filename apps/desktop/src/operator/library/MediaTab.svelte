@@ -551,6 +551,7 @@
     padding: 1px 6px;
     border-radius: var(--sw-radius-small);
     background: rgba(0, 0, 0, 0.75);
+    color: #fff; /* on the picture, in both appearances */
     font-size: var(--sw-font-size-small);
     font-variant-numeric: tabular-nums;
   }

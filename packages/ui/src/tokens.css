@@ -38,6 +38,8 @@
   --sw-live-soft: rgba(224, 49, 49, 0.18);
   --sw-preview: #4c6ef5;
   --sw-warning: #f59f00;
+  /* Warning-coloured text (the fill above is for backgrounds and borders). */
+  --sw-warning-text: #f59f00;
 
   /* Shape and spacing. */
   --sw-radius: 6px;
@@ -72,7 +74,7 @@
 
   --sw-text: #1a1d24;
   --sw-text-muted: #545b6a;
-  --sw-text-faint: #858c9a;
+  --sw-text-faint: #646b79; /* 5:1 on the panels: small hints stay readable */
 
   --sw-accent: #3b5bdb;
   --sw-accent-strong: #364fc7;
@@ -81,6 +83,7 @@
   --sw-live-soft: rgba(201, 42, 42, 0.12);
   --sw-preview: #3b5bdb;
   --sw-warning: #e67700;
+  --sw-warning-text: #a85400; /* 5.3:1 on white, 4.6:1 on its pale tint */
 
   color-scheme: light;
 }

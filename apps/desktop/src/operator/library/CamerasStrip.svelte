@@ -149,7 +149,7 @@
   }
 
   .problem {
-    color: var(--sw-warning, #f59f00);
+    color: var(--sw-warning-text);
     font-size: var(--sw-font-size-small);
   }
 

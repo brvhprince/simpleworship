@@ -569,7 +569,7 @@
     padding: var(--sw-space-2) var(--sw-space-3);
     border-radius: var(--sw-radius);
     background: rgba(245, 159, 0, 0.12);
-    color: var(--sw-warning);
+    color: var(--sw-warning-text);
   }
 
   .items {

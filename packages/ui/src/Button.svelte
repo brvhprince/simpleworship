@@ -63,9 +63,12 @@
     cursor: default;
   }
 
+  /* Filled buttons carry white text in both appearances (the page's text
+     colour is dark in the light one). */
   .primary {
     background: var(--sw-accent);
     border-color: var(--sw-accent);
+    color: #fff;
   }
 
   .primary:hover:not(:disabled) {
@@ -75,11 +78,13 @@
   .live.active {
     background: var(--sw-live);
     border-color: var(--sw-live);
+    color: #fff;
   }
 
   .default.active {
     background: var(--sw-accent);
     border-color: var(--sw-accent);
+    color: #fff;
   }
 
   kbd {
