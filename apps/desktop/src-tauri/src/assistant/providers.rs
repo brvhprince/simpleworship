@@ -177,10 +177,16 @@ fn openai_chat(id: &str) -> bool {
 
 /// The tier of a plain Gemini text model, `"flash"` or `"pro"`: named
 /// `gemini-<version>-<tier>`, perhaps followed by `preview`, `exp`,
-/// `latest` or a date. Anything else is a variant for another job ("lite",
-/// "image", "tts", "customtools", which answers in its own way), or not a
-/// Gemini text model at all.
+/// `latest` or a date; or Google's aliases `gemini-flash-latest` and
+/// `gemini-pro-latest` (which rank below any named version). Anything else
+/// is a variant for another job ("lite", "image", "tts", "customtools",
+/// which answers in its own way), or not a Gemini text model at all.
 fn gemini_tier(id: &str) -> Option<&str> {
+    match id {
+        "gemini-flash-latest" => return Some("flash"),
+        "gemini-pro-latest" => return Some("pro"),
+        _ => {}
+    }
     let mut parts = id.strip_prefix("gemini-")?.split('-');
     let version = parts.next()?;
     if version.is_empty() || !version.chars().all(|c| c.is_ascii_digit() || c == '.') {
@@ -521,6 +527,15 @@ mod tests {
         // A newer preview is still newer.
         assert_eq!(chosen.fast, "gemini-3.9-flash-preview");
         assert_eq!(chosen.better, "gemini-3.1-pro");
+
+        // Only the alias offered: it is used, not the 2.5 fallback, which
+        // new projects may not have.
+        let chosen = choose(
+            AssistantProvider::Gemini,
+            &offered(&[("gemini-flash-latest", 0), ("gemini-pro-latest", 0)]),
+        );
+        assert_eq!(chosen.fast, "gemini-flash-latest");
+        assert_eq!(chosen.better, "gemini-pro-latest");
     }
 
     #[test]
@@ -540,6 +555,8 @@ mod tests {
             "gemini-3.1-pro-preview",
             "gemini-2.5-flash-preview-05-20",
             "gemini-3-pro-latest",
+            "gemini-flash-latest",
+            "gemini-pro-latest",
         ] {
             assert!(usable(AssistantProvider::Gemini, id), "{id}");
         }
@@ -549,7 +566,8 @@ mod tests {
             "gemini-2.5-flash-image",
             "gemini-2.5-flash-preview-tts",
             "gemini-embedding-001",
-            "gemini-flash-latest",
+            "gemini-flash-lite-latest",
+            "gemini-flash-latest-tts",
         ] {
             assert!(!usable(AssistantProvider::Gemini, id), "{id}");
         }
