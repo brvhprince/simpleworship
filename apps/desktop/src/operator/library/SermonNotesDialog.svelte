@@ -184,6 +184,9 @@
   .notes {
     display: flex;
     flex-direction: column;
+    /* The text box fills the column (the rows' "label" rule below would
+       leave it at its own narrow width). */
+    align-items: stretch;
     gap: var(--sw-space-1);
   }
 
