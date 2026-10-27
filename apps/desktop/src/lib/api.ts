@@ -73,6 +73,7 @@ const ON_HOST = new Set([
   "scripture_text",
   "scripture_show_in_preview",
   "schedule_add_scripture",
+  "schedule_add_sermon",
   "text_show_in_preview",
   "schedule_add_text",
   "schedule_add_countdown",

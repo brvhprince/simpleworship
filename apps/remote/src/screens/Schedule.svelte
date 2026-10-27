@@ -40,7 +40,7 @@
       case "deck":
         return item.content.deck.name;
       case "sermon":
-        return item.content.title;
+        return item.content.title || t("kind.sermon");
     }
   }
 
