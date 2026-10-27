@@ -57,6 +57,8 @@
 
   /** The Quick Text button and its popover, for closing it on a click outside. */
   let quickTextTool: HTMLElement | undefined = $state();
+  /** The Quick Text button, which gets the focus back when Esc closes the popover. */
+  let quickTextButton: HTMLButtonElement | undefined = $state();
   /** The popover's text box, focused when it opens: it opens to be typed in. */
   let quickTextBox: HTMLTextAreaElement | undefined = $state();
 
@@ -105,6 +107,7 @@
       <button
         type="button"
         class="quick-text-btn"
+        bind:this={quickTextButton}
         class:open={quickTextOpen}
         onclick={() => (quickTextOpen = !quickTextOpen)}
         title={t("library.quickTextHint")}
@@ -123,6 +126,9 @@
               // Closes the popover only, not whatever else listens for Esc.
               event.stopPropagation();
               quickTextOpen = false;
+              // What had the focus is about to go; the keyboard carries on
+              // from the button.
+              quickTextButton?.focus();
             }
           }}
         >
