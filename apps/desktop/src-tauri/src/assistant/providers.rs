@@ -20,7 +20,10 @@ use super::{AssistantProvider, ChosenModels, Task};
 use crate::error::{AppError, AppResult};
 
 /// The longest an answer may take.
-const TIMEOUT: Duration = Duration::from_secs(90);
+/// How long to wait for an answer. Reasoning models can think for a
+/// minute or more before answering, and church connections can be slow;
+/// the assistant is used while preparing, not during a service.
+const TIMEOUT: Duration = Duration::from_secs(180);
 const ANTHROPIC: &str = "https://api.anthropic.com/v1";
 const ANTHROPIC_VERSION: &str = "2023-06-01";
 const OPENAI: &str = "https://api.openai.com/v1";
@@ -123,8 +126,8 @@ pub(super) fn choose(provider: AssistantProvider, offered: &[Offered]) -> Chosen
             ("gpt-5-mini", "gpt-5"),
         ),
         AssistantProvider::Gemini => (
-            newest(&|id| gemini_text(id) && id.contains("-flash")),
-            newest(&|id| gemini_text(id) && id.contains("-pro")),
+            newest(&|id| gemini_tier(id) == Some("flash")),
+            newest(&|id| gemini_tier(id) == Some("pro")),
             ("gemini-2.5-flash", "gemini-2.5-pro"),
         ),
     };
@@ -172,20 +175,40 @@ fn openai_chat(id: &str) -> bool {
     id.starts_with("gpt-") && !NOT.iter().any(|word| id.contains(word)) && !dated(id)
 }
 
-/// A Gemini model for writing text.
-fn gemini_text(id: &str) -> bool {
-    const NOT: [&str; 9] = [
-        "lite",
-        "image",
-        "tts",
-        "live",
-        "audio",
-        "embedding",
-        "robotics",
-        "computer-use",
-        "thinking",
-    ];
-    id.starts_with("gemini-") && !NOT.iter().any(|word| id.contains(word))
+/// The tier of a plain Gemini text model, `"flash"` or `"pro"`: named
+/// `gemini-<version>-<tier>`, perhaps followed by `preview`, `exp`,
+/// `latest` or a date; or Google's aliases `gemini-flash-latest` and
+/// `gemini-pro-latest` (which rank below any named version). Anything else
+/// is a variant for another job ("lite", "image", "tts", "customtools",
+/// which answers in its own way), or not a Gemini text model at all.
+fn gemini_tier(id: &str) -> Option<&str> {
+    match id {
+        "gemini-flash-latest" => return Some("flash"),
+        "gemini-pro-latest" => return Some("pro"),
+        _ => {}
+    }
+    let mut parts = id.strip_prefix("gemini-")?.split('-');
+    let version = parts.next()?;
+    if version.is_empty() || !version.chars().all(|c| c.is_ascii_digit() || c == '.') {
+        return None;
+    }
+    let tier = parts
+        .next()
+        .filter(|tier| ["flash", "pro"].contains(tier))?;
+    parts
+        .all(|part| {
+            ["preview", "exp", "latest"].contains(&part) || part.chars().all(|c| c.is_ascii_digit())
+        })
+        .then_some(tier)
+}
+
+/// Whether a model the app chose before is one it would still choose: a
+/// plain text model (Gemini's list also offers variants for other jobs).
+pub(super) fn usable(provider: AssistantProvider, id: &str) -> bool {
+    match provider {
+        AssistantProvider::Gemini => gemini_tier(id).is_some(),
+        _ => true,
+    }
 }
 
 /// Ends in a date, as snapshots do ("gpt-5-mini-2025-08-07").
@@ -248,27 +271,57 @@ pub(super) async fn ask(
                 }],
                 "tool_choice": { "type": "function", "function": { "name": task.tool } },
             })),
-        AssistantProvider::Gemini => client
-            .post(format!("{GEMINI}/models/{model}:generateContent"))
-            .header("x-goog-api-key", key)
-            .json(&json!({
-                "systemInstruction": { "parts": [{ "text": task.system }] },
-                "contents": [{ "role": "user", "parts": [{ "text": task.prompt }] }],
-                "generationConfig": {
+        AssistantProvider::Gemini => {
+            let gemini = |thinking: Option<Value>| {
+                let mut config = json!({
                     "responseMimeType": "application/json",
                     "responseJsonSchema": task.schema,
                     "maxOutputTokens": task.max_tokens * THINKING_ROOM,
-                },
-            })),
+                });
+                if let Some(thinking) = thinking {
+                    config["thinkingConfig"] = thinking;
+                }
+                client
+                    .post(format!("{GEMINI}/models/{model}:generateContent"))
+                    .header("x-goog-api-key", key)
+                    .json(&json!({
+                        "systemInstruction": { "parts": [{ "text": task.system }] },
+                        "contents": [{ "role": "user", "parts": [{ "text": task.prompt }] }],
+                        "generationConfig": config,
+                    }))
+            };
+            let reply = match read(provider, gemini(Some(gemini_thinking(model)))).await {
+                // A model that does not take this way of setting its
+                // thinking: ask again, letting it think as it likes.
+                Err(AppError::Assistant(message))
+                    if message.to_lowercase().contains("thinking") =>
+                {
+                    log::warn!("assistant: {model} refused the thinking setting: {message}");
+                    read(provider, gemini(None)).await?
+                }
+                result => result?,
+            };
+            return answer(provider, &reply, task.tool);
+        }
     };
     let reply = read(provider, request).await?;
     answer(provider, &reply, task.tool)
 }
 
+/// How much a Gemini model thinks before answering. Left to itself, it
+/// can think for over a minute, longer than the app waits; these tasks
+/// (reading notes, tidying lyrics) need little. Gemini 3 and later take a
+/// level; 2.5 takes a budget in tokens (Pro cannot think less than 128).
+fn gemini_thinking(model: &str) -> Value {
+    match version(model).first() {
+        Some(major) if *major >= 3 => json!({ "thinkingLevel": "low" }),
+        _ => json!({ "thinkingBudget": 1024 }),
+    }
+}
+
 /// The answer in a service's reply.
 pub(super) fn answer(provider: AssistantProvider, reply: &Value, tool: &str) -> AppResult<Value> {
-    let unreadable =
-        || AppError::Assistant("the assistant's answer could not be read; try again".into());
+    let unreadable = || why_no_answer(provider, reply);
     match provider {
         AssistantProvider::Anthropic => {
             let blocks = reply["content"].as_array().ok_or_else(unreadable)?;
@@ -312,6 +365,45 @@ pub(super) fn answer(provider: AssistantProvider, reply: &Value, tool: &str) -> 
     }
 }
 
+/// Why a reply holds no answer, from the reason the service gives for
+/// stopping: it ran out of room (often while thinking), its filters
+/// declined, or (Gemini) it would not repeat text it recognises, such as
+/// published song lyrics. The reason goes to the log, so a failure on a
+/// church's computer can be explained.
+fn why_no_answer(provider: AssistantProvider, reply: &Value) -> AppError {
+    let reason = match provider {
+        AssistantProvider::Anthropic => reply["stop_reason"].as_str(),
+        AssistantProvider::OpenAi => {
+            let choice = &reply["choices"][0];
+            if choice["message"]["refusal"].is_string() {
+                Some("refusal")
+            } else {
+                choice["finish_reason"].as_str()
+            }
+        }
+        AssistantProvider::Gemini => reply["promptFeedback"]["blockReason"]
+            .as_str()
+            .or_else(|| reply["candidates"][0]["finishReason"].as_str()),
+    }
+    .unwrap_or("none given");
+    log::warn!("assistant: {provider:?} gave no readable answer (reason: {reason})");
+
+    let message = match reason {
+        "max_tokens" | "length" | "MAX_TOKENS" => {
+            "the answer was longer than the assistant may write; try a shorter text, \
+             or the other model in Settings"
+                .into()
+        }
+        "RECITATION" => "Gemini will not repeat text it recognises, such as published song \
+                         lyrics; type or paste them yourself, or use Claude or ChatGPT for this"
+            .into(),
+        "refusal" | "content_filter" | "SAFETY" | "PROHIBITED_CONTENT" | "BLOCKLIST" | "SPII"
+        | "OTHER" => format!("the AI service declined to answer this ({reason})"),
+        _ => "the assistant's answer could not be read; try again".into(),
+    };
+    AppError::Assistant(message)
+}
+
 /// JSON written as text, perhaps in a code block or after a sentence.
 fn json_in(text: &str) -> Option<Value> {
     let text = text.trim();
@@ -329,6 +421,8 @@ async fn read(provider: AssistantProvider, request: reqwest::RequestBuilder) -> 
         return Err(refusal(provider, status, &body));
     }
     serde_json::from_str(&body).map_err(|_| {
+        let start: String = body.chars().take(200).collect();
+        log::warn!("assistant: {provider:?} sent a reply that is not JSON: {start}");
         AppError::Assistant("the assistant's answer could not be read; try again".into())
     })
 }
@@ -426,11 +520,57 @@ mod tests {
             ("gemini-3.9-flash-preview", 0),
             ("gemini-3.1-pro", 0),
             ("gemini-3.8-flash-image", 0),
+            ("gemini-3.2-pro-preview-customtools", 0),
+            ("gemini-3.9-flash-preview-tts", 0),
         ]);
         let chosen = choose(AssistantProvider::Gemini, &list);
         // A newer preview is still newer.
         assert_eq!(chosen.fast, "gemini-3.9-flash-preview");
         assert_eq!(chosen.better, "gemini-3.1-pro");
+
+        // Only the alias offered: it is used, not the 2.5 fallback, which
+        // new projects may not have.
+        let chosen = choose(
+            AssistantProvider::Gemini,
+            &offered(&[("gemini-flash-latest", 0), ("gemini-pro-latest", 0)]),
+        );
+        assert_eq!(chosen.fast, "gemini-flash-latest");
+        assert_eq!(chosen.better, "gemini-pro-latest");
+    }
+
+    #[test]
+    fn keeps_gemini_thinking_low() {
+        assert_eq!(gemini_thinking("gemini-3.8-flash")["thinkingLevel"], "low");
+        assert_eq!(
+            gemini_thinking("gemini-3-pro-preview")["thinkingLevel"],
+            "low"
+        );
+        assert_eq!(gemini_thinking("gemini-2.5-pro")["thinkingBudget"], 1024);
+    }
+
+    #[test]
+    fn knows_gemini_text_models_from_variants() {
+        for id in [
+            "gemini-2.5-flash",
+            "gemini-3.1-pro-preview",
+            "gemini-2.5-flash-preview-05-20",
+            "gemini-3-pro-latest",
+            "gemini-flash-latest",
+            "gemini-pro-latest",
+        ] {
+            assert!(usable(AssistantProvider::Gemini, id), "{id}");
+        }
+        for id in [
+            "gemini-3.1-pro-preview-customtools",
+            "gemini-2.5-flash-lite",
+            "gemini-2.5-flash-image",
+            "gemini-2.5-flash-preview-tts",
+            "gemini-embedding-001",
+            "gemini-flash-lite-latest",
+            "gemini-flash-latest-tts",
+        ] {
+            assert!(!usable(AssistantProvider::Gemini, id), "{id}");
+        }
     }
 
     #[test]
@@ -500,6 +640,53 @@ mod tests {
     fn a_reply_without_an_answer_is_unreadable() {
         let reply = json!({"content":[{"type":"text","text":"I can't help with that"}]});
         assert!(answer(AssistantProvider::Anthropic, &reply, "song").is_err());
+    }
+
+    #[test]
+    fn says_why_a_reply_has_no_answer() {
+        let cases = [
+            (
+                AssistantProvider::Gemini,
+                json!({"candidates":[{"finishReason":"MAX_TOKENS","content":{"parts":[
+                    {"text":"…","thought":true}
+                ]}}]}),
+                "longer than",
+            ),
+            (
+                AssistantProvider::Gemini,
+                json!({"candidates":[{"finishReason":"RECITATION"}]}),
+                "will not repeat",
+            ),
+            (
+                AssistantProvider::Gemini,
+                json!({"promptFeedback":{"blockReason":"SAFETY"}}),
+                "declined to answer this (SAFETY)",
+            ),
+            (
+                AssistantProvider::OpenAi,
+                json!({"choices":[{"finish_reason":"length","message":{"content":""}}]}),
+                "longer than",
+            ),
+            (
+                AssistantProvider::OpenAi,
+                json!({"choices":[{"finish_reason":"stop","message":{"refusal":"No."}}]}),
+                "declined",
+            ),
+            (
+                AssistantProvider::Anthropic,
+                json!({"stop_reason":"max_tokens","content":[{"type":"text","text":"{\"ly"}]}),
+                "longer than",
+            ),
+            (
+                AssistantProvider::Gemini,
+                json!({"candidates":[{"finishReason":"STOP","content":{"parts":[{"text":"hi"}]}}]}),
+                "could not be read",
+            ),
+        ];
+        for (provider, reply, expected) in cases {
+            let error = answer(provider, &reply, "song").unwrap_err().to_string();
+            assert!(error.contains(expected), "{provider:?}: {error}");
+        }
     }
 
     #[test]

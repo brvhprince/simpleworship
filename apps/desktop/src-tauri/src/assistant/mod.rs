@@ -193,14 +193,19 @@ pub enum TranslateTo {
 pub enum SermonItem {
     /// A point, as a text slide.
     Point {
-        /// A short heading ("1. He sees you").
+        /// A short heading ("1. He sees you"). Only `kind` is required of
+        /// the assistant, so a point may come with a heading alone (often
+        /// the sermon title) or text alone.
+        #[serde(default)]
         title: String,
         /// The words on the slide.
+        #[serde(default)]
         text: String,
     },
     /// A passage the notes refer to.
     Scripture {
-        /// The reference, e.g. "Romans 8:28-30".
+        /// The reference, e.g. "Romans 8:28-30". One left out is dropped.
+        #[serde(default)]
         reference: String,
     },
 }
@@ -231,6 +236,11 @@ fn chosen_models(app: &AppHandle, provider: AssistantProvider) -> Option<ChosenM
         .get::<ChosenModels>(&format!("{MODELS_KEY}{}", provider.name()))
         .ok()
         .flatten()
+        // One chosen before the app knew better (0.6.0 could choose
+        // Gemini's "customtools" variant) is chosen again.
+        .filter(|models| {
+            providers::usable(provider, &models.fast) && providers::usable(provider, &models.better)
+        })
 }
 
 fn keychain(provider: AssistantProvider) -> AppResult<keyring::Entry> {
@@ -564,7 +574,17 @@ pub async fn assistant_sermon_slides(app: AppHandle, notes: String) -> AppResult
         },
     )
     .await?;
-    Ok(answer.items)
+    // Leave out anything with nothing to show.
+    Ok(answer
+        .items
+        .into_iter()
+        .filter(|item| match item {
+            SermonItem::Point { title, text } => {
+                !(title.trim().is_empty() && text.trim().is_empty())
+            }
+            SermonItem::Scripture { reference } => !reference.trim().is_empty(),
+        })
+        .collect())
 }
 
 // ── Asking ────────────────────────────────────────────────────────────────
@@ -597,7 +617,19 @@ async fn ask<T: DeserializeOwned>(app: &AppHandle, task: Task<'_>) -> AppResult<
     }
     let models = match chosen_models(app, provider) {
         Some(models) => models,
-        None => providers::choose(provider, &providers::models(provider, &key).await?),
+        None => {
+            let chosen = providers::choose(provider, &providers::models(provider, &key).await?);
+            // Remembered, so the list is not fetched again next time.
+            let state = app.state::<AppState>();
+            let saved = state
+                .database()
+                .settings()
+                .set(&format!("{MODELS_KEY}{}", provider.name()), &chosen);
+            if let Err(error) = saved {
+                log::warn!("assistant: the chosen models could not be saved: {error}");
+            }
+            chosen
+        }
     };
     let model = match settings.model {
         AssistantModel::Fast => models.fast,
@@ -625,6 +657,21 @@ mod tests {
         assert!(
             matches!(&items[1], SermonItem::Scripture { reference } if reference == "Psalm 23:4")
         );
+    }
+
+    #[test]
+    fn reads_a_point_with_a_heading_alone() {
+        // As gemini-3.1-pro-preview-customtools sent it: only `kind` is required.
+        let items: Vec<SermonItem> = serde_json::from_value(json!([
+            {"kind":"point","title":"He sees you"},
+            {"kind":"point","text":"Even in the valley"},
+            {"kind":"scripture"}
+        ]))
+        .unwrap();
+        assert!(
+            matches!(&items[0], SermonItem::Point { title, text } if title == "He sees you" && text.is_empty())
+        );
+        assert!(matches!(&items[2], SermonItem::Scripture { reference } if reference.is_empty()));
     }
 
     #[test]
