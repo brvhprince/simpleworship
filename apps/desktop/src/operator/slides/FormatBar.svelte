@@ -253,7 +253,7 @@
 
   button.on {
     border-color: var(--sw-accent);
-    background: var(--sw-accent-soft, rgba(76, 110, 245, 0.25));
+    background: var(--sw-accent-soft);
   }
 
   .bold {

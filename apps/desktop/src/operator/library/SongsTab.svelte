@@ -319,7 +319,7 @@
   }
 
   .confirm {
-    color: var(--sw-warning);
+    color: var(--sw-warning-text);
   }
 
   .results {
@@ -343,11 +343,16 @@
   }
 
   [role="option"]:nth-child(even) {
-    background: rgba(255, 255, 255, 0.02);
+    background: var(--sw-tint);
   }
 
   [role="option"][aria-selected="true"] {
     background: var(--sw-accent);
+    color: #fff;
+  }
+
+  [role="option"][aria-selected="true"] :is(.author, .excerpt) {
+    color: rgba(255, 255, 255, 0.82);
   }
 
   .title {

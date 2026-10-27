@@ -614,7 +614,7 @@
   }
 
   .feedback.error {
-    color: var(--sw-warning);
+    color: var(--sw-warning-text);
   }
 
   .alternatives {
@@ -685,6 +685,7 @@
 
   button.selected {
     background: var(--sw-accent);
+    color: #fff;
   }
 
   .books button {

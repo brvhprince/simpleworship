@@ -211,6 +211,7 @@
     border-radius: 6px;
     background: rgba(0, 0, 0, 0.75);
     font-size: 13px;
+    color: #fff; /* on the slide, in both appearances */
   }
 
   .move {

@@ -77,7 +77,7 @@
 
   .problem {
     margin: var(--sw-space-1) 0 var(--sw-space-2);
-    color: var(--sw-warning, #f59f00);
+    color: var(--sw-warning-text);
   }
 
   .link {

@@ -176,7 +176,7 @@
 
   .presets button.active {
     border-color: var(--sw-accent);
-    background: var(--sw-accent-soft, rgba(76, 110, 245, 0.2));
+    background: var(--sw-accent-soft);
   }
 
   .hint {

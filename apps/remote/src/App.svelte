@@ -185,7 +185,7 @@
   .offline {
     padding: 8px 16px;
     background: rgba(245, 159, 0, 0.2);
-    color: #f59f00;
+    color: var(--sw-warning-text);
     text-align: center;
     font-size: 14px;
   }

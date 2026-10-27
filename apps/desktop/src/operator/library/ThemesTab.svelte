@@ -309,6 +309,7 @@
     padding: 0 6px;
     border-radius: var(--sw-radius-small);
     background: var(--sw-accent);
+    color: #fff;
     font-size: var(--sw-font-size-small);
   }
 </style>

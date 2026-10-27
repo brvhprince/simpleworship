@@ -151,7 +151,7 @@
   }
 
   .feedback.error {
-    color: var(--sw-warning, #f59f00);
+    color: var(--sw-warning-text);
   }
 
   .action {
