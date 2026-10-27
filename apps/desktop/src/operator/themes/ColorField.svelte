@@ -232,7 +232,7 @@
   .palette-btn:hover,
   .palette-btn.active {
     color: var(--sw-text);
-    background: var(--sw-surface-sunken, rgba(255, 255, 255, 0.08));
+    background: var(--sw-tint-strong);
     border-color: var(--sw-accent);
   }
 

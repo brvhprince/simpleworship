@@ -8,7 +8,12 @@ import "@simpleworship/renderer/fonts.css";
 import { mount } from "svelte";
 import App from "./App.svelte";
 import { mediaFolders } from "./lib/api.ts";
+import { appearance } from "./lib/appearance.svelte.ts";
 import { link } from "./lib/link.svelte.ts";
+
+// Light or dark before the first paint: the operator window follows the
+// Appearance setting; the windows that show slides are always dark.
+appearance.start(!new URLSearchParams(window.location.search).has("view"));
 
 const target = document.getElementById("app");
 if (!target) {

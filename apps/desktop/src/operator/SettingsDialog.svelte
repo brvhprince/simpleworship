@@ -3,7 +3,7 @@
   The church's settings: name and CCLI licence (shown in song footers),
   the alert templates in the Alert panel, updates, the stage display
   options, the stream look, the phone remote, and the interface language
-  (kept on this computer).
+  and appearance (kept on this computer).
 -->
 <script lang="ts">
   import type { AlertTemplate, AppSettings } from "@simpleworship/protocol";
@@ -11,6 +11,7 @@
   import { getVersion } from "@tauri-apps/api/app";
   import { onMount } from "svelte";
   import { getSettings, saveSettings } from "../lib/api.ts";
+  import { type Appearance, appearance } from "../lib/appearance.svelte.ts";
   import { dialogs } from "../lib/dialogs.svelte.ts";
   import { engine } from "../lib/engine.svelte.ts";
   import { i18n, LANGUAGES, type Language, t } from "../lib/i18n/i18n.svelte.ts";
@@ -26,6 +27,8 @@
   let version = $state("");
   /** The language chosen here ("" follows the computer); applied on Save. */
   let language: Language | "" = $state(i18n.chosen ?? "");
+  /** Dark, light or as this computer; applied on Save. */
+  let look: Appearance = $state(appearance.chosen);
 
   /** "Twi (12% translated)" for a language that is not finished. */
   function languageName(code: Language, name: string): string {
@@ -60,6 +63,7 @@
     try {
       await saveSettings($state.snapshot(settings));
       i18n.choose(language || null);
+      appearance.choose(look);
       dialogs.close();
     } catch (error) {
       engine.showError(error);
@@ -248,6 +252,18 @@
             {/each}
           </select>
           <span class="hint">{t("settings.languageHint")}</span>
+        </label>
+      </section>
+
+      <section>
+        <h3>{t("settings.appearance")}</h3>
+        <label class="field">
+          <select bind:value={look} aria-label={t("settings.appearance")}>
+            <option value="dark">{t("settings.appearanceDark")}</option>
+            <option value="light">{t("settings.appearanceLight")}</option>
+            <option value="system">{t("settings.appearanceSystem")}</option>
+          </select>
+          <span class="hint">{t("settings.appearanceHint")}</span>
         </label>
       </section>
     </div>

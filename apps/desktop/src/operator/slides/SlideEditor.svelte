@@ -486,7 +486,7 @@
     min-height: 0;
     overflow: auto;
     padding: var(--sw-space-3);
-    background: var(--sw-surface-sunken, #111318);
+    background: var(--sw-surface-sunken);
     border-radius: var(--sw-radius-small);
     display: flex;
     align-items: flex-start;

@@ -343,7 +343,7 @@
   }
 
   [role="option"]:nth-child(even) {
-    background: rgba(255, 255, 255, 0.02);
+    background: var(--sw-tint);
   }
 
   [role="option"][aria-selected="true"] {

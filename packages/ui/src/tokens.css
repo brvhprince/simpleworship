@@ -2,7 +2,10 @@
  * SimpleWorship design tokens.
  *
  * The operator UI is dark by default: sound booths and back rows are dim,
- * and a bright screen at the back of the room is distracting.
+ * and a bright screen at the back of the room is distracting. A light
+ * palette, for bright rooms and preparation in daylight, applies under
+ * `data-theme="light"` on the root element (see `lib/appearance.svelte.ts`
+ * in the desktop app; the phone remote follows the phone's own setting).
  * Import once per app: `import "@simpleworship/ui/tokens.css";`
  */
 
@@ -13,6 +16,11 @@
   --sw-surface-raised: #272b34;
   --sw-surface-hover: #313642;
   --sw-border: #343944;
+  /* Wells below the surface (the slide editor's canvas area, pressed toggles). */
+  --sw-surface-sunken: #111318;
+  /* Faint overlays for zebra rows and hovers, over any surface. */
+  --sw-tint: rgba(255, 255, 255, 0.025);
+  --sw-tint-strong: rgba(255, 255, 255, 0.05);
 
   /* Text. */
   --sw-text: #e7e9ee;
@@ -22,6 +30,7 @@
   /* Accents. Live is red everywhere: it always means "the audience sees this". */
   --sw-accent: #4c6ef5;
   --sw-accent-strong: #5c7cfa;
+  --sw-accent-soft: rgba(76, 110, 245, 0.22);
   --sw-live: #e03131;
   --sw-live-soft: rgba(224, 49, 49, 0.18);
   --sw-preview: #4c6ef5;
@@ -42,6 +51,33 @@
   --sw-font-size-small: 11px;
 
   color-scheme: dark;
+}
+
+/* The light palette: the same roles, for bright rooms. Live stays red and
+   preview blue, a shade darker so they read on white. */
+:root[data-theme="light"] {
+  --sw-bg: #eceef3;
+  --sw-surface: #f7f8fa;
+  --sw-surface-raised: #ffffff;
+  --sw-surface-hover: #e6e9ef;
+  --sw-border: #d2d7e0;
+  --sw-surface-sunken: #dcdfe6;
+  --sw-tint: rgba(20, 26, 40, 0.03);
+  --sw-tint-strong: rgba(20, 26, 40, 0.06);
+
+  --sw-text: #1a1d24;
+  --sw-text-muted: #545b6a;
+  --sw-text-faint: #858c9a;
+
+  --sw-accent: #3b5bdb;
+  --sw-accent-strong: #364fc7;
+  --sw-accent-soft: rgba(59, 91, 219, 0.14);
+  --sw-live: #c92a2a;
+  --sw-live-soft: rgba(201, 42, 42, 0.12);
+  --sw-preview: #3b5bdb;
+  --sw-warning: #e67700;
+
+  color-scheme: light;
 }
 
 *,

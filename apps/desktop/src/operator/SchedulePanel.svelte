@@ -543,11 +543,11 @@
 
   .layout-btn:hover {
     color: var(--sw-text);
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--sw-tint-strong);
   }
 
   .layout-btn.active {
-    background: var(--sw-surface-sunken, rgba(0, 0, 0, 0.2));
+    background: var(--sw-surface-sunken);
     color: var(--sw-accent);
   }
 
@@ -653,7 +653,7 @@
     border-radius: var(--sw-radius);
     border: 1px solid var(--sw-border);
     border-left: 4px solid transparent;
-    background: var(--sw-surface-sunken, rgba(255, 255, 255, 0.02));
+    background: var(--sw-tint);
     padding: var(--sw-space-2) var(--sw-space-3);
   }
 
@@ -683,7 +683,7 @@
     border: 1px solid var(--sw-border);
     border-top: 3px solid transparent;
     border-left: 1px solid var(--sw-border);
-    background: var(--sw-surface-sunken, rgba(255, 255, 255, 0.02));
+    background: var(--sw-tint);
     padding: var(--sw-space-1);
   }
 
