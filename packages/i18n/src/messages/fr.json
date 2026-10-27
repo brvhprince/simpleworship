@@ -164,6 +164,9 @@
   "connect.step2": "Scannez ce code avec l’appareil photo du téléphone et ouvrez le lien.",
   "connect.step3": "Donnez un nom au téléphone et touchez Se connecter ; SimpleWorship vous demande ce qu’il peut faire.",
   "connect.title": "Connecter un téléphone",
+  "context.moveUp": "Monter",
+  "context.moveDown": "Descendre",
+  "context.removeFromSchedule": "Retirer du programme",
   "count.bibles": {
     "one": "1 Bible",
     "other": "{count} Bibles"

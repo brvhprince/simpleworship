@@ -29,6 +29,7 @@
     setMediaScaling,
     showMediaInPreview,
   } from "../../lib/api.ts";
+  import { showContextMenu } from "../../lib/context-menu.ts";
   import { MEDIA_DRAG_TYPE } from "../../lib/drag.ts";
   import { engine } from "../../lib/engine.svelte.ts";
   import { formatBytes, formatDuration } from "../../lib/format.ts";
@@ -169,6 +170,78 @@
     if (answer !== "delete") return;
     for (const item of pickedItems) await deleteMedia(item.id);
     picked.clear();
+  }
+
+  /** Runs `action`, showing any error. */
+  async function attempt(action: () => Promise<unknown>) {
+    try {
+      await action();
+    } catch (error) {
+      engine.showError(error);
+    }
+  }
+
+  /** The Aspect Ratio choices, as in the toolbar's list. */
+  const SCALINGS: [MediaScaling, Parameters<typeof t>[0]][] = [
+    ["automatic", "media.fitAutomatic"],
+    ["stretch", "media.fitStretch"],
+    ["maintain", "media.fitMaintain"],
+    ["zoom", "media.fitZoom"],
+  ];
+
+  /**
+   * The right-click menu: the same actions as the toolbar. On one of
+   * several picked items it acts on all of them; otherwise that item is
+   * picked first, as a click would.
+   */
+  function itemMenu(event: MouseEvent, item: MediaItem) {
+    // As the toolbar does: what counts is what is picked among the files shown.
+    if (pickedItems.length > 1 && picked.has(item.id)) {
+      const music = pickedItems.every((one) => one.kind === "audio");
+      void showContextMenu(event, [
+        {
+          label: music ? t("media.addAsMusic") : t("media.addAsSlideshow"),
+          action: addPicked,
+        },
+        !link.joined && "separator",
+        !link.joined && { label: t("common.delete"), action: removePicked },
+      ]);
+      return;
+    }
+    picked.clear();
+    picked.add(item.id);
+    selectedId = item.id;
+
+    const picture = item.kind !== "audio";
+    const manage = picture && !link.joined;
+    void showContextMenu(event, [
+      picture
+        ? {
+            label: t("common.showInPreview"),
+            action: () => attempt(() => showMediaInPreview(item.id)),
+          }
+        : { label: t("common.play"), action: () => play(item) },
+      {
+        label: t("common.addToSchedule"),
+        action: () => attempt(() => addMediaToSchedule(item.id)),
+      },
+      "separator",
+      picture &&
+        (item.id === logoId
+          ? { label: t("media.removeLogo"), action: () => attempt(() => setLogo(null)) }
+          : { label: t("media.setLogo"), action: () => attempt(() => setLogo(item.id)) }),
+      manage && {
+        label: t("media.aspectRatio"),
+        submenu: SCALINGS.map(([scaling, label]) => ({
+          label: t(label),
+          checked: item.scaling === scaling,
+          action: () => attempt(() => setMediaScaling(item.id, scaling)),
+        })),
+      },
+      manage && { label: t("media.newThumbnail"), action: () => attempt(() => media.remake(item)) },
+      !link.joined && "separator",
+      !link.joined && { label: t("common.delete"), action: () => attempt(() => remove(item)) },
+    ]);
   }
 
   function startDrag(event: DragEvent, item: MediaItem) {
@@ -315,6 +388,7 @@
             ondragstart={(event) => startDrag(event, item)}
             onclick={(event) => pick(event, item)}
             ondblclick={() => activate(item)}
+            oncontextmenu={(event) => itemMenu(event, item)}
           >
             <span class="picture">
               {#if item.kind === "audio"}

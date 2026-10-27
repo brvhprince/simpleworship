@@ -22,6 +22,7 @@
     showSongInPreview,
   } from "../../lib/api.ts";
   import { assistant } from "../../lib/assistant.svelte.ts";
+  import { showContextMenu } from "../../lib/context-menu.ts";
   import { SONG_DRAG_TYPE } from "../../lib/drag.ts";
   import { engine } from "../../lib/engine.svelte.ts";
   import { t } from "../../lib/i18n/i18n.svelte.ts";
@@ -141,6 +142,20 @@
     }
   }
 
+  /** The right-click menu of a song: it is selected, as the buttons act on the selection. */
+  function songMenu(event: MouseEvent, id: string) {
+    selectedId = id;
+    confirmingDelete = false;
+    void showContextMenu(event, [
+      { label: t("common.showInPreview"), action: () => preview(id) },
+      { label: t("common.addToSchedule"), action: () => addToSchedule(id) },
+      "separator",
+      { label: t("common.edit"), action: () => edit(id) },
+      // Songs are deleted on the main computer; the toolbar asks first.
+      !link.joined && { label: t("common.delete"), action: () => (confirmingDelete = true) },
+    ]);
+  }
+
   async function handleSaved(song: Song) {
     editing = null;
     selectedId = song.id;
@@ -256,6 +271,7 @@
         ondragstart={(event) => startDrag(event, song.id)}
         onclick={() => (selectedId = song.id)}
         ondblclick={() => preview(song.id)}
+        oncontextmenu={(event) => songMenu(event, song.id)}
       >
         <span class="title">{song.title}</span>
         <span class="author">{song.author}</span>
