@@ -36,15 +36,17 @@ const SKIPPED_DESTINATIONS: &[&str] = &[
 ];
 
 /// A one-line plain text version of a short note that may be RTF, such as
-/// an EasyWorship Bible's copyright notice: RTF is read and its paragraphs
-/// joined with spaces; anything else is returned as it is, trimmed.
+/// an EasyWorship Bible's copyright notice (shown as one footer line): RTF
+/// is read first, then the lines, of either kind, are joined with spaces.
 pub fn plain_line(text: &str) -> String {
     let trimmed = text.trim();
-    if !trimmed.starts_with("{\\rtf") {
-        return trimmed.to_owned();
-    }
-    to_text(trimmed)
-        .split('\n')
+    let plain = if trimmed.starts_with("{\\rtf") {
+        to_text(trimmed)
+    } else {
+        trimmed.to_owned()
+    };
+    plain
+        .lines()
         .map(str::trim)
         .filter(|line| !line.is_empty())
         .collect::<Vec<_>>()
@@ -286,6 +288,14 @@ Copyright \'a9 1999, 2000, 2002, 2003 by Holman Bible Publishers.\par
     fn a_plain_copyright_notice_stays_as_it_is() {
         assert_eq!(plain_line("  Public Domain "), "Public Domain");
         assert_eq!(plain_line(""), "");
+    }
+
+    #[test]
+    fn a_plain_notice_on_several_lines_becomes_one() {
+        assert_eq!(
+            plain_line("Bible Society of Ghana\r\n\r\nAll rights reserved.\n"),
+            "Bible Society of Ghana All rights reserved."
+        );
     }
 
     #[test]
