@@ -21,6 +21,9 @@
   /* Faint overlays for zebra rows and hovers, over any surface. */
   --sw-tint: rgba(255, 255, 255, 0.025);
   --sw-tint-strong: rgba(255, 255, 255, 0.05);
+  /* Text fields and dropdowns: a well in dark, white paper in light. */
+  --sw-field: #15171c;
+  --sw-field-border: #343944;
 
   /* Text. */
   --sw-text: #e7e9ee;
@@ -64,6 +67,8 @@
   --sw-surface-sunken: #dcdfe6;
   --sw-tint: rgba(20, 26, 40, 0.03);
   --sw-tint-strong: rgba(20, 26, 40, 0.06);
+  --sw-field: #ffffff;
+  --sw-field-border: #c3c9d4;
 
   --sw-text: #1a1d24;
   --sw-text-muted: #545b6a;
@@ -107,8 +112,8 @@ button {
 input,
 textarea,
 select {
-  background: var(--sw-bg);
-  border: 1px solid var(--sw-border);
+  background: var(--sw-field);
+  border: 1px solid var(--sw-field-border);
   border-radius: var(--sw-radius-small);
   padding: var(--sw-space-1) var(--sw-space-2);
 }
