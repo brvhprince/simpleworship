@@ -622,8 +622,10 @@ mod tests {
         };
         let wav = std::fs::read(var("SW_HELPER_WAV")).unwrap();
         let speech: Vec<f32> = wav[44..]
-            .chunks_exact(2)
-            .map(|b| f32::from(i16::from_le_bytes([b[0], b[1]])) / 32_768.0)
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .map(|&b| f32::from(i16::from_le_bytes(b)) / 32_768.0)
             .collect();
 
         let slot = HelperSlot::default();
