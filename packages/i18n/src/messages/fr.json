@@ -449,6 +449,7 @@
   "kind.image": "Image",
   "kind.music": "Musique",
   "kind.presentation": "Présentation",
+  "kind.sermon": "Prédication",
   "kind.slides": "Diapos",
   "kind.song": "Chant",
   "kind.text": "Texte",
@@ -722,11 +723,8 @@
   "scripture.autoFlowHint": "Diviser automatiquement les longs versets sur plusieurs diapositives",
   "scripture.minFontSize": "Taille min",
   "scripture.minFontSizeHint": "Taille de police minimale avant de couper la diapositive",
-  "sermon.add": {
-    "one": "Ajouter 1 élément au programme",
-    "other": "Ajouter {count} éléments au programme"
-  },
-  "sermon.hint": "L’assistant liste les points en diapositives de texte et chaque passage cité, dans l’ordre, prêts à être ajoutés au programme.",
+  "sermon.hint": "L’assistant liste les points en diapositives de texte et chaque passage cité, dans l’ordre. Ils sont ajoutés au programme en un seul élément Prédication.",
+  "sermon.itemTitle": "Prédication : {title}",
   "sermon.make": "Créer les diapositives",
   "sermon.notFound": "référence inconnue de SimpleWorship",
   "sermon.notes": "Les notes du prédicateur",

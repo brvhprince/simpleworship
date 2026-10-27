@@ -449,6 +449,7 @@
   "kind.image": "Mfoni",
   "kind.music": "Nnwom",
   "kind.presentation": "Ɔyɛkyerɛ",
+  "kind.sermon": "Asɛnka",
   "kind.slides": "Slaede",
   "kind.song": "Dwom",
   "kind.text": "Atwerɛdeɛ",
@@ -722,11 +723,8 @@
   "scripture.autoFlowHint": "Kyɛ nkyekyɛmu atenten mu wɔ slaede bebree so sɛdeɛ nkyerɛwdeɛ no bɛda adi yie",
   "scripture.minFontSize": "Kɛseɛ a ɛsua koraa",
   "scripture.minFontSizeHint": "Nkyerɛwdeɛ kɛseɛ a ɛsua koraa ansa na slaede no akyɛ mu",
-  "sermon.add": {
-    "one": "Fa 1 ka Som Nhyehyɛeɛ ho",
-    "other": "Fa {count} ka Som Nhyehyɛeɛ ho"
-  },
-  "sermon.hint": "Ɔboafoɔ no kyerɛw nsɛntitiriw no sɛ atwerɛdeɛ slaede ne Twerɛ Kronkron biara a nsɛm no de di dwuma, sɛdeɛ ɛtoatoa so, a wode bɛka Som Nhyehyɛeɛ ho.",
+  "sermon.hint": "Ɔboafoɔ no kyerɛw nsɛntitiriw no sɛ atwerɛdeɛ slaede ne Twerɛ Kronkron biara a nsɛm no de di dwuma, sɛdeɛ ɛtoatoa so. Wɔde ne nyinaa ka Som Nhyehyɛeɛ ho sɛ Asɛnka baako.",
+  "sermon.itemTitle": "Asɛnka: {title}",
   "sermon.make": "Yɛ Slaede",
   "sermon.notFound": "SimpleWorship nnim saa nkyerɛkyerɛmu yi",
   "sermon.notes": "Ɔsɛnkafoɔ no nsɛm",

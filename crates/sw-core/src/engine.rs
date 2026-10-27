@@ -1083,8 +1083,18 @@ impl Engine {
 
     /// What kind of content is live, for its transition and stream look.
     fn live_kind(&self) -> Option<StreamKind> {
-        let source = &self.live.as_ref()?.presentation.source;
+        let live = self.live.as_ref()?;
+        let source = &live.presentation.source;
         Some(match source {
+            // A sermon's passages look like scripture on the stream.
+            PresentationSource::Sermon => {
+                let slide = live.presentation.slides.get(live.selected);
+                if slide.is_some_and(|slide| slide.scripture.is_some()) {
+                    StreamKind::Scripture
+                } else {
+                    StreamKind::Other
+                }
+            }
             PresentationSource::Song { .. } => StreamKind::Songs,
             PresentationSource::Scripture { .. } => StreamKind::Scripture,
             PresentationSource::Deck { .. } | PresentationSource::Slides => {

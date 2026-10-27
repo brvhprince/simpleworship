@@ -88,6 +88,15 @@ pub fn run(app: &AppHandle, method: &str, params: Value) -> AppResult<Value> {
             params.get("options")?,
             params.get("index")?,
         )?),
+        "schedule_add_sermon" => json(scripture::schedule_add_sermon(
+            app.clone(),
+            state(),
+            params.get("title")?,
+            params.get("parts")?,
+            params.get("bibleIds")?,
+            params.get("options")?,
+            params.get("index")?,
+        )?),
 
         // Text and countdowns
         "text_show_in_preview" => json(text::text_show_in_preview(

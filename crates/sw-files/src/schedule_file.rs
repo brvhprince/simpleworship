@@ -25,6 +25,7 @@
 //! | 3       | media items and media files    |
 //! | 4       | countdowns, presentations, playlists |
 //! | 5       | editable presentations and slideshows |
+//! | 6       | sermons (points and passages as one item) |
 //!
 //! A file is written with the *lowest* version that can hold it, so a
 //! schedule without scripture still opens in versions that only know v1.
@@ -38,7 +39,7 @@ use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipArchive, ZipWriter};
 
 /// The newest format version this build reads (and writes, when needed).
-pub const FORMAT_VERSION: u32 = 5;
+pub const FORMAT_VERSION: u32 = 6;
 
 /// Name of the schedule entry inside the archive.
 const SCHEDULE_ENTRY: &str = "schedule.json";
@@ -268,7 +269,9 @@ fn version_needed(schedule: &Schedule, has_media_files: bool) -> u32 {
     let has =
         |wanted: fn(&ItemContent) -> bool| schedule.items.iter().any(|item| wanted(&item.content));
 
-    if has(|content| matches!(content, ItemContent::Deck { .. })) {
+    if has(|content| matches!(content, ItemContent::Sermon { .. })) {
+        6
+    } else if has(|content| matches!(content, ItemContent::Deck { .. })) {
         5
     } else if has(|content| {
         matches!(
@@ -354,6 +357,17 @@ mod tests {
             }));
         let bytes = write_schedule(&schedule).unwrap();
         assert_eq!(written_version(&bytes), 2);
+        assert_eq!(read_schedule(&bytes).unwrap(), schedule);
+
+        schedule.items.push(ScheduleItem::new(ItemContent::Sermon {
+            title: "Sermon: He sees you".into(),
+            parts: vec![sw_core::SermonPart::Point {
+                title: "He sees you".into(),
+                text: "Even in the valley".into(),
+            }],
+        }));
+        let bytes = write_schedule(&schedule).unwrap();
+        assert_eq!(written_version(&bytes), 6, "a sermon needs v6");
         assert_eq!(read_schedule(&bytes).unwrap(), schedule);
     }
 

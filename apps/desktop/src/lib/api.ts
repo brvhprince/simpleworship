@@ -23,6 +23,7 @@ import type {
   MediaItem,
   MediaScaling,
   MonitorInfo,
+  NewSermonPart,
   OutputKind,
   OutputTarget,
   Passage,
@@ -72,6 +73,7 @@ const ON_HOST = new Set([
   "scripture_text",
   "scripture_show_in_preview",
   "schedule_add_scripture",
+  "schedule_add_sermon",
   "text_show_in_preview",
   "schedule_add_text",
   "schedule_add_countdown",
@@ -245,6 +247,18 @@ export const addScriptureToSchedule = (
   options: ScriptureOptions,
   index: number | null = null,
 ) => invoke<void>("schedule_add_scripture", { passage, bibleIds, options, index });
+
+/**
+ * Adds a sermon's points and passages as one schedule item at `index` (or
+ * at the end). Passages are looked up in `bibleIds`, as `addScriptureToSchedule`.
+ */
+export const addSermonToSchedule = (
+  title: string,
+  parts: NewSermonPart[],
+  bibleIds: string[],
+  options: ScriptureOptions,
+  index: number | null = null,
+) => invoke<void>("schedule_add_sermon", { title, parts, bibleIds, options, index });
 
 // ── Themes and fonts ─────────────────────────────────────────────────────
 // The theme library itself arrives with the engine state (`engine.themes`).

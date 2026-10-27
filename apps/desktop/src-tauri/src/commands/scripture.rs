@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use sw_bible::reference::{self, Passage};
 use sw_bible::{BookId, VersePoint, VerseRange};
 use sw_core::{
-    BibleInfo, BookOutline, Command, Id, ItemContent, ScheduleItem, ScriptureOptions,
+    BibleInfo, BookOutline, Command, Id, ItemContent, ScheduleItem, ScriptureOptions, SermonPart,
     TranslationText, Verse,
 };
 use tauri::{AppHandle, State};
@@ -169,6 +169,67 @@ pub fn schedule_add_scripture(
         translations,
         options,
     });
+    dispatch(
+        &app,
+        &state,
+        Command::AddScheduleItem {
+            item: Box::new(item),
+            index,
+        },
+    )
+}
+
+/// One part of a sermon to add (see [`schedule_add_sermon`]).
+#[derive(Clone, Debug, Deserialize, TS)]
+#[serde(
+    tag = "type",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
+#[ts(export, export_to = "desktop.ts")]
+pub enum NewSermonPart {
+    /// A point: its heading and words.
+    Point {
+        /// Its heading, e.g. "1. In the valley".
+        title: String,
+        /// The words on the slide.
+        text: String,
+    },
+    /// A passage, looked up in the chosen Bibles.
+    Scripture {
+        /// The passage.
+        passage: Passage,
+    },
+}
+
+/// Adds a sermon's points and passages as one schedule item at `index`
+/// (or at the end). Passages are looked up in `bible_ids` and split with
+/// `options`, as the Scripture tab does, and their text is copied in.
+#[tauri::command]
+pub fn schedule_add_sermon(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    title: String,
+    parts: Vec<NewSermonPart>,
+    bible_ids: Vec<Id>,
+    options: ScriptureOptions,
+    index: Option<usize>,
+) -> AppResult<()> {
+    let parts = parts
+        .into_iter()
+        .map(|part| {
+            Ok(match part {
+                NewSermonPart::Point { title, text } => SermonPart::Point { title, text },
+                NewSermonPart::Scripture { passage } => SermonPart::Scripture {
+                    reference: passage.to_string(),
+                    translations: translations(&state, &passage, &bible_ids)?,
+                    passage,
+                    options,
+                },
+            })
+        })
+        .collect::<AppResult<Vec<_>>>()?;
+    let item = ScheduleItem::new(ItemContent::Sermon { title, parts });
     dispatch(
         &app,
         &state,

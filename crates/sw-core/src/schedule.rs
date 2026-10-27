@@ -127,6 +127,47 @@ pub enum ItemContent {
         /// The tracks, in order (the files travel with a saved schedule).
         tracks: Vec<MediaItem>,
     },
+    /// A sermon's points and passages, in the order of the sermon, as one
+    /// item (made from the preacher's notes by the assistant), so they do
+    /// not fill the schedule. Points are drawn with the text theme and
+    /// passages with the scripture theme.
+    Sermon {
+        /// Title in the schedule, e.g. "Sermon: He sees you".
+        title: String,
+        /// The points and passages, in order.
+        parts: Vec<SermonPart>,
+    },
+}
+
+/// One part of a [`ItemContent::Sermon`].
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
+#[serde(
+    tag = "type",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
+#[ts(export, export_to = "bindings.ts")]
+pub enum SermonPart {
+    /// A point, shown as text.
+    Point {
+        /// Its heading, e.g. "1. In the valley", shown above its slides in
+        /// the slide list (and on the slide when there is no text).
+        title: String,
+        /// The words on the slide; blank lines separate slides.
+        text: String,
+    },
+    /// A Bible passage, with a copy of the text, as in
+    /// [`ItemContent::Scripture`].
+    Scripture {
+        /// The passage.
+        passage: Passage,
+        /// The passage written out, e.g. "Psalm 23:4".
+        reference: String,
+        /// The text in each translation, shown side by side.
+        translations: Vec<TranslationText>,
+        /// How the passage is split into slides.
+        options: ScriptureOptions,
+    },
 }
 
 impl ScheduleItem {
@@ -155,6 +196,7 @@ impl ScheduleItem {
             ItemContent::Countdown { title, .. } => title.clone(),
             ItemContent::Slides { name, .. } | ItemContent::Playlist { name, .. } => name.clone(),
             ItemContent::Deck { deck } => deck.name.clone(),
+            ItemContent::Sermon { title, .. } => title.clone(),
         }
     }
 
@@ -204,6 +246,9 @@ impl ScheduleItem {
                 look(ContentKind::Presentation, deck.theme_id),
                 themes,
             ),
+            ItemContent::Sermon { title, parts } => {
+                Presentation::from_sermon(title.clone(), parts, |kind| look(kind, None))
+            }
         }
     }
 
@@ -226,6 +271,7 @@ impl ScheduleItem {
                 ..SlideDeck::new(title.clone())
             }),
             ItemContent::Song { .. }
+            | ItemContent::Sermon { .. }
             | ItemContent::Scripture { .. }
             | ItemContent::Countdown { .. }
             | ItemContent::Camera { .. }

@@ -605,6 +605,29 @@ export type NdiStatus = {
 };
 
 /**
+ * One part of a sermon to add (see [`schedule_add_sermon`]).
+ */
+export type NewSermonPart =
+  | {
+      type: "point";
+      /**
+       * Its heading, e.g. "1. In the valley".
+       */
+      title: string;
+      /**
+       * The words on the slide.
+       */
+      text: string;
+    }
+  | {
+      type: "scripture";
+      /**
+       * The passage.
+       */
+      passage: Passage;
+    };
+
+/**
  * The kinds of output window.
  */
 export type OutputKind = "projector" | "stage" | "stream";
