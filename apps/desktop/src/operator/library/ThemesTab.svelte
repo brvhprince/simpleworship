@@ -4,7 +4,7 @@
   and text use by default, and buttons to create, edit and delete themes.
 -->
 <script lang="ts">
-  import type { ThemeDefaults, ThemeRecord } from "@simpleworship/protocol";
+  import type { ThemeCategory, ThemeDefaults, ThemeRecord } from "@simpleworship/protocol";
   import { ScaledCanvas, SlideView } from "@simpleworship/renderer";
   import { Button } from "@simpleworship/ui";
   import { deleteTheme, saveTheme, setThemeDefaults, uuidV7 } from "../../lib/api.ts";
@@ -28,7 +28,7 @@
     ["presentation", t("library.presentations")],
   ]);
 
-  type CategoryFilter = "all" | "song" | "scripture" | "presentation" | "text";
+  type CategoryFilter = "all" | ThemeCategory;
   let categoryFilter: CategoryFilter = $state("all");
 
   let selectedId: string | null = $state(null);
@@ -40,7 +40,7 @@
   const selected = $derived(themes.find((theme) => theme.id === selectedId) ?? null);
 
   function themeCategory(theme: ThemeRecord): CategoryFilter {
-    if (theme.theme.category) return theme.theme.category as CategoryFilter;
+    if (theme.theme.category) return theme.theme.category;
     if (defaults.scripture === theme.id) return "scripture";
     if (defaults.presentation === theme.id) return "presentation";
     if (defaults.text === theme.id) return "text";
