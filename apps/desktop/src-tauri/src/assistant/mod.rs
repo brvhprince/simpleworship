@@ -546,7 +546,7 @@ pub async fn assistant_sermon_slides(app: AppHandle, notes: String) -> AppResult
                      the first point, on its own (its text may be the series or date line). \
                      Every other point has its OWN heading: the point itself, shortened to a \
                      few words, numbered (\"1. …\") when the notes number them. Never use the \
-                     sermon title as a point's heading, and never repeat a heading. A \
+                     sermon title as another point's heading, and never repeat a heading. A \
                      point's text is one to four short lines taken from the notes: its \
                      explanation and sub-points. A passage is its reference only, in the \
                      usual English form with the book's full name, such as \"Romans \
