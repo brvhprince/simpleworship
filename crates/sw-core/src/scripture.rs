@@ -5,9 +5,10 @@
 //!
 //! 1. A slide never mixes chapters.
 //! 2. A slide holds at most [`ScriptureOptions::max_verses`] verses.
-//! 3. With [`ScriptureOptions::auto_flow`] (EasyWorship's "Automatically
-//!    flow scripture on multiple slides"), a slide holds only as much text
-//!    as the theme's text box fits at [`ScriptureOptions::min_font_size`]
+//! 3. With the theme's [`auto_flow`](crate::theme::ScriptureStyle::auto_flow)
+//!    (EasyWorship's "Automatically flow scripture on multiple slides"), a
+//!    slide holds only as much text as the theme's text box fits at its
+//!    [`min_font_size`](crate::theme::ScriptureStyle::min_font_size)
 //!    (see [`chars_per_column`]), so long passages move on to the next slide
 //!    instead of shrinking below that size.
 //! 4. A single verse that is too long on its own is then split at
@@ -110,27 +111,10 @@ pub struct ScriptureOptions {
     /// says (see [`VerseNumberStyle`](crate::theme::VerseNumberStyle)).
     #[serde(default)]
     pub verse_numbers: Option<bool>,
-    /// Move text that does not fit the theme's text box at
-    /// `min_font_size` on to more slides. Without it, everything up to
-    /// `max_verses` goes on one slide and shrinks as far as it must.
-    #[serde(default = "default_auto_flow")]
-    pub auto_flow: bool,
-    /// The smallest font size, in canvas pixels (1920 × 1080), the text may
-    /// shrink to before the rest goes on the next slide. EasyWorship's
-    /// "Minimum font size before breaking slide".
-    #[serde(default = "default_min_font_size")]
-    pub min_font_size: u32,
-}
-
-fn default_auto_flow() -> bool {
-    true
-}
-
-/// Large enough to read from the back of a church on most screens.
-const DEFAULT_MIN_FONT_SIZE: u32 = 48;
-
-fn default_min_font_size() -> u32 {
-    DEFAULT_MIN_FONT_SIZE
+    // Whether long passages flow on to more slides, and the smallest font
+    // size before they do, were here until 0.6.0; they are the theme's now
+    // (see `ScriptureStyle`). Schedules saved with them still load: serde
+    // skips the fields it no longer knows.
 }
 
 impl Default for ScriptureOptions {
@@ -139,8 +123,6 @@ impl Default for ScriptureOptions {
             max_verses: 2,
             max_chars: 300,
             verse_numbers: None,
-            auto_flow: true,
-            min_font_size: DEFAULT_MIN_FONT_SIZE,
         }
     }
 }
@@ -226,8 +208,9 @@ pub fn slides(
     options: ScriptureOptions,
     theme: &Theme,
 ) -> Vec<Slide> {
-    let budget = if options.auto_flow {
-        chars_per_column(theme, options.min_font_size as f32, translations.len())
+    let flow = &theme.scripture;
+    let budget = if flow.auto_flow {
+        chars_per_column(theme, flow.min_font_size as f32, translations.len())
     } else {
         // Everything up to `max_verses` on one slide, shrunk to fit.
         usize::MAX
@@ -361,7 +344,8 @@ fn slides_with_budget(
 }
 
 /// Builds the slide(s) for one chunk of verses. A chunk is a single slide,
-/// except when auto-flow splits long verse(s).
+/// except when auto-flow splits a long verse. A `budget` of `usize::MAX`
+/// means no auto-flow.
 fn build_slides(
     passage: &Passage,
     chunk: &[(u16, u16)],
@@ -372,7 +356,7 @@ fn build_slides(
 ) -> Vec<Slide> {
     let caption = format!("{} ({})", passage, abbreviations(translations));
 
-    let splittable = options.auto_flow && chunk.len() == 1;
+    let splittable = budget != usize::MAX && chunk.len() == 1;
     if splittable {
         let key = chunk[0];
         let mut all_parts: Vec<Vec<String>> = translations
@@ -678,7 +662,7 @@ mod tests {
 
     #[test]
     fn long_verses_get_a_slide_of_their_own() {
-        let budget = chars_per_column(&theme(), DEFAULT_MIN_FONT_SIZE as f32, 1);
+        let budget = chars_per_column(&theme(), crate::theme::DEFAULT_MIN_FONT_SIZE as f32, 1);
         // Fits a slide alone, but not after another verse.
         let long = "x".repeat(budget - 2);
         let kjv = translation("KJV", &[(3, 16, "short"), (3, 17, &long)]);
@@ -819,11 +803,22 @@ mod tests {
     fn without_auto_flow_a_long_verse_stays_whole() {
         let long = "word, ".repeat(400);
         let kjv = translation("KJV", &[(3, 16, &long)]);
-        let options = ScriptureOptions {
-            auto_flow: false,
-            ..ScriptureOptions::default()
-        };
-        assert_eq!(slides(&passage(), &[kjv], options, &theme()).len(), 1);
+        let mut theme = theme();
+        theme.scripture.auto_flow = false;
+        assert_eq!(
+            slides(&passage(), &[kjv], ScriptureOptions::default(), &theme).len(),
+            1
+        );
+    }
+
+    #[test]
+    fn options_saved_with_the_old_flow_settings_still_load() {
+        // Schedules from 0.6.0 carry them; they are the theme's now.
+        let options: ScriptureOptions = serde_json::from_str(
+            r#"{"maxVerses":3,"maxChars":300,"autoFlow":false,"minFontSize":60}"#,
+        )
+        .unwrap();
+        assert_eq!(options.max_verses, 3);
     }
 
     #[test]

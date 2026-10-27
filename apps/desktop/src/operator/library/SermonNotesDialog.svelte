@@ -13,7 +13,6 @@
   import { bibles } from "../../lib/bibles.svelte.ts";
   import { engine } from "../../lib/engine.svelte.ts";
   import { t } from "../../lib/i18n/i18n.svelte.ts";
-  import { validMinFontSize } from "../../lib/scripture-state.svelte.ts";
 
   interface Props {
     onclose: () => void;
@@ -40,8 +39,6 @@
       primaryId?: string | null;
       secondaryId?: string | null;
       maxVerses?: number;
-      autoFlow?: boolean;
-      minFontSize?: number;
     } = {};
     try {
       saved = JSON.parse(localStorage.getItem("simpleworship.scripture") ?? "{}");
@@ -58,8 +55,6 @@
         maxVerses: saved.maxVerses ?? 2,
         maxChars: 300,
         verseNumbers: null,
-        autoFlow: saved.autoFlow ?? true,
-        minFontSize: validMinFontSize(saved.minFontSize),
       },
     };
   }
