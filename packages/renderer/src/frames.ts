@@ -24,8 +24,10 @@ export function frameAt(presentation: Presentation, index: number): RenderFrame 
     },
   };
 
-  // The reference can be shown on the first slide of a passage only.
-  const firstOnly = slide.scripture && index > 0 && !theme.scripture.referenceOnEverySlide;
+  // The reference can be shown on the first slide of a passage only (in a
+  // sermon, a passage starts a section).
+  const firstOnly =
+    slide.scripture && index > 0 && !slide.startsSection && !theme.scripture.referenceOnEverySlide;
 
   return {
     text: slide.text,

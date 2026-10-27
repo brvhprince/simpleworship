@@ -449,6 +449,7 @@
   "kind.image": "Image",
   "kind.music": "Music",
   "kind.presentation": "Presentation",
+  "kind.sermon": "Sermon",
   "kind.slides": "Slides",
   "kind.song": "Song",
   "kind.text": "Text",
@@ -722,11 +723,8 @@
   "scripture.autoFlowHint": "Automatically split long verses across multiple slides so font size stays readable",
   "scripture.minFontSize": "Min font size",
   "scripture.minFontSizeHint": "Minimum font size before breaking slide",
-  "sermon.add": {
-    "one": "Add 1 to Schedule",
-    "other": "Add {count} to Schedule"
-  },
-  "sermon.hint": "The assistant lists the points as text slides and every passage the notes use, in order, ready to add to the schedule.",
+  "sermon.hint": "The assistant lists the points as text slides and every passage the notes use, in order. They are added to the schedule as one Sermon item.",
+  "sermon.itemTitle": "Sermon: {title}",
   "sermon.make": "Make Slides",
   "sermon.notFound": "not a reference SimpleWorship knows",
   "sermon.notes": "The preacher's notes",

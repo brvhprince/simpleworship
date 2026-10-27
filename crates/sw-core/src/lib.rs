@@ -46,7 +46,7 @@ pub use output::{
     DisplayFlags, OutputState, RenderFrame, Transition, TransitionKind, VideoPlayback,
 };
 pub use presentation::{Presentation, PresentationSource};
-pub use schedule::{ItemContent, Schedule, ScheduleItem};
+pub use schedule::{ItemContent, Schedule, ScheduleItem, SermonPart};
 pub use scripture::{BibleInfo, BookOutline, ScriptureOptions, TranslationText, Verse};
 pub use slides::{Slide, SlideOptions};
 pub use song::{Song, SongSummary};

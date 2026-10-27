@@ -217,6 +217,7 @@ pub fn run() {
             commands::scripture::scripture_text,
             commands::scripture::scripture_show_in_preview,
             commands::scripture::schedule_add_scripture,
+            commands::scripture::schedule_add_sermon,
             commands::themes::theme_save,
             commands::themes::theme_delete,
             commands::themes::theme_set_defaults,

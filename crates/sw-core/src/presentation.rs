@@ -13,14 +13,16 @@ use sw_bible::Passage;
 use crate::countdown::CountdownSlide;
 use crate::deck::{AutoAdvance, SlideDeck, SlideStyle};
 use crate::id::Id;
+use crate::lyrics::{SectionKind, SectionLabel};
 use crate::markup;
 use crate::media::{CameraRef, MediaItem, MediaKind};
 use crate::output::RenderFrame;
+use crate::schedule::SermonPart;
 use crate::scripture::{self, ScriptureOptions, TranslationText};
 use crate::slides::{self, Slide, SlideOptions};
 use crate::song::Song;
 use crate::theme::{Background, MediaFit, Theme};
-use crate::themes::{Look, ThemeLibrary};
+use crate::themes::{ContentKind, Look, ThemeLibrary};
 
 /// Where a presentation's slides came from.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, TS)]
@@ -62,6 +64,8 @@ pub enum PresentationSource {
     },
     /// A camera, shown on its own.
     Camera,
+    /// A sermon's points and passages.
+    Sermon,
 }
 
 /// A titled list of slides, styled with one theme.
@@ -348,6 +352,62 @@ impl Presentation {
         )
     }
 
+    /// Builds one presentation from a sermon's points and passages, in
+    /// order. Each slide keeps the look of its kind (`look` gives it:
+    /// points the text theme, passages the scripture theme), and each
+    /// part's first slide starts a section named after it, so the slide
+    /// list shows where each point and passage begins.
+    pub fn from_sermon(
+        title: impl Into<String>,
+        parts: &[SermonPart],
+        look: impl Fn(ContentKind) -> Look,
+    ) -> Self {
+        let text_look = look(ContentKind::Text);
+        let scripture_look = look(ContentKind::Scripture);
+        let mut slides = Vec::new();
+        let mut translations_used = Vec::new();
+        for part in parts {
+            let (heading, mut part_slides, part_look) = match part {
+                SermonPart::Point { title, text } => {
+                    // A point with a heading alone shows its heading.
+                    let words = if text.trim().is_empty() { title } else { text };
+                    let slides = slides::slides_from_text(words, SlideOptions::default());
+                    (title.clone(), slides, &text_look)
+                }
+                SermonPart::Scripture {
+                    passage,
+                    reference,
+                    translations,
+                    options,
+                } => {
+                    translations_used.extend(translations.iter().cloned());
+                    let slides =
+                        scripture::slides(passage, translations, *options, &scripture_look.theme);
+                    (reference.clone(), slides, &scripture_look)
+                }
+            };
+            for slide in &mut part_slides {
+                slide.look = Some(Box::new(part_look.clone()));
+            }
+            if let Some(first) = part_slides.first_mut() {
+                first.starts_section = true;
+                first.section = Some(SectionLabel {
+                    kind: SectionKind::Other,
+                    number: None,
+                    name: heading,
+                });
+            }
+            slides.extend(part_slides);
+        }
+        Self::new(
+            PresentationSource::Sermon,
+            title.into(),
+            slides,
+            text_look,
+            scripture::footer(&translations_used),
+        )
+    }
+
     /// The fully resolved frame for the slide at `index`, if it exists.
     ///
     /// The theme is the slide's own if it has one, then this item's
@@ -369,9 +429,11 @@ impl Presentation {
             apply_style(&mut theme, style);
         }
 
-        // The reference can be shown on the first slide of a passage only.
+        // The reference can be shown on the first slide of a passage only
+        // (in a sermon, a passage starts a section).
         let caption = if slide.scripture.is_some()
             && index > 0
+            && !slide.starts_section
             && !theme.scripture.reference_on_every_slide
         {
             None
@@ -460,6 +522,79 @@ mod tests {
             frame.theme.background,
             Background::Camera { ref camera, fit: MediaFit::Cover, .. } if camera.label == "FaceTime HD Camera"
         ));
+    }
+
+    #[test]
+    fn a_sermon_keeps_each_parts_look_and_marks_where_it_starts() {
+        let verses = TranslationText {
+            bible_id: Id::new(),
+            abbreviation: "KJV".into(),
+            copyright: "Public Domain".into(),
+            verses: vec![crate::scripture::Verse {
+                book: sw_bible::BookId(19),
+                chapter: 23,
+                verse: 4,
+                text: "Yea, though I walk through the valley".into(),
+            }],
+        };
+        let parts = [
+            SermonPart::Point {
+                title: "He sees you".into(),
+                text: String::new(),
+            },
+            SermonPart::Point {
+                title: "1. In the valley".into(),
+                text: "Even there\n\nHe is near".into(),
+            },
+            SermonPart::Scripture {
+                passage: sw_bible::reference::parse("ps 23:4").unwrap().passage,
+                reference: "Psalm 23:4".into(),
+                translations: vec![verses],
+                options: ScriptureOptions::default(),
+            },
+        ];
+        let text_theme = Theme {
+            name: "Text".into(),
+            ..Theme::default()
+        };
+        let mut scripture_theme = Theme {
+            name: "Scripture".into(),
+            ..Theme::default()
+        };
+        scripture_theme.scripture.reference_on_every_slide = false;
+        let p = Presentation::from_sermon("Sermon", &parts, |kind| match kind {
+            ContentKind::Scripture => scripture_theme.clone().into(),
+            _ => text_theme.clone().into(),
+        });
+
+        assert_eq!(p.title, "Sermon");
+        assert_eq!(
+            p.slides.len(),
+            4,
+            "heading, two slides of text, the passage"
+        );
+        // A point with a heading alone shows its heading.
+        assert_eq!(p.frame(0).unwrap().text, "He sees you");
+        let sections: Vec<_> = p
+            .slides
+            .iter()
+            .map(|slide| slide.section.as_ref().map(|label| label.name.as_str()))
+            .collect();
+        assert_eq!(
+            sections,
+            [
+                Some("He sees you"),
+                Some("1. In the valley"),
+                None,
+                Some("Psalm 23:4")
+            ]
+        );
+        assert_eq!(p.frame(1).unwrap().theme.name, "Text");
+        let passage = p.frame(3).unwrap();
+        assert_eq!(passage.theme.name, "Scripture");
+        // The passage's first slide shows its reference, although it is
+        // not the presentation's first slide.
+        assert!(passage.caption.is_some());
     }
 
     fn song() -> Song {

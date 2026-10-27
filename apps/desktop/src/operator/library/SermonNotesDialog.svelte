@@ -2,13 +2,19 @@
   @component
   Sermon notes to slides, with the assistant: paste the preacher's notes,
   and it lists the points (as text slides) and every passage they refer
-  to, in order. Untick anything not wanted, then add them all to the
-  schedule. Passages use the translations chosen in the Scripture tab.
+  to, in order. Untick anything not wanted, then add them to the schedule
+  as one Sermon item, so they do not fill it. Passages use the
+  translations chosen in the Scripture tab.
 -->
 <script lang="ts">
-  import type { Passage, ScriptureOptions, SermonItem } from "@simpleworship/protocol";
+  import type {
+    NewSermonPart,
+    Passage,
+    ScriptureOptions,
+    SermonItem,
+  } from "@simpleworship/protocol";
   import { Button, Dialog } from "@simpleworship/ui";
-  import { addScriptureToSchedule, addTextToSchedule, parseReference } from "../../lib/api.ts";
+  import { addSermonToSchedule, parseReference } from "../../lib/api.ts";
   import { assistant } from "../../lib/assistant.svelte.ts";
   import { bibles } from "../../lib/bibles.svelte.ts";
   import { engine } from "../../lib/engine.svelte.ts";
@@ -82,15 +88,21 @@
     adding = true;
     problem = null;
     const { bibleIds, options } = scriptureChoices();
-    try {
-      for (const row of rows) {
-        if (!row.include) continue;
-        if (row.item.kind === "point") {
-          await addTextToSchedule(row.item.title, row.item.text);
-        } else if (row.passage) {
-          await addScriptureToSchedule(row.passage, bibleIds, options);
-        }
+    const parts: NewSermonPart[] = [];
+    for (const row of rows) {
+      if (!row.include) continue;
+      if (row.item.kind === "point") {
+        parts.push({ type: "point", title: row.item.title, text: row.item.text });
+      } else if (row.passage) {
+        parts.push({ type: "scripture", passage: row.passage });
       }
+    }
+    // Named after the sermon: its first point is usually the title.
+    const first = rows.find((row) => row.include && row.item.kind === "point")?.item;
+    const heading = first?.kind === "point" ? first.title.trim() : "";
+    const title = heading ? t("sermon.itemTitle", { title: heading }) : t("kind.sermon");
+    try {
+      await addSermonToSchedule(title, parts, bibleIds, options);
       onclose();
     } catch (error) {
       engine.showError(error);
@@ -155,7 +167,7 @@
       disabled={adding || !rows.some((row) => row.include)}
       onclick={addAll}
     >
-      {t("sermon.add", { count: rows.filter((row) => row.include).length })}
+      {t("common.addToSchedule")}
     </Button>
   {/snippet}
 </Dialog>

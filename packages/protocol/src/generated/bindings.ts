@@ -1292,6 +1292,17 @@ export type ItemContent =
        * The tracks, in order (the files travel with a saved schedule).
        */
       tracks: Array<MediaItem>;
+    }
+  | {
+      type: "sermon";
+      /**
+       * Title in the schedule, e.g. "Sermon: He sees you".
+       */
+      title: string;
+      /**
+       * The points and passages, in order.
+       */
+      parts: Array<SermonPart>;
     };
 
 /**
@@ -1589,7 +1600,8 @@ export type PresentationSource =
        */
       mediaId: Id;
     }
-  | { type: "camera" };
+  | { type: "camera" }
+  | { type: "sermon" };
 
 /**
  * One slide, resolved and ready to draw.
@@ -1788,6 +1800,42 @@ export type SectionLabel = {
    */
   name: string;
 };
+
+/**
+ * One part of a [`ItemContent::Sermon`].
+ */
+export type SermonPart =
+  | {
+      type: "point";
+      /**
+       * Its heading, e.g. "1. In the valley", shown above its slides in
+       * the slide list (and on the slide when there is no text).
+       */
+      title: string;
+      /**
+       * The words on the slide; blank lines separate slides.
+       */
+      text: string;
+    }
+  | {
+      type: "scripture";
+      /**
+       * The passage.
+       */
+      passage: Passage;
+      /**
+       * The passage written out, e.g. "Psalm 23:4".
+       */
+      reference: string;
+      /**
+       * The text in each translation, shown side by side.
+       */
+      translations: Array<TranslationText>;
+      /**
+       * How the passage is split into slides.
+       */
+      options: ScriptureOptions;
+    };
 
 /**
  * A drop shadow behind the text.

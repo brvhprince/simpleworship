@@ -28,6 +28,8 @@ export function itemTitle(item: ScheduleItem): string {
       return item.content.name;
     case "deck":
       return item.content.deck.name || t("kind.presentation");
+    case "sermon":
+      return item.content.title || t("kind.sermon");
   }
 }
 
@@ -69,5 +71,7 @@ export function itemKind(item: ScheduleItem): string {
       return t("kind.music");
     case "deck":
       return t("kind.deckSlides", { count: item.content.deck.slides.length });
+    case "sermon":
+      return t("kind.sermon");
   }
 }
