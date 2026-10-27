@@ -4,6 +4,36 @@ What changed in each release of SimpleWorship. The newest release is at
 the top. Each release's notes are also shown in the app when it offers the
 update.
 
+## 0.7.0 (27 October 2026)
+
+Right-click menus, a sermon as one schedule item, and fixes from the first
+week of 0.6.
+
+**Please note:** the scripture settings **Auto-flow long scripture** and
+**Min font size** have moved from the Scripture tab into the scripture
+theme (Themes › Edit › Scripture), so every computer and saved schedule
+uses the same ones. If you changed them in 0.6.0, set them again in your
+theme. A schedule with a Sermon item in it needs SimpleWorship 0.7.0 or
+later to open.
+
+- **Right-click menus** on schedule items, songs, pictures and videos,
+  presentations and themes, with what the buttons there do: Show in
+  Preview, Go Live, Move Up and Down, Add to Schedule, Set as Logo, Aspect
+  Ratio, Edit, Duplicate, Delete and more. Right-click one of several picked
+  files to add them all as a slideshow or as music.
+- **From Sermon Notes** adds the whole sermon to the schedule as one
+  **Sermon** item instead of one item per point and passage, so the
+  schedule stays short. The slide list marks where each point and passage
+  starts; points use your text theme and passages your scripture theme.
+  Each point now gets its own heading, and the sermon's title appears once.
+- **Assistant with Gemini:** fixed "the assistant's answer could not be
+  read" and "the assistant took too long to answer". SimpleWorship now picks
+  Gemini's plain Flash and Pro models, and asks them to keep their thinking
+  short. When a service gives no answer, the message says why.
+- **Quick Text** closes with Esc or a click anywhere else, and opens ready to
+  type.
+- The Sermon Notes window's notes box fills its half of the window.
+
 ## 0.6.0 (26 October 2026)
 
 More Bibles, a steadier and faster Listen, and many fixes from our first
