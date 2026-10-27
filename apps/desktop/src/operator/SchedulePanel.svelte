@@ -152,9 +152,16 @@
     engine.dispatch({ type: "removeScheduleItem", id: item.id });
   }
 
-  /** Moves an item one place up (`-1`) or down (`1`) the order of service. */
-  function move(item: ScheduleItem, index: number, step: -1 | 1) {
-    engine.dispatch({ type: "moveScheduleItem", id: item.id, to: index + step });
+  /**
+   * Moves an item one place up (`-1`) or down (`1`) the order of service,
+   * from where it is now: the schedule can change while a menu is open
+   * (another operator, a phone).
+   */
+  function move(item: ScheduleItem, step: -1 | 1) {
+    const index = items.findIndex((other) => other.id === item.id);
+    const to = index + step;
+    if (index < 0 || to < 0 || to >= items.length) return;
+    engine.dispatch({ type: "moveScheduleItem", id: item.id, to });
   }
 
   /** The right-click menu of a schedule item. */
@@ -163,11 +170,11 @@
       { label: t("common.showInPreview"), action: () => preview(item) },
       { label: t("pane.goLive"), action: () => show(item) },
       "separator",
-      { label: t("context.moveUp"), enabled: index > 0, action: () => move(item, index, -1) },
+      { label: t("context.moveUp"), enabled: index > 0, action: () => move(item, -1) },
       {
         label: t("context.moveDown"),
         enabled: index < items.length - 1,
-        action: () => move(item, index, 1),
+        action: () => move(item, 1),
       },
       "separator",
       { label: t("context.removeFromSchedule"), action: () => remove(item) },

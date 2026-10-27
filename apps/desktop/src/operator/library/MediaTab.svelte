@@ -195,7 +195,8 @@
    * picked first, as a click would.
    */
   function itemMenu(event: MouseEvent, item: MediaItem) {
-    if (picked.size > 1 && picked.has(item.id)) {
+    // As the toolbar does: what counts is what is picked among the files shown.
+    if (pickedItems.length > 1 && picked.has(item.id)) {
       const music = pickedItems.every((one) => one.kind === "audio");
       void showContextMenu(event, [
         {

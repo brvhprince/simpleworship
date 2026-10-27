@@ -32,6 +32,13 @@ export type MenuEntry =
 
 /** The menu open last; a new one replaces it (see {@link showContextMenu}). */
 let open: Menu | null = null;
+/**
+ * Counts right-clicks, so that only the newest one shows its menu: menus
+ * are made one at a time on the Rust side, and one for an earlier
+ * right-click can be ready after a later one's. Shown late, its entries
+ * would act on the item clicked before.
+ */
+let latest = 0;
 
 /**
  * Shows `entries` as a menu where `event` happened, instead of the
@@ -45,15 +52,21 @@ export async function showContextMenu(
 ): Promise<void> {
   event.preventDefault();
   event.stopPropagation();
+  const request = ++latest;
   const shown = tidy(entries.filter((entry): entry is MenuEntry => Boolean(entry)));
   if (shown.length === 0) return;
 
+  const menu = await Menu.new({ items: shown.map(toItem) });
+  if (request !== latest) {
+    // Another right-click came while this menu was made: show that one.
+    void menu.close();
+    return;
+  }
   // The previous menu is finished with once another opens; closing it
   // frees what the system kept for it.
-  const previous = open;
-  open = await Menu.new({ items: shown.map(toItem) });
-  void previous?.close();
-  await open.popup();
+  void open?.close();
+  open = menu;
+  await menu.popup();
 }
 
 /** Drops separators at the ends and next to each other (exported for tests). */
