@@ -875,7 +875,9 @@ export type SermonItem =
   | {
       kind: "point";
       /**
-       * A short heading ("1. He sees you").
+       * A short heading ("1. He sees you"). Only `kind` is required of
+       * the assistant, so a point may come with a heading alone (often
+       * the sermon title) or text alone.
        */
       title: string;
       /**
@@ -886,7 +888,7 @@ export type SermonItem =
   | {
       kind: "scripture";
       /**
-       * The reference, e.g. "Romans 8:28-30".
+       * The reference, e.g. "Romans 8:28-30". One left out is dropped.
        */
       reference: string;
     };
