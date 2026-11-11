@@ -529,6 +529,14 @@ export type Command =
       alert: AlertRequest;
     }
   | { type: "clearAlert" }
+  | {
+      type: "showLowerThird";
+      /**
+       * What to show, where and how.
+       */
+      item: LowerThird;
+    }
+  | { type: "hideLowerThird" }
   | { type: "countdownFinished" }
   | {
       type: "startStageTimer";
@@ -1356,6 +1364,112 @@ export type Look = {
 };
 
 /**
+ * A saved lower third.
+ */
+export type LowerThird = {
+  /**
+   * Identifies it in the list.
+   */
+  id: Id;
+  /**
+   * What it is for.
+   */
+  kind: LowerThirdKind;
+  /**
+   * The main line, e.g. the person's name.
+   */
+  title: string;
+  /**
+   * The second line, e.g. their title, or empty for none.
+   */
+  subtitle: string;
+  /**
+   * How it looks.
+   */
+  look: LowerThirdLook;
+  /**
+   * Where it shows.
+   */
+  target: LowerThirdTarget;
+  /**
+   * Hides itself after this many seconds, or stays until hidden (`None`).
+   */
+  hideAfterSeconds: number | null;
+};
+
+/**
+ * What a lower third is for: sets the labels and examples in the editor.
+ */
+export type LowerThirdKind =
+  | "name"
+  | "sermon"
+  | "scripture"
+  | "offering"
+  | "social"
+  | "announcement";
+
+/**
+ * The colours, font and place of a lower third.
+ */
+export type LowerThirdLook = {
+  /**
+   * How it looks and moves.
+   */
+  style: LowerThirdStyle;
+  /**
+   * The accent (bar, line, tag), any CSS colour.
+   */
+  accent: string;
+  /**
+   * The box behind the text, any CSS colour (see-through ones too).
+   */
+  background: string;
+  /**
+   * The text.
+   */
+  color: string;
+  /**
+   * The font family, or empty for the app's default.
+   */
+  fontFamily: string;
+  /**
+   * Which side it sits on.
+   */
+  side: LowerThirdSide;
+};
+
+/**
+ * A lower third on screen.
+ */
+export type LowerThirdShown = {
+  /**
+   * What is showing (a copy, so editing the saved one changes nothing on
+   * screen until it is shown again).
+   */
+  item: LowerThird;
+  /**
+   * When it appeared (milliseconds since the Unix epoch), so every screen
+   * animates it in step and knows when it ends.
+   */
+  startedAt: number;
+};
+
+/**
+ * Which side of the screen a lower third sits on.
+ */
+export type LowerThirdSide = "left" | "centre" | "right";
+
+/**
+ * How a lower third looks and moves in.
+ */
+export type LowerThirdStyle = "bar" | "wipe" | "underline" | "rise" | "block" | "strap";
+
+/**
+ * Which outputs show a lower third.
+ */
+export type LowerThirdTarget = "both" | "screens" | "stream";
+
+/**
  * How an image or video fills a screen of a different shape.
  */
 export type MediaFit = "cover" | "contain" | "stretch";
@@ -1484,6 +1598,10 @@ export type OutputState = {
    * An alert over the slides, if one is showing.
    */
   alert: Alert | null;
+  /**
+   * A lower third, if one is showing (its target says on which outputs).
+   */
+  lowerThird: LowerThirdShown | null;
   /**
    * What the stream output shows (see [`crate::stream`]).
    */

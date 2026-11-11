@@ -260,6 +260,8 @@ pub fn run() {
             commands::settings::settings_get,
             commands::settings::settings_save,
             commands::settings::transitions_save,
+            commands::settings::lower_thirds_get,
+            commands::settings::lower_thirds_save,
             commands::settings::stream_save,
             commands::settings::usage_report,
             commands::settings::usage_export_csv,

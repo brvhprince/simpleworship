@@ -26,6 +26,7 @@
   import { library } from "../lib/library.svelte.ts";
   import { link } from "../lib/link.svelte.ts";
   import { listen } from "../lib/listen.svelte.ts";
+  import { lowerThirds } from "../lib/lower-thirds.svelte.ts";
   import { media } from "../lib/media.svelte.ts";
   import { connectEditMenu } from "../lib/menu.ts";
   import { ndi } from "../lib/ndi.svelte.ts";
@@ -45,6 +46,7 @@
   import ConnectPhoneDialog from "./ConnectPhoneDialog.svelte";
   import ImportDialog from "./ImportDialog.svelte";
   import JoinDialog from "./JoinDialog.svelte";
+  import LowerThirdEditor from "./LowerThirdEditor.svelte";
   import Library from "./library/Library.svelte";
   import MirrorView from "./MirrorView.svelte";
   import PairRequestDialog from "./PairRequestDialog.svelte";
@@ -161,6 +163,12 @@
       panels.toggle("alerts");
       return;
     }
+    // L opens the lower third panel.
+    if (event.key === "l" || event.key === "L") {
+      event.preventDefault();
+      panels.toggle("lowerThirds");
+      return;
+    }
     // H shows the newest reference Listen heard in the preview.
     if ((event.key === "h" || event.key === "H") && listen.previewNewest()) {
       event.preventDefault();
@@ -222,6 +230,7 @@
       output={engine.output}
       onselect={(index) => engine.dispatch({ type: "selectLiveSlide", index })}
       onalertend={() => engine.dispatch({ type: "clearAlert" })}
+      onlowerthirdend={() => engine.dispatch({ type: "hideLowerThird" })}
       oncountdownend={() => engine.dispatch({ type: "countdownFinished" })}
     >
       {#snippet below()}
@@ -238,6 +247,9 @@
 
     <div class="player"><AudioPlayer /></div>
 
+    {#if lowerThirds.editing}
+      <LowerThirdEditor />
+    {/if}
     {#if dialogs.open === "settings"}
       <SettingsDialog />
     {:else if dialogs.open === "usage"}

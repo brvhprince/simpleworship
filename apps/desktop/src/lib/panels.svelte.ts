@@ -4,7 +4,15 @@
  */
 
 /** The toolbar's panels. */
-export type Panel = "alerts" | "stage" | "transitions" | "remote" | "stream" | "screens" | "listen";
+export type Panel =
+  | "alerts"
+  | "lowerThirds"
+  | "stage"
+  | "transitions"
+  | "remote"
+  | "stream"
+  | "screens"
+  | "listen";
 
 class Panels {
   /** The open panel, if any. */

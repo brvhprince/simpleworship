@@ -4,6 +4,7 @@ use std::fmt::Write as _;
 
 use sw_core::Command;
 use sw_core::StreamSettings;
+use sw_core::lower_thirds::LowerThird;
 use sw_core::output::TransitionSettings;
 use sw_core::usage::SongUsage;
 use tauri::{AppHandle, State};
@@ -67,6 +68,18 @@ pub fn stream_save(
 ) -> AppResult<()> {
     crate::settings::save_stream(&state.database(), &settings)?;
     dispatch(&app, &state, Command::SetStreamSettings { settings })
+}
+
+/// The saved lower thirds, in the order shown.
+#[tauri::command]
+pub fn lower_thirds_get(state: State<'_, AppState>) -> AppResult<Vec<LowerThird>> {
+    settings::load_lower_thirds(&state.database())
+}
+
+/// Saves the lower thirds (the whole list, in order).
+#[tauri::command]
+pub fn lower_thirds_save(state: State<'_, AppState>, items: Vec<LowerThird>) -> AppResult<()> {
+    settings::save_lower_thirds(&state.database(), &items)
 }
 
 /// Songs used from `from` to `to` (inclusive, `YYYY-MM-DD`), most used first.

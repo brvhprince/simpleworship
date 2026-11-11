@@ -12,6 +12,7 @@ use crate::alerts::Alert;
 use crate::countdown::CountdownFrame;
 use crate::deck::SlideElement;
 use crate::id::Id;
+use crate::lower_thirds::LowerThirdShown;
 use crate::markup::TextRun;
 use crate::media::Logo;
 use crate::scripture::ScriptureSlide;
@@ -131,6 +132,9 @@ pub struct OutputState {
     pub logo: Option<Logo>,
     /// An alert over the slides, if one is showing.
     pub alert: Option<Alert>,
+    /// A lower third, if one is showing (its target says on which outputs).
+    #[serde(default)]
+    pub lower_third: Option<LowerThirdShown>,
     /// What the stream output shows (see [`crate::stream`]).
     #[serde(default)]
     pub stream: StreamOutput,

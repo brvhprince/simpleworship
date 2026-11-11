@@ -18,6 +18,7 @@ import type {
   ImportedSong,
   ImportPreview,
   ImportSummary,
+  LowerThird,
   MediaChoice,
   MediaFolderPaths,
   MediaItem,
@@ -97,6 +98,8 @@ const ON_HOST = new Set([
   "settings_get",
   "schedule_file_status",
   "transitions_save",
+  "lower_thirds_get",
+  "lower_thirds_save",
   "stream_save",
 ]);
 
@@ -440,6 +443,13 @@ export const saveTransitions = (transitions: TransitionSettings) =>
 
 /** Changes and saves how the stream output shows each kind of content. */
 export const saveStream = (settings: StreamSettings) => invoke<void>("stream_save", { settings });
+
+/** The saved lower thirds, in the order shown. */
+export const getLowerThirds = () => invoke<LowerThird[]>("lower_thirds_get");
+
+/** Saves the lower thirds (the whole list, in order). */
+export const saveLowerThirds = (items: LowerThird[]) =>
+  invoke<void>("lower_thirds_save", { items });
 
 /** Songs used between two dates (`YYYY-MM-DD`, inclusive), most used first. */
 export const usageReport = (from: string, to: string) =>

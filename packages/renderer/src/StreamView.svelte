@@ -32,11 +32,13 @@
     },
     logo: null,
     alert: output.stream.showAlerts ? output.alert : null,
+    // Black takes everything off the stream, lower thirds too.
+    lowerThird: output.flags.black ? null : output.lowerThird,
   });
 </script>
 
 <div class="backdrop" style:background={output.stream.backdrop}></div>
-<OutputView output={shown} muted {still} />
+<OutputView output={shown} muted {still} lowerThirds="stream" />
 
 <style>
   .backdrop {

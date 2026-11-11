@@ -20,6 +20,7 @@ pub mod countdown;
 pub mod deck;
 pub mod engine;
 pub mod id;
+pub mod lower_thirds;
 pub mod lyrics;
 pub mod markup;
 pub mod media;

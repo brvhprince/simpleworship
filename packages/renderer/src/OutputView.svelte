@@ -21,10 +21,14 @@
     projector plays sound.
   - `still`: videos as a still frame and alerts as a still banner, for
     outputs that are not redrawn often enough for movement (NDI).
-  - `onalertend`, `oncountdownend`: an alert ran its course, a countdown
-    reached zero. The operator window passes these on to the engine.
+  - `onalertend`, `oncountdownend`, `onlowerthirdend`: an alert ran its
+    course, a countdown reached zero, a lower third's seconds are up. The
+    operator window passes these on to the engine.
+  - `lowerThirds`: which lower thirds to show: those for the room's screens
+    (projectors), the stream (`StreamView`), or all (the operator's live pane).
 
-  Above the slides sits the alert (if any); Black covers everything.
+  Above the slides sit the lower third and then the alert (if any); Black
+  covers everything.
 -->
 <script lang="ts">
   import type { OutputState, RenderFrame } from "@simpleworship/protocol";
@@ -32,6 +36,8 @@
   import AlertLayer from "./AlertLayer.svelte";
   import BackgroundLayer from "./BackgroundLayer.svelte";
   import ElementsLayer from "./ElementsLayer.svelte";
+  import LowerThirdLayer from "./LowerThirdLayer.svelte";
+  import { type LowerThirdPlace, lowerThirdFor, lowerThirdOut } from "./lower-thirds.ts";
   import { getMediaUrls } from "./media.ts";
   import TextLayer from "./TextLayer.svelte";
 
@@ -41,9 +47,21 @@
     still?: boolean;
     onalertend?: () => void;
     oncountdownend?: () => void;
+    onlowerthirdend?: () => void;
+    lowerThirds?: LowerThirdPlace;
   }
 
-  let { output, muted = false, still = false, onalertend, oncountdownend }: Props = $props();
+  let {
+    output,
+    muted = false,
+    still = false,
+    onalertend,
+    oncountdownend,
+    onlowerthirdend,
+    lowerThirds = "screens",
+  }: Props = $props();
+
+  const lowerThird = $derived(lowerThirdFor(output.lowerThird, lowerThirds));
 
   const urls = getMediaUrls();
 
@@ -134,6 +152,14 @@
       <img src={urls.file(logo.media)} alt="">
     {/if}
   </div>
+{/if}
+
+{#if lowerThird}
+  {#key lowerThird.startedAt}
+    <div class="layer" out:lowerThirdOut={{ style: lowerThird.item.look.style, still }}>
+      <LowerThirdLayer shown={lowerThird} {still} onend={onlowerthirdend} />
+    </div>
+  {/key}
 {/if}
 
 {#if output.alert}
