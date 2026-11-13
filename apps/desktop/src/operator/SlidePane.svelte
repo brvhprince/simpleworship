@@ -34,7 +34,7 @@
     /** The live view's alert ran its course. */
     onalertend?: () => void;
     /** A lower third's seconds are up (the live pane passes it on). */
-    onlowerthirdend?: () => void;
+    onlowerthirdend?: (startedAt: number) => void;
     /** The live view's countdown reached zero. */
     oncountdownend?: () => void;
   }

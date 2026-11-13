@@ -34,7 +34,9 @@
     </div>
   {/if}
 
-  {#if lowerThirds.list.length === 0}
+  {#if !lowerThirds.ready}
+    <p class="hint">{t("lowerThird.loading")}</p>
+  {:else if lowerThirds.list.length === 0}
     <p class="hint">{t("lowerThird.empty")}</p>
   {:else}
     <ul>
@@ -52,7 +54,9 @@
               <span class="subtitle">{item.subtitle}</span>
             {/if}
           </button>
-          <Button onclick={() => openEditor(() => lowerThirds.edit(item))}
+          <Button
+            disabled={!lowerThirds.ready}
+            onclick={() => openEditor(() => lowerThirds.edit(item))}
             >{t("common.edit")}</Button
           >
         </li>
@@ -60,7 +64,9 @@
     </ul>
   {/if}
 
-  <Button onclick={() => openEditor(() => lowerThirds.create())}>{t("lowerThird.new")}</Button>
+  <Button disabled={!lowerThirds.ready} onclick={() => openEditor(() => lowerThirds.create())}
+    >{t("lowerThird.new")}</Button
+  >
 </div>
 
 <style>

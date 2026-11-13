@@ -532,6 +532,15 @@ impl Engine {
                 });
             }
             Command::HideLowerThird => self.lower_third = None,
+            Command::LowerThirdEnded { started_at } => {
+                if self
+                    .lower_third
+                    .as_ref()
+                    .is_some_and(|shown| shown.started_at == started_at)
+                {
+                    self.lower_third = None;
+                }
+            }
             Command::CountdownFinished => self.finish_countdown()?,
 
             // ── Stage display ─────────────────────────────────────────────
@@ -1887,6 +1896,35 @@ mod tests {
         );
 
         engine.dispatch(Command::HideLowerThird).unwrap();
+        assert_eq!(engine.snapshot().output.lower_third, None);
+    }
+
+    #[test]
+    fn a_lower_thirds_timer_only_hides_that_lower_third() {
+        use crate::lower_thirds::{LowerThird, LowerThirdKind};
+        use std::sync::atomic::{AtomicI64, Ordering};
+        static NOW: AtomicI64 = AtomicI64::new(1_000);
+        let mut engine = Engine::with_clock(|| NOW.load(Ordering::SeqCst));
+        let show = |engine: &mut Engine, title: &str| {
+            let item = LowerThird::new(LowerThirdKind::Name, title, "");
+            engine.dispatch(Command::ShowLowerThird { item }).unwrap();
+        };
+        show(&mut engine, "A");
+        NOW.store(2_000, Ordering::SeqCst);
+        show(&mut engine, "B");
+
+        // A's time runs out after B replaced it: B stays.
+        engine
+            .dispatch(Command::LowerThirdEnded { started_at: 1_000 })
+            .unwrap();
+        assert_eq!(
+            engine.snapshot().output.lower_third.unwrap().item.title,
+            "B"
+        );
+        // B's own time: it goes.
+        engine
+            .dispatch(Command::LowerThirdEnded { started_at: 2_000 })
+            .unwrap();
         assert_eq!(engine.snapshot().output.lower_third, None);
     }
 

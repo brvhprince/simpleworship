@@ -86,7 +86,8 @@
         <p class="hint">{t("lowerThird.hint")}</p>
       </div>
 
-      <div class="form">
+      <!-- Locked while saving, so a change made meanwhile cannot be lost. -->
+      <fieldset class="form" disabled={saving}>
         <label class="field">
           {t("lowerThird.kind")}
           <select bind:value={item.kind}>
@@ -182,7 +183,7 @@
             </select>
           </label>
         </div>
-      </div>
+      </fieldset>
     </div>
 
     {#snippet actions()}
@@ -222,6 +223,10 @@
   }
 
   .form {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    min-width: 0;
     display: flex;
     flex-direction: column;
     gap: var(--sw-space-3);

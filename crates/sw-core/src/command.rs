@@ -191,8 +191,16 @@ pub enum Command {
         /// What to show, where and how.
         item: LowerThird,
     },
-    /// Take the lower third off (it animates out).
+    /// Take the lower third off (it animates out), whichever is showing.
     HideLowerThird,
+    /// A lower third's seconds are up (sent by the screen timing it): takes
+    /// it off only if it is still the one showing, so a timer cannot hide
+    /// the lower third that replaced it.
+    LowerThirdEnded {
+        /// When the lower third that ended appeared.
+        #[ts(type = "number")]
+        started_at: crate::time::Timestamp,
+    },
 
     // ── Countdowns ───────────────────────────────────────────────────────
     /// A live countdown reached zero (sent by a screen showing it). If the

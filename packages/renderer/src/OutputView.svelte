@@ -22,8 +22,11 @@
   - `still`: videos as a still frame and alerts as a still banner, for
     outputs that are not redrawn often enough for movement (NDI).
   - `onalertend`, `oncountdownend`, `onlowerthirdend`: an alert ran its
-    course, a countdown reached zero, a lower third's seconds are up. The
-    operator window passes these on to the engine.
+    course, a countdown reached zero, a lower third's seconds are up (with
+    its start time, so the engine takes off only that one). The operator
+    window passes these on to the engine. Every output also hides a timed
+    lower third by itself when its time is up, so a screen that has lost
+    touch with the main computer does not keep it.
   - `lowerThirds`: which lower thirds to show: those for the room's screens
     (projectors), the stream (`StreamView`), or all (the operator's live pane).
 
@@ -47,7 +50,7 @@
     still?: boolean;
     onalertend?: () => void;
     oncountdownend?: () => void;
-    onlowerthirdend?: () => void;
+    onlowerthirdend?: (startedAt: number) => void;
     lowerThirds?: LowerThirdPlace;
   }
 
@@ -61,7 +64,17 @@
     lowerThirds = "screens",
   }: Props = $props();
 
-  const lowerThird = $derived(lowerThirdFor(output.lowerThird, lowerThirds));
+  /** The start time of the timed lower third this output has seen run out. */
+  let endedLowerThird: number | null = $state(null);
+  const lowerThird = $derived.by(() => {
+    const shown = lowerThirdFor(output.lowerThird, lowerThirds);
+    return shown && shown.startedAt !== endedLowerThird ? shown : null;
+  });
+
+  function lowerThirdEnded(startedAt: number) {
+    endedLowerThird = startedAt;
+    onlowerthirdend?.(startedAt);
+  }
 
   const urls = getMediaUrls();
 
@@ -157,7 +170,11 @@
 {#if lowerThird}
   {#key lowerThird.startedAt}
     <div class="layer" out:lowerThirdOut={{ style: lowerThird.item.look.style, still }}>
-      <LowerThirdLayer shown={lowerThird} {still} onend={onlowerthirdend} />
+      <LowerThirdLayer
+        shown={lowerThird}
+        {still}
+        onend={() => lowerThirdEnded(lowerThird.startedAt)}
+      />
     </div>
   {/key}
 {/if}

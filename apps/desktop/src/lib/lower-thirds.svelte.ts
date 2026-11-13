@@ -26,11 +26,24 @@ class LowerThirdsStore {
   editing: LowerThird | null = $state(null);
   /** Whether `editing` is not in the list yet. */
   isNew = $state(false);
+  /**
+   * Whether the saved list has arrived. Until it has, nothing can be added,
+   * changed or deleted: saving a list built on an empty one would replace
+   * the real list (on a slow connection to the main computer, or after a
+   * failed load).
+   */
+  ready = $state(false);
+  /** Counts saves, so a load that started before one does not undo it. */
+  #saves = 0;
 
   /** Loads the saved list (the main computer's, on one that joined). */
   async load(): Promise<void> {
+    const savesBefore = this.#saves;
     try {
-      this.list = await getLowerThirds();
+      const list = await getLowerThirds();
+      // A save while loading already holds the newer list.
+      if (this.#saves === savesBefore) this.list = list;
+      this.ready = true;
     } catch (error) {
       engine.showError(error);
     }
@@ -48,6 +61,7 @@ class LowerThirdsStore {
 
   /** Opens a new lower third of `kind` in the editor, with the look of the last one. */
   create(kind: LowerThirdKind = "name"): void {
+    if (!this.ready) return;
     const last = this.list.at(-1);
     this.editing = {
       id: uuidV7(),
@@ -63,6 +77,7 @@ class LowerThirdsStore {
 
   /** Opens a copy of `item` in the editor. */
   edit(item: LowerThird): void {
+    if (!this.ready) return;
     this.editing = structuredClone($state.snapshot(item)) as LowerThird;
     this.isNew = false;
   }
@@ -90,8 +105,10 @@ class LowerThirdsStore {
   }
 
   async #store(list: LowerThird[]): Promise<boolean> {
+    if (!this.ready) return false;
     try {
       await saveLowerThirds($state.snapshot(list) as LowerThird[]);
+      this.#saves += 1;
       this.list = list;
       return true;
     } catch (error) {

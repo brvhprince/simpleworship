@@ -537,6 +537,13 @@ export type Command =
       item: LowerThird;
     }
   | { type: "hideLowerThird" }
+  | {
+      type: "lowerThirdEnded";
+      /**
+       * When the lower third that ended appeared.
+       */
+      startedAt: number;
+    }
   | { type: "countdownFinished" }
   | {
       type: "startStageTimer";

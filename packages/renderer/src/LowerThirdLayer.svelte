@@ -114,26 +114,24 @@
   }
 
   /* Every animated part starts at its own delay after the start time, less
-     how far into the entrance this screen joined. */
-  .lower-third :is(.accent, .box, .title, .subtitle) {
-    animation-fill-mode: both;
-    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
-  }
+     how far into the entrance this screen joined. Each animation holds its
+     first frame until then ("both" in every shorthand: a shorthand resets
+     the fill mode, so it cannot be set once for all). */
 
   /* ── Bar: an accent bar grows, the box slides out of it ─────────────── */
   .bar .accent {
     width: 12px;
-    animation: grow-y 320ms;
+    animation: grow-y 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
     animation-delay: var(--joined);
   }
 
   .bar .box {
-    animation: reveal-x 520ms;
+    animation: reveal-x 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
     animation-delay: calc(220ms + var(--joined));
   }
 
   .bar :is(.title, .subtitle) {
-    animation: slide-in 520ms;
+    animation: slide-in 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
     animation-delay: calc(380ms + var(--joined));
   }
 
@@ -143,14 +141,14 @@
   }
 
   .wipe {
-    animation: reveal-x 620ms;
+    animation: reveal-x 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
     animation-delay: var(--joined);
     animation-fill-mode: both;
     animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
   }
 
   .wipe :is(.title, .subtitle) {
-    animation: fade-up 460ms;
+    animation: fade-up 460ms cubic-bezier(0.22, 1, 0.36, 1) both;
     animation-delay: calc(340ms + var(--joined));
   }
 
@@ -162,7 +160,7 @@
   .underline .title {
     position: relative;
     padding-bottom: 12px;
-    animation: fade-up 480ms;
+    animation: fade-up 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
     animation-delay: var(--joined);
   }
 
@@ -180,19 +178,19 @@
   }
 
   .underline .subtitle {
-    animation: fade-up 480ms;
+    animation: fade-up 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
     animation-delay: calc(420ms + var(--joined));
   }
 
   .underline .box {
-    animation: fade-in 300ms;
+    animation: fade-in 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
     animation-delay: var(--joined);
   }
 
   /* ── Rise: the whole card rises into place, an accent edge on top ───── */
   .rise {
     flex-direction: column;
-    animation: rise 560ms;
+    animation: rise 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
     animation-delay: var(--joined);
     animation-fill-mode: both;
     animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
@@ -211,7 +209,7 @@
     translate: none;
     flex-direction: row;
     background: var(--box);
-    animation: reveal-x 480ms;
+    animation: reveal-x 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
     animation-delay: var(--joined);
     animation-fill-mode: both;
     animation-timing-function: cubic-bezier(0.65, 0, 0.35, 1);
@@ -234,7 +232,7 @@
     align-items: center;
     padding: 18px 40px 18px 110px;
     background: var(--accent);
-    animation: fade-in 300ms;
+    animation: fade-in 300ms cubic-bezier(0.22, 1, 0.36, 1) both;
     animation-delay: calc(260ms + var(--joined));
   }
 
@@ -243,7 +241,7 @@
     align-items: center;
     padding: 0 40px;
     font-size: 40px;
-    animation: slide-in 460ms;
+    animation: slide-in 460ms cubic-bezier(0.22, 1, 0.36, 1) both;
     animation-delay: calc(360ms + var(--joined));
   }
 
@@ -270,7 +268,7 @@
   .block .title {
     padding: 16px 30px;
     background: var(--accent);
-    animation: reveal-x 460ms;
+    animation: reveal-x 460ms cubic-bezier(0.22, 1, 0.36, 1) both;
     animation-delay: var(--joined);
   }
 
@@ -279,7 +277,7 @@
     padding: 12px 30px;
     background: var(--box);
     opacity: 1;
-    animation: reveal-x 460ms;
+    animation: reveal-x 460ms cubic-bezier(0.22, 1, 0.36, 1) both;
     animation-delay: calc(200ms + var(--joined));
   }
 
