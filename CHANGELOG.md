@@ -4,6 +4,46 @@ What changed in each release of SimpleWorship. The newest release is at
 the top. Each release's notes are also shown in the app when it offers the
 update.
 
+## 0.9.0 (14 November 2026)
+
+Lower thirds from a phone and in your own design, song words that animate
+onto the stream, and themes you can share with another church.
+
+- **Lower thirds from a phone:** a phone paired with **Full control** has
+  a **Lower thirds** tab. Tap one to show it, and **Hide** to take it off,
+  so the pastor's name or the MoMo number can go up from wherever you are.
+  Other phone roles can't show them.
+- **More ways to design a lower third:**
+  - **an icon** beside the title: Facebook, YouTube, Instagram, WhatsApp,
+    a phone for MoMo, website, email, location, Bible, cross, or your
+    church logo;
+  - **round corners**, from square to fully round;
+  - **a size** (Small, Medium or Large) and **a speed** (Slow, Normal or
+    Fast) for the entrance and exit;
+  - and lower thirds you made before look exactly as they did.
+- **Song and scripture words animate onto the stream:** they rise into
+  place when they appear, and again for each new song or passage. From one
+  slide to the next they change with your usual transition. Choose
+  **Rise**, **Wipe** or **Fade** in Settings › Stream › Words come in. If
+  OBS connects mid-song the words are simply there, and NDI shows them
+  without the animation.
+- **Share themes and lower thirds:** **File › Export Theme Pack…** (or
+  **Export…** in the Themes tab) saves the themes and lower thirds you
+  pick as one **.swpack** file, with the pictures and videos behind the
+  themes. Anyone with SimpleWorship double-clicks it, or uses **File ›
+  Import Theme Pack…**, to add them.
+  - Importing only adds: anything already on the computer is left as it
+    is, so importing the same pack twice changes nothing.
+  - Fonts don't travel in the file. After an import you're told which
+    fonts to install.
+  - A computer that has joined another imports and exports on the main
+    computer.
+- When two computers edit the lower thirds at the same time, one can no
+  longer overwrite the other's change: the second is asked to make it
+  again on the up-to-date list.
+- A long title without spaces in a lower third wraps instead of running
+  off the edge.
+
 ## 0.8.0 (14 November 2026)
 
 Animated lower thirds, a light appearance, and plain copyright lines for
