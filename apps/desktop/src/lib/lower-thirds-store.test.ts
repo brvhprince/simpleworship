@@ -31,6 +31,13 @@ const item = (id: string): LowerThird => ({
 });
 const ids = (list: LowerThird[]) => list.map((one) => one.id);
 
+/** Releases the answer to load number `n` (0 = the first load). */
+function answer(n: number, list: LowerThird[]): void {
+  const load = pending[n];
+  if (!load) throw new Error(`load ${n} was never started`);
+  load.resolve(list);
+}
+
 describe("lower thirds store", () => {
   beforeEach(() => {
     pending.length = 0;
@@ -41,9 +48,9 @@ describe("lower thirds store", () => {
     const { lowerThirds } = await import("./lower-thirds.svelte.ts");
     const first = lowerThirds.load();
     const second = lowerThirds.load();
-    pending[1].resolve([item("a"), item("b")]); // the newer answer first
+    answer(1, [item("a"), item("b")]); // the newer answer first
     await second;
-    pending[0].resolve([item("a")]); // then the stale one
+    answer(0, [item("a")]); // then the stale one
     await first;
     expect(ids(lowerThirds.list)).toEqual(["a", "b"]);
   });
@@ -51,14 +58,14 @@ describe("lower thirds store", () => {
   it("does not let a load that began before a save undo it", async () => {
     const { lowerThirds } = await import("./lower-thirds.svelte.ts");
     const firstLoad = lowerThirds.load();
-    pending[0].resolve([item("a")]);
+    answer(0, [item("a")]);
     await firstLoad;
 
     const slowLoad = lowerThirds.load(); // still waiting…
     lowerThirds.create();
     if (lowerThirds.editing) lowerThirds.editing.title = "New";
     await lowerThirds.saveEditing(); // …when this saves [a, new-id]
-    pending[1].resolve([item("a")]);
+    answer(1, [item("a")]);
     await slowLoad;
     expect(ids(lowerThirds.list)).toEqual(["a", "new-id"]);
   });
