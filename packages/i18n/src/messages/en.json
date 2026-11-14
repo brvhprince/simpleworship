@@ -1056,5 +1056,6 @@
     "one": "{count} was already here and was left as it is.",
     "other": "{count} were already here and were left as they are."
   },
-  "pack.missingFonts": "Install these fonts on this computer for them to look as designed: {fonts}"
+  "pack.missingFonts": "Install these fonts on this computer for them to look as designed: {fonts}",
+  "pack.importTitle": "Import Themes and Lower Thirds"
 }

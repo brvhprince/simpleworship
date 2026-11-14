@@ -119,8 +119,8 @@ pub fn run() {
     // anything else.
     #[cfg(desktop)]
     let builder = builder.plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
-        match launch::schedule_in_args(&args) {
-            Some(path) => launch::open_schedule(app, path),
+        match launch::file_in_args(&args) {
+            Some(path) => launch::open_file(app, path),
             None => launch::show_main_window(app),
         }
     }));
@@ -177,8 +177,8 @@ pub fn run() {
 
             // Windows and Linux: started by double-clicking a schedule file.
             let args: Vec<String> = std::env::args().collect();
-            if let Some(path) = launch::schedule_in_args(&args) {
-                launch::open_schedule(app.handle(), path);
+            if let Some(path) = launch::file_in_args(&args) {
+                launch::open_file(app.handle(), path);
             }
             Ok(())
         })
@@ -317,12 +317,13 @@ pub fn run() {
         .expect("SimpleWorship failed to start");
 
     app.run(|_app, _event| {
-        // macOS: a schedule file was double-clicked or dropped on the icon.
+        // macOS: a schedule or theme pack was double-clicked or dropped on
+        // the icon.
         #[cfg(target_os = "macos")]
         if let tauri::RunEvent::Opened { urls } = _event {
             for url in urls {
                 if let Ok(path) = url.to_file_path() {
-                    launch::open_schedule(_app, path);
+                    launch::open_file(_app, path);
                 }
             }
         }

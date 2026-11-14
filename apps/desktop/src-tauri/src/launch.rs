@@ -1,5 +1,5 @@
-//! Opening schedule files from outside the app: double-clicking a `.sws`
-//! file, or dropping it on SimpleWorship's icon.
+//! Opening files from outside the app: double-clicking a `.sws` schedule or
+//! a `.swpack` theme pack, or dropping one on SimpleWorship's icon.
 //!
 //! - **macOS** tells the running app with an "opened" event.
 //! - **Windows and Linux** start the program with the file's path as an
@@ -7,44 +7,50 @@
 //!   plugin hands that argument to the running copy instead of starting a
 //!   second one (two copies would share one library).
 //!
-//! The file is not opened here: the operator window decides, so it can ask
-//! about unsaved changes first. Until the window is ready, the path waits
-//! in [`PendingOpen`].
+//! The file is not opened here: the operator window decides (a schedule
+//! after asking about unsaved changes, a pack by importing it). Until the
+//! window is ready, the path waits in [`PendingOpen`].
 
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 use tauri::{AppHandle, Emitter, Manager, State};
 
-/// Sent to the operator window with a schedule file to open.
+/// Sent to the operator window with a file to open.
 /// Keep in sync with `OPEN_FILE_EVENT` in `apps/desktop/src/lib/schedule-file.svelte.ts`.
-pub const OPEN_FILE_EVENT: &str = "app://open-schedule";
+pub const OPEN_FILE_EVENT: &str = "app://open-file";
+
+/// The file types SimpleWorship opens: schedules and theme packs.
+const OPENABLE: &[&str] = &["sws", "swpack"];
 
 /// Label of the operator window.
 const MAIN_WINDOW: &str = "main";
 
-/// A schedule file to open once the operator window is ready, and whether
-/// it is (after that, files are sent straight to it).
+/// A file to open once the operator window is ready, and whether it is
+/// (after that, files are sent straight to it).
 #[derive(Default)]
 pub struct PendingOpen(Mutex<(Option<PathBuf>, bool)>);
 
-/// The first schedule file among program arguments, if any.
-pub fn schedule_in_args<S: AsRef<str>>(args: &[S]) -> Option<PathBuf> {
+/// The first schedule or theme pack among program arguments, if any.
+pub fn file_in_args<S: AsRef<str>>(args: &[S]) -> Option<PathBuf> {
     args.iter()
         .skip(1) // the program itself
         .map(|arg| PathBuf::from(arg.as_ref()))
-        .find(|path| is_schedule(path))
+        .find(|path| is_openable(path))
 }
 
-fn is_schedule(path: &Path) -> bool {
-    path.extension()
-        .is_some_and(|ext| ext.eq_ignore_ascii_case("sws"))
+fn is_openable(path: &Path) -> bool {
+    path.extension().is_some_and(|ext| {
+        OPENABLE
+            .iter()
+            .any(|openable| ext.eq_ignore_ascii_case(openable))
+    })
 }
 
-/// Opens a schedule file in the operator window (now, or once it is ready),
-/// and brings the window to the front.
-pub fn open_schedule(app: &AppHandle, path: PathBuf) {
-    if !is_schedule(&path) {
+/// Opens a schedule or theme pack in the operator window (now, or once it
+/// is ready), and brings the window to the front.
+pub fn open_file(app: &AppHandle, path: PathBuf) {
+    if !is_openable(&path) {
         return;
     }
     let pending = app.state::<PendingOpen>();
@@ -55,7 +61,7 @@ pub fn open_schedule(app: &AppHandle, path: PathBuf) {
     if guard.1 {
         drop(guard);
         if let Err(error) = app.emit_to(MAIN_WINDOW, OPEN_FILE_EVENT, path.display().to_string()) {
-            log::warn!("could not pass on the schedule to open: {error}");
+            log::warn!("could not pass on the file to open: {error}");
         }
     } else {
         guard.0 = Some(path);
@@ -89,15 +95,19 @@ mod tests {
     use super::*;
 
     #[test]
-    fn finds_a_schedule_among_the_arguments() {
+    fn finds_a_schedule_or_pack_among_the_arguments() {
         let args = ["SimpleWorship.exe", "--flag", r"C:\Services\Sunday.SWS"];
         assert_eq!(
-            schedule_in_args(&args),
+            file_in_args(&args),
             Some(PathBuf::from(r"C:\Services\Sunday.SWS"))
         );
-        assert_eq!(schedule_in_args(&["SimpleWorship", "notes.txt"]), None);
         assert_eq!(
-            schedule_in_args(&["Sunday.sws"]),
+            file_in_args(&["SimpleWorship", "Grace Chapel.swpack"]),
+            Some(PathBuf::from("Grace Chapel.swpack"))
+        );
+        assert_eq!(file_in_args(&["SimpleWorship", "notes.txt"]), None);
+        assert_eq!(
+            file_in_args(&["Sunday.sws"]),
             None,
             "the first is the program"
         );

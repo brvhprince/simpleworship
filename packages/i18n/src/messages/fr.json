@@ -1056,5 +1056,6 @@
     "one": "{count} élément était déjà là et n’a pas été modifié.",
     "other": "{count} éléments étaient déjà là et n’ont pas été modifiés."
   },
-  "pack.missingFonts": "Installez ces polices sur cet ordinateur pour un rendu fidèle : {fonts}"
+  "pack.missingFonts": "Installez ces polices sur cet ordinateur pour un rendu fidèle : {fonts}",
+  "pack.importTitle": "Importer des thèmes et des bandeaux"
 }

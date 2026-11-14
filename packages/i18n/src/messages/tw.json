@@ -1056,5 +1056,6 @@
     "one": "{count} na ɛwɔ ha dada; yɛannsesa no.",
     "other": "{count} na ɛwɔ ha dada; yɛannsesa wɔn."
   },
-  "pack.missingFonts": "Fa fonts yi gu kɔmputa yi so na ɛbɛyɛ sɛdeɛ wɔyɛeɛ no: {fonts}"
+  "pack.missingFonts": "Fa fonts yi gu kɔmputa yi so na ɛbɛyɛ sɛdeɛ wɔyɛeɛ no: {fonts}",
+  "pack.importTitle": "Fa Themes ne Ase Nkyerɛwee Bra"
 }

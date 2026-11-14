@@ -11,6 +11,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { importPack } from "./api.ts";
 import { engine } from "./engine.svelte.ts";
 import { t } from "./i18n/i18n.svelte.ts";
+import { link } from "./link.svelte.ts";
 import { lowerThirds } from "./lower-thirds.svelte.ts";
 import { prompts } from "./prompts.svelte.ts";
 
@@ -32,9 +33,16 @@ class Packs {
     this.exporting = choice;
   }
 
-  /** Asks for a `.swpack` file, imports it and says what it added. */
-  async import(): Promise<void> {
-    const path = await open({ filters: PACK_FILTERS, multiple: false });
+  /**
+   * Imports a `.swpack` file (or asks for one) and says what it added. On
+   * a joined computer it explains why it cannot instead.
+   */
+  async import(file?: string): Promise<void> {
+    if (link.joined) {
+      await this.#tell(t("pack.importTitle"), t("pack.notWhenJoined"));
+      return;
+    }
+    const path = file ?? (await open({ filters: PACK_FILTERS, multiple: false }));
     if (typeof path !== "string") return;
     try {
       const result = await importPack(path);
@@ -47,15 +55,20 @@ class Packs {
       if (result.missingFonts.length > 0) {
         lines.push(t("pack.missingFonts", { fonts: result.missingFonts.join(", ") }));
       }
-      await prompts.ask({
-        title: t("pack.importedTitle"),
-        message: lines.join("\n"),
-        buttons: [{ id: "ok", label: t("common.ok"), variant: "primary" }],
-        cancel: "ok",
-      });
+      await this.#tell(t("pack.importedTitle"), lines.join("\n"));
     } catch (error) {
       engine.showError(error);
     }
+  }
+
+  /** Shows a message with an OK button. */
+  async #tell(title: string, message: string): Promise<void> {
+    await prompts.ask({
+      title,
+      message,
+      buttons: [{ id: "ok", label: t("common.ok"), variant: "primary" }],
+      cancel: "ok",
+    });
   }
 }
 
