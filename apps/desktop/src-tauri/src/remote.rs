@@ -446,6 +446,8 @@ fn answer_call(app: &AppHandle, device: Id, method: &str, params: Value) -> AppR
         }
         "alerts.templates" => json!(settings_commands::settings_get(state)?.alert_templates),
         "stage.options" => json!(settings_commands::settings_get(state)?.stage),
+        // A full-control phone's Lower thirds screen: the saved list.
+        "lowerThirds.list" => json!(crate::settings::load_lower_thirds(&state.database())?),
         // A joined computer: the whole state, with its own preview.
         "engine.snapshot" => json!(state.engine().snapshot_for(device)),
         // A joined computer's operator window: one of its commands.

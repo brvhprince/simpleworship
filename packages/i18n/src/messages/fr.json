@@ -705,6 +705,8 @@
   "remote.screens": "Écrans",
   "remote.sections": "Parties",
   "remote.tabAlerts": "Alertes",
+  "remote.tabLowerThirds": "Bandeaux",
+  "remote.noLowerThirds": "Aucun bandeau pour l’instant. Créez-les sur l’ordinateur : Bandeau dans la barre d’outils.",
   "remote.tabBible": "Bible",
   "remote.tabLive": "Direct",
   "remote.tabSchedule": "Programme",

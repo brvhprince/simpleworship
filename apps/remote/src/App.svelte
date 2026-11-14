@@ -5,7 +5,7 @@
 
   | Role           | Screens                                            |
   | -------------- | -------------------------------------------------- |
-  | Full control   | Live, Schedule, Bible, Songs, Alerts, Stage        |
+  | Full control   | Live, Schedule, Bible, Songs, Alerts, Lower thirds, Stage |
   | Presenter      | Live                                               |
   | Worship leader | Live, Songs (the songs in the schedule)            |
   | Alerts         | Alerts                                             |
@@ -20,6 +20,7 @@
   import { remote } from "./lib/remote.svelte.ts";
   import Alerts from "./screens/Alerts.svelte";
   import Live from "./screens/Live.svelte";
+  import LowerThirds from "./screens/LowerThirds.svelte";
   import Pairing from "./screens/Pairing.svelte";
   import Schedule from "./screens/Schedule.svelte";
   import Scripture from "./screens/Scripture.svelte";
@@ -27,10 +28,10 @@
   import StageControls from "./screens/StageControls.svelte";
   import StageDisplay from "./screens/StageDisplay.svelte";
 
-  type Screen = "live" | "schedule" | "scripture" | "songs" | "alerts" | "stage";
+  type Screen = "live" | "schedule" | "scripture" | "songs" | "alerts" | "lowerThirds" | "stage";
 
   const SCREENS: Record<Role, Screen[]> = {
-    full: ["live", "schedule", "scripture", "songs", "alerts", "stage"],
+    full: ["live", "schedule", "scripture", "songs", "alerts", "lowerThirds", "stage"],
     presenter: ["live"],
     worshipLeader: ["live", "songs"],
     alerts: ["alerts"],
@@ -44,6 +45,7 @@
     scripture: "remote.tabBible",
     songs: "remote.tabSongs",
     alerts: "remote.tabAlerts",
+    lowerThirds: "remote.tabLowerThirds",
     stage: "remote.tabStage",
   };
 
@@ -103,6 +105,8 @@
           {/if}
         {:else if shown === "alerts"}
           <Alerts />
+        {:else if shown === "lowerThirds"}
+          <LowerThirds />
         {:else if shown === "stage"}
           <StageControls />
         {/if}
