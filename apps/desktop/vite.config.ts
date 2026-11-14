@@ -8,6 +8,10 @@ const host = process.env.TAURI_DEV_HOST;
 export default defineConfig({
   plugins: [svelte()],
 
+  // Tests that mount components need Svelte's browser build, not its
+  // server build (which has no mount).
+  resolve: process.env.VITEST ? { conditions: ["browser"] } : undefined,
+
   // Keep Rust compiler errors visible in the terminal.
   clearScreen: false,
 

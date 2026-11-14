@@ -67,7 +67,7 @@ class LowerThirdsStore {
 
   /** Opens a new lower third of `kind` in the editor, with the look of the last one. */
   create(kind: LowerThirdKind = "name"): void {
-    if (!this.ready) return;
+    if (!this.ready || this.busy) return;
     const last = this.list.at(-1);
     this.editing = {
       id: uuidV7(),
@@ -83,7 +83,7 @@ class LowerThirdsStore {
 
   /** Opens a copy of `item` in the editor. */
   edit(item: LowerThird): void {
-    if (!this.ready) return;
+    if (!this.ready || this.busy) return;
     this.editing = structuredClone($state.snapshot(item)) as LowerThird;
     this.isNew = false;
   }
@@ -97,7 +97,9 @@ class LowerThirdsStore {
       ? [...this.list, saved]
       : this.list.map((other) => (other.id === saved.id ? saved : other));
     if (await this.#store(list)) {
-      this.editing = null;
+      // Close the editor only if it still holds what was saved (Cancel
+      // stays enabled during a save, and another item may be open now).
+      if (this.editing?.id === saved.id) this.editing = null;
       return saved;
     }
     return null;
@@ -107,7 +109,8 @@ class LowerThirdsStore {
   async deleteEditing(): Promise<void> {
     const item = this.editing;
     if (!item) return;
-    if (await this.#store(this.list.filter((other) => other.id !== item.id))) this.editing = null;
+    const removed = await this.#store(this.list.filter((other) => other.id !== item.id));
+    if (removed && this.editing?.id === item.id) this.editing = null;
   }
 
   async #store(list: LowerThird[]): Promise<boolean> {

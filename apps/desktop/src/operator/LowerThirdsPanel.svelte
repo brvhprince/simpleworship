@@ -55,7 +55,7 @@
             {/if}
           </button>
           <Button
-            disabled={!lowerThirds.ready}
+            disabled={!lowerThirds.ready || lowerThirds.busy}
             onclick={() => openEditor(() => lowerThirds.edit(item))}
             >{t("common.edit")}</Button
           >
@@ -64,7 +64,9 @@
     </ul>
   {/if}
 
-  <Button disabled={!lowerThirds.ready} onclick={() => openEditor(() => lowerThirds.create())}
+  <Button
+    disabled={!lowerThirds.ready || lowerThirds.busy}
+    onclick={() => openEditor(() => lowerThirds.create())}
     >{t("lowerThird.new")}</Button
   >
 </div>
