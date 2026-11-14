@@ -1,6 +1,6 @@
 import type { LowerThirdShown, LowerThirdTarget } from "@simpleworship/protocol";
 import { describe, expect, it } from "vitest";
-import { lowerThirdFor } from "./lower-thirds.ts";
+import { LOWER_THIRD_EXIT_MS, lowerThirdFor, lowerThirdOut } from "./lower-thirds.ts";
 
 const shown = (target: LowerThirdTarget): LowerThirdShown => ({
   showId: "0192f0e4-0000-7000-8000-0000000000aa",
@@ -16,6 +16,10 @@ const shown = (target: LowerThirdTarget): LowerThirdShown => ({
       color: "#fff",
       fontFamily: "",
       side: "left",
+      icon: "none",
+      rounding: 0,
+      size: "medium",
+      speed: "normal",
     },
     target,
     hideAfterSeconds: null,
@@ -35,5 +39,21 @@ describe("lowerThirdFor", () => {
   it("shows every one in the operator's live pane, and nothing when none is up", () => {
     expect(lowerThirdFor(shown("stream"), "all")).not.toBeNull();
     expect(lowerThirdFor(null, "all")).toBeNull();
+  });
+});
+
+describe("lowerThirdOut", () => {
+  const node = {} as Element;
+
+  it("leaves at the lower third's speed", () => {
+    const out = (speed: "slow" | "normal" | "fast") =>
+      lowerThirdOut(node, { style: "bar", speed, still: false }).duration;
+    expect(out("normal")).toBe(LOWER_THIRD_EXIT_MS);
+    expect(out("slow")).toBeGreaterThan(LOWER_THIRD_EXIT_MS);
+    expect(out("fast")).toBeLessThan(LOWER_THIRD_EXIT_MS);
+  });
+
+  it("leaves at once on still outputs", () => {
+    expect(lowerThirdOut(node, { style: "bar", speed: "slow", still: true }).duration).toBe(0);
   });
 });

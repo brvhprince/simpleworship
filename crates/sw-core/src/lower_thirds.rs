@@ -96,6 +96,66 @@ pub enum LowerThirdSide {
     Right,
 }
 
+/// A small picture beside a lower third's title.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "bindings.ts")]
+pub enum LowerThirdIcon {
+    /// No picture.
+    #[default]
+    None,
+    /// The church logo (Settings › Logo); nothing if none is set.
+    Logo,
+    /// Facebook.
+    Facebook,
+    /// YouTube.
+    Youtube,
+    /// Instagram.
+    Instagram,
+    /// A chat bubble, for WhatsApp.
+    Whatsapp,
+    /// A phone, for MoMo numbers and calls.
+    Phone,
+    /// A globe, for a website.
+    Web,
+    /// An envelope, for an email address.
+    Email,
+    /// A map pin, for an address.
+    Location,
+    /// An open book, for scripture.
+    Bible,
+    /// A cross.
+    Cross,
+}
+
+/// How big a lower third is.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "bindings.ts")]
+pub enum LowerThirdSize {
+    /// Smaller, for a busy camera shot.
+    Small,
+    /// The usual size.
+    #[default]
+    Medium,
+    /// Bigger, for the back of a large room.
+    Large,
+}
+
+/// How fast a lower third moves in and out.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "bindings.ts")]
+pub enum LowerThirdSpeed {
+    /// Gentle, for quiet moments.
+    Slow,
+    /// The usual speed.
+    #[default]
+    Normal,
+    /// Snappy.
+    Fast,
+}
+
 /// The colours, font and place of a lower third.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", default)]
@@ -113,6 +173,15 @@ pub struct LowerThirdLook {
     pub font_family: String,
     /// Which side it sits on.
     pub side: LowerThirdSide,
+    /// A picture beside the title.
+    pub icon: LowerThirdIcon,
+    /// How round its corners are, in pixels on a 1920 × 1080 screen (0 for
+    /// square).
+    pub rounding: u8,
+    /// How big it is.
+    pub size: LowerThirdSize,
+    /// How fast it moves in and out.
+    pub speed: LowerThirdSpeed,
 }
 
 impl Default for LowerThirdLook {
@@ -125,6 +194,10 @@ impl Default for LowerThirdLook {
             color: "#ffffff".into(),
             font_family: String::new(),
             side: LowerThirdSide::default(),
+            icon: LowerThirdIcon::default(),
+            rounding: 0,
+            size: LowerThirdSize::default(),
+            speed: LowerThirdSpeed::default(),
         }
     }
 }
@@ -206,12 +279,14 @@ pub fn starter_lower_thirds() -> Vec<LowerThird> {
         "Account name: Your Church",
     );
     offering.look.style = LowerThirdStyle::Block;
+    offering.look.icon = LowerThirdIcon::Phone;
     let mut social = LowerThird::new(
         LowerThirdKind::Social,
         "@yourchurch",
         "Facebook · YouTube · Instagram",
     );
     social.look.style = LowerThirdStyle::Underline;
+    social.look.icon = LowerThirdIcon::Facebook;
     social.target = LowerThirdTarget::Stream;
     let mut sermon = LowerThird::new(LowerThirdKind::Sermon, "Sermon title", "Series · Part 1");
     sermon.look.style = LowerThirdStyle::Wipe;
@@ -256,5 +331,17 @@ mod tests {
         assert_eq!(item.look, LowerThirdLook::default());
         assert_eq!(item.target, LowerThirdTarget::Both);
         assert_eq!(item.subtitle, "");
+    }
+
+    #[test]
+    fn a_look_saved_before_the_designer_keeps_its_old_shape() {
+        let look: LowerThirdLook =
+            serde_json::from_str(r##"{"style":"wipe","accent":"#ff0000"}"##).unwrap();
+        assert_eq!(look.style, LowerThirdStyle::Wipe);
+        assert_eq!(look.accent, "#ff0000");
+        assert_eq!(look.icon, LowerThirdIcon::None);
+        assert_eq!(look.rounding, 0);
+        assert_eq!(look.size, LowerThirdSize::Medium);
+        assert_eq!(look.speed, LowerThirdSpeed::Normal);
     }
 }

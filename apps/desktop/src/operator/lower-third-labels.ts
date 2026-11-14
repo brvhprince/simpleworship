@@ -3,7 +3,13 @@
  * keys (shared by the Lower Third panel and its editor).
  */
 
-import type { LowerThirdKind, LowerThirdStyle } from "@simpleworship/protocol";
+import type {
+  LowerThirdIcon,
+  LowerThirdKind,
+  LowerThirdSize,
+  LowerThirdSpeed,
+  LowerThirdStyle,
+} from "@simpleworship/protocol";
 import type { MessageKey } from "../lib/i18n/i18n.svelte.ts";
 
 export const KIND_LABELS: Record<LowerThirdKind, MessageKey> = {
@@ -32,4 +38,32 @@ export const STYLE_LABELS: Record<LowerThirdStyle, MessageKey> = {
   rise: "lowerThird.style.rise",
   block: "lowerThird.style.block",
   strap: "lowerThird.style.strap",
+};
+
+/** The icons, in the order the editor offers them. */
+export const ICON_LABELS: Record<LowerThirdIcon, MessageKey> = {
+  none: "lowerThird.icon.none",
+  logo: "lowerThird.icon.logo",
+  facebook: "lowerThird.icon.facebook",
+  youtube: "lowerThird.icon.youtube",
+  instagram: "lowerThird.icon.instagram",
+  whatsapp: "lowerThird.icon.whatsapp",
+  phone: "lowerThird.icon.phone",
+  web: "lowerThird.icon.web",
+  email: "lowerThird.icon.email",
+  location: "lowerThird.icon.location",
+  bible: "lowerThird.icon.bible",
+  cross: "lowerThird.icon.cross",
+};
+
+export const SIZE_LABELS: Record<LowerThirdSize, MessageKey> = {
+  small: "lowerThird.size.small",
+  medium: "lowerThird.size.medium",
+  large: "lowerThird.size.large",
+};
+
+export const SPEED_LABELS: Record<LowerThirdSpeed, MessageKey> = {
+  slow: "lowerThird.speed.slow",
+  normal: "lowerThird.speed.normal",
+  fast: "lowerThird.speed.fast",
 };

@@ -1405,6 +1405,23 @@ export type LowerThird = {
 };
 
 /**
+ * A small picture beside a lower third's title.
+ */
+export type LowerThirdIcon =
+  | "none"
+  | "logo"
+  | "facebook"
+  | "youtube"
+  | "instagram"
+  | "whatsapp"
+  | "phone"
+  | "web"
+  | "email"
+  | "location"
+  | "bible"
+  | "cross";
+
+/**
  * What a lower third is for: sets the labels and examples in the editor.
  */
 export type LowerThirdKind =
@@ -1443,6 +1460,23 @@ export type LowerThirdLook = {
    * Which side it sits on.
    */
   side: LowerThirdSide;
+  /**
+   * A picture beside the title.
+   */
+  icon: LowerThirdIcon;
+  /**
+   * How round its corners are, in pixels on a 1920 × 1080 screen (0 for
+   * square).
+   */
+  rounding: number;
+  /**
+   * How big it is.
+   */
+  size: LowerThirdSize;
+  /**
+   * How fast it moves in and out.
+   */
+  speed: LowerThirdSpeed;
 };
 
 /**
@@ -1471,6 +1505,16 @@ export type LowerThirdShown = {
  * Which side of the screen a lower third sits on.
  */
 export type LowerThirdSide = "left" | "centre" | "right";
+
+/**
+ * How big a lower third is.
+ */
+export type LowerThirdSize = "small" | "medium" | "large";
+
+/**
+ * How fast a lower third moves in and out.
+ */
+export type LowerThirdSpeed = "slow" | "normal" | "fast";
 
 /**
  * How a lower third looks and moves in.

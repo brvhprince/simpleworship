@@ -17,6 +17,10 @@ const DEFAULT_LOOK: LowerThird["look"] = {
   color: "#ffffff",
   fontFamily: "",
   side: "left",
+  icon: "none",
+  rounding: 0,
+  size: "medium",
+  speed: "normal",
 };
 
 class LowerThirdsStore {
