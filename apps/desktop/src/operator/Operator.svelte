@@ -31,6 +31,7 @@
   import { connectEditMenu } from "../lib/menu.ts";
   import { ndi } from "../lib/ndi.svelte.ts";
   import { outputs } from "../lib/outputs.svelte.ts";
+  import { packs } from "../lib/packs.svelte.ts";
   import { panels } from "../lib/panels.svelte.ts";
   import { remote } from "../lib/remote.svelte.ts";
   import { scheduleFile } from "../lib/schedule-file.svelte.ts";
@@ -49,6 +50,7 @@
   import LowerThirdEditor from "./LowerThirdEditor.svelte";
   import Library from "./library/Library.svelte";
   import MirrorView from "./MirrorView.svelte";
+  import PackExportDialog from "./PackExportDialog.svelte";
   import PairRequestDialog from "./PairRequestDialog.svelte";
   import PromptHost from "./PromptHost.svelte";
   import SchedulePanel from "./SchedulePanel.svelte";
@@ -249,6 +251,9 @@
 
     {#if lowerThirds.editing}
       <LowerThirdEditor />
+    {/if}
+    {#if packs.exporting}
+      <PackExportDialog />
     {/if}
     {#if dialogs.open === "settings"}
       <SettingsDialog />

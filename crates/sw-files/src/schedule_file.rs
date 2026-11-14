@@ -205,7 +205,7 @@ impl<R: Read + Seek> ScheduleReader<R> {
 
 /// A media file name must be a single name: no folders and no `..`, so a
 /// crafted schedule file can never write outside the media folder.
-fn is_plain_file_name(file: &str) -> bool {
+pub(crate) fn is_plain_file_name(file: &str) -> bool {
     !file.is_empty() && !file.contains(['/', '\\']) && file != "." && file != ".."
 }
 

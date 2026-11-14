@@ -39,6 +39,7 @@ mod media;
 mod menu;
 mod ndi;
 mod office;
+mod packs;
 mod plain_http;
 mod recent;
 mod remote;
@@ -262,6 +263,8 @@ pub fn run() {
             commands::settings::transitions_save,
             commands::settings::lower_thirds_get,
             commands::settings::lower_thirds_save,
+            commands::packs::pack_export,
+            commands::packs::pack_import,
             commands::settings::stream_save,
             commands::settings::usage_report,
             commands::settings::usage_export_csv,

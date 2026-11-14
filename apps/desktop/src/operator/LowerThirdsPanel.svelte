@@ -9,7 +9,9 @@
   import { onMount } from "svelte";
   import { engine } from "../lib/engine.svelte.ts";
   import { t } from "../lib/i18n/i18n.svelte.ts";
+  import { link } from "../lib/link.svelte.ts";
   import { lowerThirds } from "../lib/lower-thirds.svelte.ts";
+  import { packs } from "../lib/packs.svelte.ts";
   import { panels } from "../lib/panels.svelte.ts";
   import { KIND_LABELS } from "./lower-third-labels.ts";
 
@@ -64,14 +66,44 @@
     </ul>
   {/if}
 
-  <Button
-    disabled={!lowerThirds.ready || lowerThirds.busy}
-    onclick={() => openEditor(() => lowerThirds.create())}
-    >{t("lowerThird.new")}</Button
-  >
+  <div class="actions">
+    <Button
+      disabled={!lowerThirds.ready || lowerThirds.busy}
+      onclick={() => openEditor(() => lowerThirds.create())}
+      >{t("lowerThird.new")}</Button
+    >
+    <span class="spacer"></span>
+    <Button
+      disabled={link.joined || !lowerThirds.ready || lowerThirds.busy}
+      title={link.joined ? t("pack.notWhenJoined") : t("pack.importHint")}
+      onclick={() => openEditor(() => void packs.import())}
+      >{t("pack.import")}</Button
+    >
+    <Button
+      disabled={link.joined || lowerThirds.list.length === 0}
+      title={link.joined ? t("pack.notWhenJoined") : t("pack.exportHint")}
+      onclick={() =>
+        openEditor(() =>
+          packs.startExport({
+            themeIds: [],
+            lowerThirdIds: lowerThirds.list.map((item) => item.id),
+          }),
+        )}
+      >{t("pack.exportButton")}</Button
+    >
+  </div>
 </div>
 
 <style>
+  .actions {
+    display: flex;
+    gap: var(--sw-space-1);
+  }
+
+  .spacer {
+    flex: 1;
+  }
+
   .lower-thirds {
     display: flex;
     flex-direction: column;

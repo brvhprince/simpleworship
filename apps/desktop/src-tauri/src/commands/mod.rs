@@ -7,6 +7,7 @@ pub mod engine;
 pub mod import;
 pub mod media;
 pub mod outputs;
+pub mod packs;
 pub mod presentations;
 pub mod schedule;
 pub mod scripture;

@@ -27,6 +27,7 @@ import type {
   NewSermonPart,
   OutputKind,
   OutputTarget,
+  PackImported,
   Passage,
   PreparedPdf,
   Presentation,
@@ -535,3 +536,14 @@ export function uuidV7(now: number = Date.now()): string {
   const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
+
+/**
+ * Saves themes and lower thirds (with the pictures and videos behind the
+ * themes) as a `.swpack` file. Always on this computer: a joined computer
+ * cannot export (the library is the main computer's).
+ */
+export const exportPack = (path: string, themeIds: string[], lowerThirdIds: string[]) =>
+  invoke<void>("pack_export", { path, themeIds, lowerThirdIds });
+
+/** Adds what a `.swpack` file holds that this computer lacks. */
+export const importPack = (path: string) => invoke<PackImported>("pack_import", { path });

@@ -25,6 +25,10 @@ pub enum AppError {
     #[error(transparent)]
     ScheduleFile(#[from] sw_files::ScheduleFileError),
 
+    /// A theme pack could not be read or written.
+    #[error(transparent)]
+    PackFile(#[from] sw_files::PackFileError),
+
     /// The operating system refused a file operation.
     #[error("could not read or write the file: {0}")]
     Io(#[from] std::io::Error),

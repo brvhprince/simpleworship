@@ -646,6 +646,30 @@ export type OutputTarget =
   | { type: "windowed" };
 
 /**
+ * What an import added, for the message the operator sees.
+ */
+export type PackImported = {
+  /**
+   * Themes added to the library.
+   */
+  themesAdded: number;
+  /**
+   * Lower thirds added to the list.
+   */
+  lowerThirdsAdded: number;
+  /**
+   * Themes and lower thirds left out because this computer already has
+   * them.
+   */
+  alreadyHere: number;
+  /**
+   * Fonts the pack's themes or lower thirds use that this computer does
+   * not have: they show in a stand-in font until installed.
+   */
+  missingFonts: Array<string>;
+};
+
+/**
  * A pairing code, ready to show.
  */
 export type PairingCode = {

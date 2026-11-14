@@ -27,5 +27,7 @@
   p {
     margin: 0;
     line-height: 1.5;
+    /* A message may be several lines (one per thing an import added). */
+    white-space: pre-line;
   }
 </style>
