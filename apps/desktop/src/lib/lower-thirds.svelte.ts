@@ -35,6 +35,8 @@ class LowerThirdsStore {
   ready = $state(false);
   /** Counts saves, so a load that started before one does not undo it. */
   #saves = 0;
+  /** Counts loads, so only the newest one's answer is used (answers can arrive out of order). */
+  #loads = 0;
   /**
    * Whether the list is being written. Saves and deletes each write the
    * whole list, so one at a time: a late save could otherwise bring back
@@ -44,14 +46,17 @@ class LowerThirdsStore {
 
   /** Loads the saved list (the main computer's, on one that joined). */
   async load(): Promise<void> {
+    const load = ++this.#loads;
     const savesBefore = this.#saves;
     try {
       const list = await getLowerThirds();
-      // A save while loading already holds the newer list.
-      if (this.#saves === savesBefore) this.list = list;
+      // Only the newest load counts, and not if a save came since: the
+      // list then already holds something newer than this answer.
+      if (load !== this.#loads || this.#saves !== savesBefore) return;
+      this.list = list;
       this.ready = true;
     } catch (error) {
-      engine.showError(error);
+      if (load === this.#loads) engine.showError(error);
     }
   }
 
