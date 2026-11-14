@@ -28,9 +28,10 @@
     lower third by itself when its time is up, so a screen that has lost
     touch with the main computer does not keep it.
   - `entrance`, `entranceRun`: how the slide's words come in when they
-    appear after nothing was showing (the stream's lower-third looks, see
-    `StreamView`); each new run plays it once. The words' own transitions
-    from slide to slide are unchanged.
+    appear after nothing was showing or a different item goes live (the
+    stream's lower-third looks, see `StreamView`); each new run plays it
+    once, while the words before fade out. The words' own transitions from
+    slide to slide are unchanged.
   - `lowerThirds`: which lower thirds to show: those for the room's screens
     (projectors), the stream (`StreamView`), or all (the operator's live pane).
 
@@ -94,6 +95,14 @@
   }
 
   const duration = $derived(output.transition.kind === "cut" ? 0 : output.transition.durationMs);
+
+  /**
+   * Which entrance run the words belong to: 0 (never remounted) unless they
+   * rise or wipe in, so the Fade entrance keeps the words' own fade.
+   */
+  const entranceKey = $derived(
+    (entrance === "rise" || entrance === "wipe") && !still ? entranceRun : 0,
+  );
   const flags = $derived(output.flags);
 
   // Each layer is a list of zero or one item. Rendering it with a keyed
@@ -145,13 +154,15 @@
   </div>
 {/each}
 
-<!-- A new entrance run remounts the words, so its entrance plays once;
-     still outputs (NDI) and the first run (a screen opened late) skip it. -->
-{#key entranceRun}
+<!-- A new entrance run remounts the words, so its entrance plays once
+     (and the words before fade out); still outputs (NDI) and the first run
+     (a screen opened late) skip it. -->
+{#key entranceKey}
   <div
     class="layer words"
-    class:rise={entrance === "rise" && entranceRun > 0 && !still}
-    class:wipe={entrance === "wipe" && entranceRun > 0 && !still}
+    class:rise={entrance === "rise" && entranceKey > 0}
+    class:wipe={entrance === "wipe" && entranceKey > 0}
+    out:fade={{ duration }}
   >
     {#each textLayers as layer (layer.key)}
       <div class="layer" transition:fade={{ duration }}>

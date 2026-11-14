@@ -84,8 +84,9 @@ impl StreamBackdrop {
 }
 
 /// How the words come in on the stream, where a theme draws them (the
-/// lower-third looks): when they appear after nothing was showing. From one
-/// slide to the next they change with the usual transition.
+/// lower-third looks): when they appear after nothing was showing, and when
+/// a different song, passage or schedule item goes live. From one slide to
+/// the next they change with the usual transition.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "bindings.ts")]
@@ -187,6 +188,11 @@ pub struct StreamOutput {
     /// shown as on the main output, which keep their transition).
     #[serde(default)]
     pub entrance: Option<StreamEntrance>,
+    /// Goes up by one each time a different item goes live, so the words
+    /// come in again for a new song or passage (see `Engine::go_live`).
+    #[serde(default)]
+    #[ts(type = "number")]
+    pub entrance_cue: u64,
 }
 
 impl Default for StreamOutput {
@@ -198,6 +204,7 @@ impl Default for StreamOutput {
             backdrop: StreamBackdrop::default().color().to_owned(),
             show_alerts: true,
             entrance: None,
+            entrance_cue: 0,
         }
     }
 }
@@ -219,6 +226,7 @@ pub fn stream_output(
         backdrop: backdrop.color().to_owned(),
         show_alerts: settings.show_alerts,
         entrance: None,
+        entrance_cue: 0,
     };
     // Black and Logo clear the stream instead of covering the camera.
     if flags.black || flags.logo {

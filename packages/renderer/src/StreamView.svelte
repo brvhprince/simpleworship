@@ -42,16 +42,20 @@
     output.stream.frame != null && !output.stream.hideText && output.stream.entrance != null,
   );
   /**
-   * Counts the times the words appeared after nothing was showing, so each
-   * plays the entrance once. Words already up when this view opened (OBS
-   * connecting mid-song) are run 0: they show in place.
+   * Counts the times the words came in: after nothing was showing, or for
+   * a different item going live (`entranceCue`). Each plays the entrance
+   * once. Words already up when this view opened (OBS connecting mid-song)
+   * are run 0: they show in place.
    */
   let entranceRun = $state(0);
   let wasUp = untrack(() => wordsUp);
+  let seenCue = untrack(() => output.stream.entranceCue);
   $effect.pre(() => {
     const up = wordsUp;
-    if (up && !wasUp) entranceRun = untrack(() => entranceRun) + 1;
+    const cue = output.stream.entranceCue;
+    if (up && (!wasUp || cue !== seenCue)) entranceRun = untrack(() => entranceRun) + 1;
     wasUp = up;
+    seenCue = cue;
   });
 </script>
 

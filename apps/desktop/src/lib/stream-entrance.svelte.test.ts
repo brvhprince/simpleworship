@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 // The stream's words play their entrance when they appear after nothing
-// was showing, not when a screen opens mid-song, and not from slide to slide.
+// was showing or a different item goes live, not when a screen opens
+// mid-song, and not from slide to slide.
 import type { OutputState, RenderFrame } from "@simpleworship/protocol";
 import { StreamView } from "@simpleworship/renderer";
 import { flushSync, mount, unmount } from "svelte";
@@ -14,7 +15,7 @@ const frame = (text: string) =>
     theme: { name: "Lower Third", background: { type: "color", color: "transparent" } },
   }) as unknown as RenderFrame;
 
-function output(words: RenderFrame | null): OutputState {
+function output(words: RenderFrame | null, entranceCue = 1): OutputState {
   return {
     frame: words,
     flags: { black: false, logo: false, hideText: false, hideBackground: false },
@@ -30,6 +31,7 @@ function output(words: RenderFrame | null): OutputState {
       backdrop: "transparent",
       showAlerts: true,
       entrance: "rise",
+      entranceCue,
     },
     revision: 0,
   } as unknown as OutputState;
@@ -52,6 +54,11 @@ describe("the stream's entrance", () => {
     props.output = output(frame("How sweet the sound"));
     flushSync();
     expect(document.querySelector(".words")).toBe(first); // the same run: no new entrance
+
+    props.output = output(frame("Blessed assurance"), 2); // a different song goes live
+    flushSync();
+    expect(document.querySelector(".words")).not.toBe(first);
+    expect(document.querySelector(".words:not(.rise)")).toBeNull();
     unmount(view);
   });
 

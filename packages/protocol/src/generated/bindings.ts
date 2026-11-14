@@ -2299,8 +2299,9 @@ export type StreamBackdrop = "transparent" | "green" | "black" | "main";
 
 /**
  * How the words come in on the stream, where a theme draws them (the
- * lower-third looks): when they appear after nothing was showing. From one
- * slide to the next they change with the usual transition.
+ * lower-third looks): when they appear after nothing was showing, and when
+ * a different song, passage or schedule item goes live. From one slide to
+ * the next they change with the usual transition.
  */
 export type StreamEntrance = "fade" | "rise" | "wipe";
 
@@ -2351,6 +2352,11 @@ export type StreamOutput = {
    * shown as on the main output, which keep their transition).
    */
   entrance: StreamEntrance | null;
+  /**
+   * Goes up by one each time a different item goes live, so the words
+   * come in again for a new song or passage (see `Engine::go_live`).
+   */
+  entranceCue: number;
 };
 
 /**
