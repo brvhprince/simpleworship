@@ -135,13 +135,15 @@ struct PackFile {
 /// each once even if the pack lists it twice.
 ///
 /// Each media file gets its own id as its name here (as files imported
-/// into the library do), and the themes are pointed at it: a pack can then
-/// never name, and so overwrite, a file this computer already has.
+/// into the library do): a pack can then never name, and so overwrite, a
+/// file this computer already has. Every new theme is pointed at the file
+/// as it is named here, whether copied now or already in the library
+/// (`media_here` gives a library file's name by its id).
 fn new_to_this_computer(
     contents: PackContents,
     themes_here: &HashSet<Id>,
     lower_thirds_here: &HashSet<Id>,
-    media_here: impl Fn(Id) -> AppResult<bool>,
+    media_here: impl Fn(Id) -> AppResult<Option<String>>,
     files_in_pack: &[String],
 ) -> AppResult<NewToThisComputer> {
     let mut new = NewToThisComputer::default();
@@ -168,18 +170,11 @@ fn new_to_this_computer(
     for item in contents.media {
         if !files_in_pack.contains(&item.file)
             || !media_seen.insert(item.id)
-            || media_here(item.id)?
+            || media_here(item.id)?.is_some()
         {
             continue;
         }
         let local = local_file_name(item.id, &item.file);
-        for record in &mut new.themes {
-            if let Some(reference) = record.theme.background.media_mut()
-                && reference.id == item.id
-            {
-                reference.file.clone_from(&local);
-            }
-        }
         new.media.push(PackFile {
             in_pack: item.file.clone(),
             // Its folder in the Media tab belongs to the other computer.
@@ -189,6 +184,18 @@ fn new_to_this_computer(
                 ..item
             },
         });
+    }
+
+    for record in &mut new.themes {
+        let Some(reference) = record.theme.background.media_mut() else {
+            continue;
+        };
+        let copied = new.media.iter().find(|file| file.item.id == reference.id);
+        if let Some(file) = copied {
+            reference.file.clone_from(&file.item.file);
+        } else if let Some(file) = media_here(reference.id)? {
+            reference.file = file;
+        }
     }
     Ok(new)
 }
@@ -260,7 +267,7 @@ pub fn read(
         contents,
         &themes_here,
         &lower_thirds_here,
-        |id| Ok(database.media().get(id)?.is_some()),
+        |id| Ok(database.media().get(id)?.map(|item| item.file)),
         &reader.media_files(),
     )?;
 
@@ -391,7 +398,7 @@ mod tests {
             contents,
             &HashSet::from([mine.id]),
             &HashSet::from([lower_third.id]),
-            |_| Ok(false),
+            |_| Ok(None),
             &["a.jpg".to_owned()],
         )
         .unwrap();
@@ -423,7 +430,7 @@ mod tests {
             contents,
             &HashSet::new(),
             &HashSet::new(),
-            |id| Ok(id == carried.id),
+            |id| Ok((id == carried.id).then(|| "a.jpg".to_owned())),
             &["a.jpg".to_owned()],
         )
         .unwrap();
@@ -474,7 +481,7 @@ mod tests {
             contents,
             &HashSet::new(),
             &HashSet::new(),
-            |_| Ok(false),
+            |_| Ok(None),
             &["a.jpg".to_owned()],
         )
         .unwrap();
@@ -506,7 +513,7 @@ mod tests {
             contents,
             &HashSet::new(),
             &HashSet::new(),
-            |id| Ok(id == ours.id),
+            |id| Ok((id == ours.id).then(|| "ours.jpg".to_owned())),
             &["ours.jpg".to_owned()],
         )
         .unwrap();
@@ -526,6 +533,43 @@ mod tests {
                 .map(|media| media.file.clone()),
             Some(file.item.file.clone()),
             "the theme points at the renamed file"
+        );
+    }
+
+    #[test]
+    fn a_theme_using_a_picture_already_here_points_at_its_file_here() {
+        // An earlier pack brought the picture, renamed to its id here; a
+        // second pack has another theme on it, under its old name.
+        let sunrise = picture("sunrise.jpg");
+        let here = format!("{}.jpg", sunrise.id);
+        let mut record = theme("Second", "Lato");
+        record.theme.background = sw_core::Background::Image {
+            media: sunrise.as_ref(),
+            fit: sw_core::MediaFit::Cover,
+            file_fit: None,
+            opacity: 1.0,
+        };
+        let contents = PackContents {
+            themes: vec![record],
+            lower_thirds: Vec::new(),
+            media: vec![sunrise.clone()],
+        };
+        let new = new_to_this_computer(
+            contents,
+            &HashSet::new(),
+            &HashSet::new(),
+            |id| Ok((id == sunrise.id).then(|| here.clone())),
+            &["sunrise.jpg".to_owned()],
+        )
+        .unwrap();
+        assert!(new.media.is_empty(), "not copied again");
+        assert_eq!(
+            new.themes[0]
+                .theme
+                .background
+                .media()
+                .map(|media| media.file.clone()),
+            Some(here)
         );
     }
 

@@ -50,27 +50,34 @@ class LowerThirdsStore {
   /** Waiting for `busy` to clear (see {@link whileWrittenElsewhere}). */
   #idle: (() => void)[] = [];
 
-  /** Loads the saved list (the main computer's, on one that joined). */
-  async load(): Promise<void> {
+  /**
+   * Loads the saved list (the main computer's, on one that joined).
+   * Resolves to whether this load's answer was used.
+   */
+  async load(): Promise<boolean> {
     const load = ++this.#loads;
     const savesBefore = this.#saves;
     try {
       const list = await getLowerThirds();
       // Only the newest load counts, and not if a save came since: the
       // list then already holds something newer than this answer.
-      if (load !== this.#loads || this.#saves !== savesBefore) return;
+      if (load !== this.#loads || this.#saves !== savesBefore) return false;
       this.list = list;
       this.ready = true;
+      return true;
     } catch (error) {
       if (load === this.#loads) engine.showError(error);
+      return false;
     }
   }
 
   /**
    * Runs `change`, which writes the list some other way (a pack import),
-   * with this store's saving locked, then reloads the list before
-   * unlocking: a save meanwhile, or one from the old list just after,
-   * would otherwise drop what `change` added.
+   * with this store's saving locked, then reloads the list: a save
+   * meanwhile, or one from the old list just after, would otherwise drop
+   * what `change` added. Saving stays off (`ready` false) until a load
+   * brings the new list, even if this reload fails or a newer one
+   * overtakes it.
    */
   async whileWrittenElsewhere<T>(change: () => Promise<T>): Promise<T> {
     while (this.busy) await new Promise<void>((resolve) => this.#idle.push(resolve));
@@ -78,7 +85,9 @@ class LowerThirdsStore {
     try {
       return await change();
     } finally {
-      // A load already on its way holds the old list: it must not count.
+      // The list here is now out of date, and a load already on its way
+      // holds the old one: neither may be saved over the new list.
+      this.ready = false;
       this.#saves += 1;
       await this.load();
       this.#setIdle();
@@ -152,12 +161,17 @@ class LowerThirdsStore {
     if (!this.ready || this.busy) return false;
     this.busy = true;
     try {
-      await saveLowerThirds($state.snapshot(list) as LowerThird[]);
+      await saveLowerThirds(
+        $state.snapshot(list) as LowerThird[],
+        $state.snapshot(this.list) as LowerThird[],
+      );
       this.#saves += 1;
       this.list = list;
       return true;
     } catch (error) {
       engine.showError(error);
+      // Refused because the list changed elsewhere, perhaps: fetch it.
+      void this.load();
       return false;
     } finally {
       this.#setIdle();

@@ -76,10 +76,20 @@ pub fn lower_thirds_get(state: State<'_, AppState>) -> AppResult<Vec<LowerThird>
     settings::load_lower_thirds(&state.database())
 }
 
-/// Saves the lower thirds (the whole list, in order).
+/// Saves the lower thirds (the whole list, in order), if the saved list is
+/// still `previous`, the one this change was made to.
+///
+/// Every save writes the whole list, so one made to an out-of-date copy
+/// (on a computer that joined this one, while a pack was imported here)
+/// would drop what was added meanwhile: it is refused instead, and the
+/// window reloads. Without `previous` (an older joined computer) it saves.
 #[tauri::command]
-pub fn lower_thirds_save(state: State<'_, AppState>, items: Vec<LowerThird>) -> AppResult<()> {
-    settings::save_lower_thirds(&state.database(), &items)
+pub fn lower_thirds_save(
+    state: State<'_, AppState>,
+    items: Vec<LowerThird>,
+    previous: Option<Vec<LowerThird>>,
+) -> AppResult<()> {
+    settings::save_lower_thirds_over(&state.database(), &items, previous.as_deref())
 }
 
 /// Songs used from `from` to `to` (inclusive, `YYYY-MM-DD`), most used first.

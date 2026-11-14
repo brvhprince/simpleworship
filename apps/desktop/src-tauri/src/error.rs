@@ -25,6 +25,14 @@ pub enum AppError {
     #[error(transparent)]
     ScheduleFile(#[from] sw_files::ScheduleFileError),
 
+    /// A lower-third save was made to a list that has changed since (on
+    /// another computer, or by a pack import).
+    #[error(
+        "the lower thirds were changed elsewhere (another computer, or an import); \
+         they have been reloaded, so please make your change again"
+    )]
+    LowerThirdsChanged,
+
     /// A theme pack could not be read or written.
     #[error(transparent)]
     PackFile(#[from] sw_files::PackFileError),
