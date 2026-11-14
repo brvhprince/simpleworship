@@ -898,6 +898,50 @@ h1 {
   font: 600 12px var(--mono);
 }
 
+/* The "Bar" lower third: an accent bar, then the name and title. */
+.name-strap {
+  position: absolute;
+  left: 6%;
+  bottom: 10%;
+  display: flex;
+  align-items: stretch;
+  animation: strap-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.name-strap i {
+  width: 6px;
+  background: var(--preview);
+}
+
+.name-strap span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 18px;
+  background: rgba(10, 12, 18, 0.86);
+  color: #fff;
+  font-size: 14px;
+}
+
+.name-strap b {
+  font-size: 20px;
+}
+
+@keyframes strap-in {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .name-strap {
+    animation: none;
+  }
+}
+
 .third {
   position: absolute;
   left: 6%;
