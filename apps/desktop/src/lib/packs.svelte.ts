@@ -13,6 +13,7 @@ import { engine } from "./engine.svelte.ts";
 import { t } from "./i18n/i18n.svelte.ts";
 import { link } from "./link.svelte.ts";
 import { lowerThirds } from "./lower-thirds.svelte.ts";
+import { onMenuClick } from "./menu.ts";
 import { prompts } from "./prompts.svelte.ts";
 
 /** The file type in open and save dialogs. */
@@ -28,9 +29,21 @@ class Packs {
   /** The export dialog, open with these ticked; `null` when closed. */
   exporting: PackChoice | null = $state(null);
 
-  /** Opens the export dialog with `choice` ticked. */
+  /** Opens the export dialog with `choice` ticked (on a joined computer, explains why not). */
   startExport(choice: PackChoice): void {
+    if (link.joined) {
+      void this.#tell(t("pack.exportTitle"), t("pack.notWhenJoined"));
+      return;
+    }
     this.exporting = choice;
+  }
+
+  /** Listens for File › Import Theme Pack… and Export Theme Pack…. */
+  connect(): Promise<() => void> {
+    return onMenuClick((id) => {
+      if (id === "pack-import") void this.import();
+      else if (id === "pack-export") this.startExport({ themeIds: [], lowerThirdIds: [] });
+    });
   }
 
   /**

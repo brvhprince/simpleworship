@@ -103,6 +103,7 @@
       media.connect(urls),
       importer.connect(),
       dialogs.connect(),
+      packs.connect(),
       connectEditMenu(),
       updates.connect(),
       remote.connect(),

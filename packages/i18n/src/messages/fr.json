@@ -639,6 +639,8 @@
   "menu.hide": "Masquer SimpleWorship",
   "menu.hideOthers": "Masquer les autres",
   "menu.import": "Importer depuis un autre logiciel…",
+  "menu.packImport": "Importer un pack de thèmes…",
+  "menu.packExport": "Exporter un pack de thèmes…",
   "menu.logs": "Ouvrir le dossier des journaux",
   "menu.minimize": "Réduire",
   "menu.moving": "Passer d’EasyWorship à SimpleWorship",
@@ -1042,7 +1044,7 @@
   },
   "pack.defaultName": "Thèmes de l’église",
   "pack.exportedTitle": "Exporté",
-  "pack.exportedMessage": "Envoyez le fichier .swpack à toute personne qui utilise SimpleWorship. Elle l’ouvre avec Importer… dans l’onglet Thèmes ou le panneau Bandeaux.",
+  "pack.exportedMessage": "Envoyez le fichier .swpack à toute personne qui utilise SimpleWorship. Elle l’ouvre d’un double-clic, ou avec Fichier › Importer un pack de thèmes….",
   "pack.importedTitle": "Importé",
   "pack.addedThemes": {
     "one": "{count} thème ajouté.",

@@ -639,6 +639,8 @@
   "menu.hide": "Hide SimpleWorship",
   "menu.hideOthers": "Hide Others",
   "menu.import": "Import from Other Software…",
+  "menu.packImport": "Import Theme Pack…",
+  "menu.packExport": "Export Theme Pack…",
   "menu.logs": "Open Logs Folder",
   "menu.minimize": "Minimize",
   "menu.moving": "Moving from EasyWorship",
@@ -1042,7 +1044,7 @@
   },
   "pack.defaultName": "Church themes",
   "pack.exportedTitle": "Exported",
-  "pack.exportedMessage": "Send the .swpack file to anyone with SimpleWorship. They open it with Import… in the Themes tab or the Lower Thirds panel.",
+  "pack.exportedMessage": "Send the .swpack file to anyone with SimpleWorship. They double-click it, or use File › Import Theme Pack….",
   "pack.importedTitle": "Imported",
   "pack.addedThemes": {
     "one": "Added {count} theme.",

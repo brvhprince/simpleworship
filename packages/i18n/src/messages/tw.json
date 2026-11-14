@@ -639,6 +639,8 @@
   "menu.hide": "Fa SimpleWorship Sie",
   "menu.hideOthers": "Fa Deɛ Aka Sie",
   "menu.import": "Fa Firi Dwumadie Foforɔ Mu Bra…",
+  "menu.packImport": "Fa Theme Pack Bra…",
+  "menu.packExport": "Fa Theme Pack Kɔ…",
   "menu.logs": "Bue Logs Nwoma Kotokuo",
   "menu.minimize": "Ma ɛnyɛ ketewa",
   "menu.moving": " Worefiri EasyWorship Mu Aba",
@@ -1042,7 +1044,7 @@
   },
   "pack.defaultName": "Asɔre themes",
   "pack.exportedTitle": "Ɛkɔ",
-  "pack.exportedMessage": "Fa .swpack fael no ma obiara a ɔwɔ SimpleWorship. Ɔbɛbue no wɔ Fa Bra… a ɛwɔ Themes anaa Ase Nkyerɛwee mu.",
+  "pack.exportedMessage": "Fa .swpack fael no ma obiara a ɔwɔ SimpleWorship. Ɔbɛmia so mprenu, anaa ɔde File › Fa Theme Pack Bra… bɛbue.",
   "pack.importedTitle": "Ɛaba",
   "pack.addedThemes": {
     "one": "Yɛde theme {count} aka ho.",
