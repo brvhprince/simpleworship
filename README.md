@@ -192,6 +192,7 @@ Phones and tablets on the church Wi-Fi become remotes: scan a QR code, nothing t
       Black, Logo, Clear Text, Clear Background<br>
       Cut or fade, set for each kind of content<br>
       Quick Text from anywhere in the library<br>
+      Animated lower thirds: names, sermon titles, MoMo numbers, social handles<br>
       List, card or picture layout for the schedule<br>
       Autosave, and the schedule back after a crash
     </td>
@@ -213,7 +214,8 @@ Phones and tablets on the church Wi-Fi become remotes: scan a QR code, nothing t
       Second operators, mirrors and take over<br>
       Portable <code>.sws</code> schedules that carry their themes and media<br>
       CCLI song usage report<br>
-      Optional AI assistant with your own key
+      Optional AI assistant with your own key<br>
+      Dark or light, as the room needs
     </td>
   </tr>
 </table>
@@ -270,6 +272,23 @@ the words off the stream without covering the camera. Use it as:
   optionally "SimpleWorship Main". It needs the free
   [NDI Tools](https://ndi.video/tools/) (or NDI Runtime); macOS and Windows for
   now.
+</details>
+
+<details>
+<summary><b>Lower thirds</b></summary>
+<br>
+
+A name, a title or a short message in an animated strap at the bottom of the
+screen, made in SimpleWorship instead of After Effects: the pastor's name and
+title, the sermon title, a Bible reference, the offering's MoMo number, the
+church's social handles or an announcement. Press <b>L</b> (or click
+<b>Lower Third</b>) and click one to show it; click Hide, or let it go away
+by itself after some seconds.
+
+Six styles (Bar, Wipe, Underline, Rise, Block, Strap), each with its own
+entrance, on the left, in the centre or on the right, in your colours and
+font, on the screens, the stream or both. Over NDI a lower third appears
+without moving, as alerts do.
 </details>
 
 ## Download
@@ -354,6 +373,7 @@ closes it.
 | ↑ / ↓ and Delete (in the schedule)   | Preview the previous / next item, remove the item |
 | ⌘/Ctrl + N, O, S, Shift+S            | New, Open, Save, Save As schedule         |
 | A                                    | Open the Alert panel                      |
+| L                                    | Open the Lower Third panel                |
 | Esc                                  | Clear the alert (in an output window: close it) |
 | ⌘/Ctrl + ,                           | Settings                                  |
 
