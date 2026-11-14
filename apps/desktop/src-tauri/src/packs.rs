@@ -117,12 +117,26 @@ pub fn write(target: &Path, contents: &PackContents, folders: &MediaFolders) -> 
 struct NewToThisComputer {
     themes: Vec<ThemeRecord>,
     lower_thirds: Vec<LowerThird>,
-    media: Vec<MediaItem>,
+    media: Vec<PackFile>,
     already_here: u32,
 }
 
+/// A media file to copy out of a pack, and its record here.
+#[derive(Debug, PartialEq)]
+struct PackFile {
+    /// Its name inside the pack.
+    in_pack: String,
+    /// Its record here, under its name here.
+    item: MediaItem,
+}
+
 /// Picks what a pack adds: themes, lower thirds and media files whose ids
-/// this computer does not have (media only if the pack carries the file).
+/// this computer does not have (media only if the pack carries the file),
+/// each once even if the pack lists it twice.
+///
+/// Each media file gets its own id as its name here (as files imported
+/// into the library do), and the themes are pointed at it: a pack can then
+/// never name, and so overwrite, a file this computer already has.
 fn new_to_this_computer(
     contents: PackContents,
     themes_here: &HashSet<Id>,
@@ -131,37 +145,98 @@ fn new_to_this_computer(
     files_in_pack: &[String],
 ) -> AppResult<NewToThisComputer> {
     let mut new = NewToThisComputer::default();
+    let mut themes_seen = themes_here.clone();
     for record in contents.themes {
-        if themes_here.contains(&record.id) {
-            new.already_here += 1;
-        } else {
+        if themes_seen.insert(record.id) {
             new.themes.push(ThemeRecord {
                 builtin: false,
                 ..record
             });
-        }
-    }
-    for item in contents.lower_thirds {
-        if lower_thirds_here.contains(&item.id) {
-            new.already_here += 1;
         } else {
-            new.lower_thirds.push(item);
+            new.already_here += 1;
         }
     }
+    let mut lower_thirds_seen = lower_thirds_here.clone();
+    for item in contents.lower_thirds {
+        if lower_thirds_seen.insert(item.id) {
+            new.lower_thirds.push(item);
+        } else {
+            new.already_here += 1;
+        }
+    }
+    let mut media_seen = HashSet::new();
     for item in contents.media {
-        if files_in_pack.contains(&item.file) && !media_here(item.id)? {
+        if !files_in_pack.contains(&item.file)
+            || !media_seen.insert(item.id)
+            || media_here(item.id)?
+        {
+            continue;
+        }
+        let local = local_file_name(item.id, &item.file);
+        for record in &mut new.themes {
+            if let Some(reference) = record.theme.background.media_mut()
+                && reference.id == item.id
+            {
+                reference.file.clone_from(&local);
+            }
+        }
+        new.media.push(PackFile {
+            in_pack: item.file.clone(),
             // Its folder in the Media tab belongs to the other computer.
-            new.media.push(MediaItem {
+            item: MediaItem {
+                file: local,
                 collection: None,
                 ..item
-            });
-        }
+            },
+        });
     }
     Ok(new)
 }
 
+/// The name a media file gets here: its id, and the extension it came with
+/// (letters and digits only).
+fn local_file_name(id: Id, file_in_pack: &str) -> String {
+    let extension: String = Path::new(file_in_pack)
+        .extension()
+        .map(|ext| ext.to_string_lossy().to_lowercase())
+        .unwrap_or_default()
+        .chars()
+        .filter(char::is_ascii_alphanumeric)
+        .collect();
+    if extension.is_empty() {
+        id.to_string()
+    } else {
+        format!("{id}.{extension}")
+    }
+}
+
+/// Copies one media file out of the pack. A partly copied file is removed,
+/// so a failed import leaves nothing behind for a retry to trip over.
+fn copy_out<R: std::io::Read + std::io::Seek>(
+    reader: &mut PackReader<R>,
+    in_pack: &str,
+    destination: &Path,
+) -> AppResult<()> {
+    let copied = (|| -> AppResult<()> {
+        let mut out = BufWriter::new(File::create(destination)?);
+        reader.copy_media(in_pack, &mut out)?;
+        out.into_inner()
+            .map_err(|error| error.into_error())?
+            .sync_all()?;
+        Ok(())
+    })();
+    if copied.is_err() {
+        let _ = std::fs::remove_file(destination);
+    }
+    copied
+}
+
 /// Imports a `.swpack` file: adds the themes, lower thirds and media files
 /// this computer lacks. Fonts are checked against `fonts_here`.
+///
+/// The caller holds the library's lock (`database`) throughout, so a
+/// lower-third save from the operator window cannot land between reading
+/// the list and writing it back.
 pub fn read(
     path: &Path,
     database: &Database,
@@ -190,11 +265,10 @@ pub fn read(
     )?;
 
     // Files first, so a theme never points at a picture not yet copied.
-    for item in &new.media {
-        let destination: PathBuf = folders.media.join(&item.file);
-        let mut out = BufWriter::new(File::create(&destination)?);
-        reader.copy_media(&item.file, &mut out)?;
-        database.media().save(item)?;
+    for file in &new.media {
+        let destination: PathBuf = folders.media.join(&file.item.file);
+        copy_out(&mut reader, &file.in_pack, &destination)?;
+        database.media().save(&file.item)?;
     }
     for record in &new.themes {
         database.themes().save(record)?;
@@ -331,9 +405,9 @@ mod tests {
         assert!(new.lower_thirds.is_empty());
         assert_eq!(new.already_here, 2);
         assert_eq!(new.media.len(), 1, "only files the pack carries");
-        assert_eq!(new.media[0].id, carried.id);
+        assert_eq!(new.media[0].item.id, carried.id);
         assert_eq!(
-            new.media[0].collection, None,
+            new.media[0].item.collection, None,
             "the other computer's folders stay there"
         );
     }
@@ -384,6 +458,83 @@ mod tests {
             missing_fonts(&contents, &here),
             vec!["Bebas Neue", "Gotham"]
         );
+    }
+
+    #[test]
+    fn a_pack_listing_something_twice_adds_it_once() {
+        let record = theme("Twice", "Lato");
+        let lower_third = LowerThird::new(LowerThirdKind::Name, "Pastor", "");
+        let file = picture("a.jpg");
+        let contents = PackContents {
+            themes: vec![record.clone(), record],
+            lower_thirds: vec![lower_third.clone(), lower_third],
+            media: vec![file.clone(), file],
+        };
+        let new = new_to_this_computer(
+            contents,
+            &HashSet::new(),
+            &HashSet::new(),
+            |_| Ok(false),
+            &["a.jpg".to_owned()],
+        )
+        .unwrap();
+        assert_eq!(
+            (new.themes.len(), new.lower_thirds.len(), new.media.len()),
+            (1, 1, 1)
+        );
+    }
+
+    #[test]
+    fn a_pack_cannot_name_a_file_this_computer_has() {
+        // A crafted pack reuses the name of one of this computer's files.
+        let ours = picture("ours.jpg");
+        let mut theirs = picture("ours.jpg");
+        theirs.id = Id::new();
+        let mut record = theme("Crafted", "Lato");
+        record.theme.background = sw_core::Background::Image {
+            media: theirs.as_ref(),
+            fit: sw_core::MediaFit::Cover,
+            file_fit: None,
+            opacity: 1.0,
+        };
+        let contents = PackContents {
+            themes: vec![record],
+            lower_thirds: Vec::new(),
+            media: vec![theirs.clone()],
+        };
+        let new = new_to_this_computer(
+            contents,
+            &HashSet::new(),
+            &HashSet::new(),
+            |id| Ok(id == ours.id),
+            &["ours.jpg".to_owned()],
+        )
+        .unwrap();
+
+        let file = &new.media[0];
+        assert_eq!(file.in_pack, "ours.jpg");
+        assert_eq!(
+            file.item.file,
+            format!("{}.jpg", theirs.id),
+            "named by its own id"
+        );
+        assert_eq!(
+            new.themes[0]
+                .theme
+                .background
+                .media()
+                .map(|media| media.file.clone()),
+            Some(file.item.file.clone()),
+            "the theme points at the renamed file"
+        );
+    }
+
+    #[test]
+    fn local_names_keep_only_a_plain_extension() {
+        let id = Id::new();
+        assert_eq!(local_file_name(id, "x.JPG"), format!("{id}.jpg"));
+        assert_eq!(local_file_name(id, "x.jp-g!"), format!("{id}.jpg"));
+        assert_eq!(local_file_name(id, "x"), id.to_string());
     }
 
     /// A library with its own media folder, in a temporary directory.
@@ -443,11 +594,32 @@ mod tests {
         let list = crate::settings::load_lower_thirds(&theirs).unwrap();
         assert_eq!(list.len(), starters + 1);
         assert_eq!(list.last(), Some(&momo), "added after their own");
+        let copied = theirs.media().get(sunrise.id).unwrap().unwrap();
         assert_eq!(
-            std::fs::read(their_folders.media.join("sunrise.jpg")).unwrap(),
+            copied.file,
+            format!("{}.jpg", sunrise.id),
+            "named by its id here"
+        );
+        assert_eq!(
+            std::fs::read(their_folders.media.join(&copied.file)).unwrap(),
             b"jpeg bytes"
         );
-        assert!(theirs.media().get(sunrise.id).unwrap().is_some());
+        let theme = theirs
+            .themes()
+            .library()
+            .unwrap()
+            .get(record.id)
+            .cloned()
+            .unwrap();
+        assert_eq!(
+            theme
+                .theme
+                .background
+                .media()
+                .map(|media| media.file.clone()),
+            Some(copied.file),
+            "the theme shows the copied file"
+        );
 
         // The same pack again adds nothing.
         let again = read(&file, &theirs, &their_folders, &fonts).unwrap();

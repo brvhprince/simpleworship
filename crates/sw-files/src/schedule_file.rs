@@ -203,10 +203,16 @@ impl<R: Read + Seek> ScheduleReader<R> {
     }
 }
 
-/// A media file name must be a single name: no folders and no `..`, so a
-/// crafted schedule file can never write outside the media folder.
+/// A media file name must be a single name: no folders, no `..` and no
+/// drive (`C:name.jpg` would leave the media folder on Windows), so a
+/// crafted file can never write outside the media folder.
 pub(crate) fn is_plain_file_name(file: &str) -> bool {
-    !file.is_empty() && !file.contains(['/', '\\']) && file != "." && file != ".."
+    let mut parts = std::path::Path::new(file).components();
+    let single = matches!(
+        (parts.next(), parts.next()),
+        (Some(std::path::Component::Normal(_)), None)
+    );
+    single && !file.contains(['/', '\\', ':'])
 }
 
 // ── Writing ──────────────────────────────────────────────────────────────

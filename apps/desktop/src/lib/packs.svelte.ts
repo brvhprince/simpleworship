@@ -45,8 +45,9 @@ class Packs {
     const path = file ?? (await open({ filters: PACK_FILTERS, multiple: false }));
     if (typeof path !== "string") return;
     try {
-      const result = await importPack(path);
-      if (result.lowerThirdsAdded > 0) await lowerThirds.load();
+      // The import writes the lower thirds itself: the list is locked and
+      // reloaded around it.
+      const result = await lowerThirds.whileWrittenElsewhere(() => importPack(path));
       const lines = [
         t("pack.addedThemes", { count: result.themesAdded }),
         t("pack.addedLowerThirds", { count: result.lowerThirdsAdded }),

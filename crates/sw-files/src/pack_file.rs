@@ -41,6 +41,10 @@ const PACK_ENTRY: &str = "pack.json";
 /// Folder of the media entries inside the archive.
 const MEDIA_FOLDER: &str = "media/";
 
+/// The largest `pack.json` read: far more than any real pack needs, and
+/// small enough that a crafted one cannot fill the memory.
+const MAX_DESCRIPTION_BYTES: u64 = 16 * 1024 * 1024;
+
 /// What a pack holds.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -97,6 +101,10 @@ pub enum PackFileError {
         supported: u32,
     },
 
+    /// `pack.json` is far larger than any real pack's.
+    #[error("this pack's description is too large to be a real theme pack")]
+    TooLarge,
+
     /// The description is damaged or not what we expect.
     #[error("the pack is damaged: {0}")]
     Damaged(#[from] serde_json::Error),
@@ -132,8 +140,13 @@ impl<R: Read + Seek> PackReader<R> {
             .map_err(|_| PackFileError::NotAPack)?;
         let mut json = Vec::new();
         entry
+            .by_ref()
+            .take(MAX_DESCRIPTION_BYTES + 1)
             .read_to_end(&mut json)
             .map_err(|_| PackFileError::NotAPack)?;
+        if json.len() as u64 > MAX_DESCRIPTION_BYTES {
+            return Err(PackFileError::TooLarge);
+        }
 
         // The version first, so a newer file says "please update" rather
         // than failing to parse.
@@ -295,6 +308,36 @@ mod tests {
         assert!(matches!(
             PackReader::new(Cursor::new(not_a_pack)).unwrap().contents(),
             Err(PackFileError::NotAPack)
+        ));
+    }
+
+    #[test]
+    fn refuses_an_oversized_description() {
+        let padded = format!(r#"{{"formatVersion": 1{}}}"#, " ".repeat(17 * 1024 * 1024));
+        assert!(matches!(
+            PackReader::new(Cursor::new(archive_with(&padded)))
+                .unwrap()
+                .contents(),
+            Err(PackFileError::TooLarge)
+        ));
+    }
+
+    #[test]
+    fn media_names_are_single_names() {
+        for bad in [
+            "",
+            ".",
+            "..",
+            "../x.jpg",
+            "a/b.jpg",
+            r"a\b.jpg",
+            "C:outside.jpg",
+            "/etc/passwd",
+        ] {
+            assert!(!is_plain_file_name(bad), "{bad:?}");
+        }
+        assert!(is_plain_file_name(
+            "0192f0e4-0000-7000-8000-000000000001.jpg"
         ));
     }
 

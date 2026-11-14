@@ -79,4 +79,28 @@ describe("lower thirds store", () => {
     lowerThirds.create();
     expect(lowerThirds.editing).toBeNull();
   });
+
+  it("keeps what a pack import added, with saving locked until the list is reloaded", async () => {
+    const { lowerThirds } = await import("./lower-thirds.svelte.ts");
+    const firstLoad = lowerThirds.load();
+    answer(0, [item("a")]);
+    await firstLoad;
+
+    let finishImport = () => {};
+    const importing = lowerThirds.whileWrittenElsewhere(
+      () => new Promise<void>((resolve) => (finishImport = resolve)),
+    );
+    // While the import runs, the old list cannot be saved over it.
+    lowerThirds.create();
+    expect(lowerThirds.editing).toBeNull();
+    expect(lowerThirds.busy).toBe(true);
+
+    finishImport(); // the pack added "b"
+    await vi.waitFor(() => expect(pending).toHaveLength(2));
+    expect(lowerThirds.busy).toBe(true); // still locked until the reload arrives
+    answer(1, [item("a"), item("b")]);
+    await importing;
+    expect(ids(lowerThirds.list)).toEqual(["a", "b"]);
+    expect(lowerThirds.busy).toBe(false);
+  });
 });

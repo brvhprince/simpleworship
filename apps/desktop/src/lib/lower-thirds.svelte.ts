@@ -47,6 +47,8 @@ class LowerThirdsStore {
    * an item just deleted.
    */
   busy = $state(false);
+  /** Waiting for `busy` to clear (see {@link whileWrittenElsewhere}). */
+  #idle: (() => void)[] = [];
 
   /** Loads the saved list (the main computer's, on one that joined). */
   async load(): Promise<void> {
@@ -62,6 +64,30 @@ class LowerThirdsStore {
     } catch (error) {
       if (load === this.#loads) engine.showError(error);
     }
+  }
+
+  /**
+   * Runs `change`, which writes the list some other way (a pack import),
+   * with this store's saving locked, then reloads the list before
+   * unlocking: a save meanwhile, or one from the old list just after,
+   * would otherwise drop what `change` added.
+   */
+  async whileWrittenElsewhere<T>(change: () => Promise<T>): Promise<T> {
+    while (this.busy) await new Promise<void>((resolve) => this.#idle.push(resolve));
+    this.busy = true;
+    try {
+      return await change();
+    } finally {
+      // A load already on its way holds the old list: it must not count.
+      this.#saves += 1;
+      await this.load();
+      this.#setIdle();
+    }
+  }
+
+  #setIdle(): void {
+    this.busy = false;
+    for (const resolve of this.#idle.splice(0)) resolve();
   }
 
   /** Shows `item` on the outputs it is for, replacing any showing. */
@@ -134,7 +160,7 @@ class LowerThirdsStore {
       engine.showError(error);
       return false;
     } finally {
-      this.busy = false;
+      this.#setIdle();
     }
   }
 }

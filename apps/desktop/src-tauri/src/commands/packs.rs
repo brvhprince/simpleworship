@@ -44,19 +44,20 @@ pub async fn pack_import(app: AppHandle, path: String) -> AppResult<PackImported
     let fonts_here = commands::themes::fonts_list().await;
     let import = move || -> AppResult<PackImported> {
         let state = app.state::<AppState>();
+        // The library stays locked for the whole import (see `packs::read`).
         let imported = packs::read(
             &PathBuf::from(path),
             &state.database(),
             &state.media_folders,
             &fonts_here,
-        )?;
-        if imported.themes_added > 0 {
-            commands::themes::sync_themes(&app, &state)?;
-        }
+        );
+        // Even after a failure part-way: whatever was added must reach the
+        // screens, and a retry would find it already here and add nothing.
+        commands::themes::sync_themes(&app, &state)?;
         // Pictures it brought may have their own scaling.
         commands::media::sync_file_fits(&app, &state)?;
         media::announce(&app);
-        Ok(imported)
+        imported
     };
     tauri::async_runtime::spawn_blocking(import).await?
 }

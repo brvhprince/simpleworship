@@ -198,6 +198,17 @@ impl Background {
             | Background::Camera { .. } => None,
         }
     }
+
+    /// The media file this background shows, to change (an imported theme
+    /// pointed at its file's name here).
+    pub fn media_mut(&mut self) -> Option<&mut MediaRef> {
+        match self {
+            Background::Image { media, .. } | Background::Video { media, .. } => Some(media),
+            Background::Color { .. }
+            | Background::LinearGradient { .. }
+            | Background::Camera { .. } => None,
+        }
+    }
 }
 
 /// How an image or video fills a screen of a different shape.

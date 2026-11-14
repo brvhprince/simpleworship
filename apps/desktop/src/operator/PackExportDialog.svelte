@@ -36,8 +36,9 @@
     return next;
   }
 
+  /** Closes the dialog, unless it is saving (it closes itself when done). */
   function close() {
-    packs.exporting = null;
+    if (!saving) packs.exporting = null;
   }
 
   async function exportChosen() {
@@ -49,7 +50,7 @@
     saving = true;
     try {
       await exportPack(path, [...themeIds], [...lowerThirdIds]);
-      close();
+      packs.exporting = null;
       await prompts.ask({
         title: t("pack.exportedTitle"),
         message: t("pack.exportedMessage"),
@@ -112,7 +113,7 @@
 
   {#snippet actions()}
     <span class="spacer"></span>
-    <Button onclick={close}>{t("common.cancel")}</Button>
+    <Button disabled={saving} onclick={close}>{t("common.cancel")}</Button>
     <Button variant="primary" disabled={count === 0 || saving} onclick={exportChosen}>
       {t("pack.export", { count })}
     </Button>
