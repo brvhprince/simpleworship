@@ -1,29 +1,44 @@
 <!--
   @component
   Edits one lower third (`lowerThirds.editing`): what it is for, its two
-  lines, its style, side and colours, where it shows and how long it stays.
-  The preview plays its entrance over a sample picture, again whenever the
-  style or side changes, or on Play Again.
+  lines, its style, side, icon, corners, size, speed and colours, where it
+  shows and how long it stays. The preview plays its entrance over a sample
+  picture, again whenever the style, side or speed changes, or on Play
+  Again.
 -->
 <script lang="ts">
   import type {
+    LowerThirdIcon,
     LowerThirdKind,
     LowerThirdShown,
     LowerThirdSide,
+    LowerThirdSize,
+    LowerThirdSpeed,
     LowerThirdStyle,
     LowerThirdTarget,
   } from "@simpleworship/protocol";
-  import { LowerThirdLayer, now, ScaledCanvas } from "@simpleworship/renderer";
+  import { LOWER_THIRD_ICONS, LowerThirdLayer, now, ScaledCanvas } from "@simpleworship/renderer";
   import { Button, Dialog } from "@simpleworship/ui";
   import { onMount } from "svelte";
   import { listFonts } from "../lib/api.ts";
+  import { engine } from "../lib/engine.svelte.ts";
   import { t } from "../lib/i18n/i18n.svelte.ts";
   import { lowerThirds } from "../lib/lower-thirds.svelte.ts";
-  import { KIND_EXAMPLES, KIND_LABELS, STYLE_LABELS } from "./lower-third-labels.ts";
+  import {
+    ICON_LABELS,
+    KIND_EXAMPLES,
+    KIND_LABELS,
+    SIZE_LABELS,
+    SPEED_LABELS,
+    STYLE_LABELS,
+  } from "./lower-third-labels.ts";
   import ColorField from "./themes/ColorField.svelte";
 
   const KINDS = Object.keys(KIND_LABELS) as LowerThirdKind[];
   const STYLES = Object.keys(STYLE_LABELS) as LowerThirdStyle[];
+  const ICONS = Object.keys(ICON_LABELS) as LowerThirdIcon[];
+  const SIZES = Object.keys(SIZE_LABELS) as LowerThirdSize[];
+  const SPEEDS = Object.keys(SPEED_LABELS) as LowerThirdSpeed[];
   const SIDES: [LowerThirdSide, Parameters<typeof t>[0]][] = [
     ["left", "lowerThird.side.left"],
     ["centre", "lowerThird.side.centre"],
@@ -60,10 +75,11 @@
     playedAt = now();
   }
 
-  // A new style or side shows how it moves in.
+  // A new style, side or speed shows how it moves in.
   $effect(() => {
     void item?.look.style;
     void item?.look.side;
+    void item?.look.speed;
     replay();
   });
 
@@ -80,7 +96,7 @@
         <ScaledCanvas background="linear-gradient(135deg, #22314f 0%, #4a2140 55%, #12151d 100%)">
           {#if preview}
             {#key playedAt}
-              <LowerThirdLayer shown={preview} />
+              <LowerThirdLayer shown={preview} logo={engine.output?.logo ?? null} />
             {/key}
           {/if}
         </ScaledCanvas>
@@ -128,6 +144,60 @@
             {/each}
           </div>
         </div>
+
+        <div class="field">
+          {t("lowerThird.icon")}
+          <div class="choices icons">
+            {#each ICONS as icon (icon)}
+              <Button
+                active={item.look.icon === icon}
+                title={t(ICON_LABELS[icon])}
+                onclick={() => (item.look.icon = icon)}
+              >
+                {#if icon === "none" || icon === "logo"}
+                  {t(ICON_LABELS[icon])}
+                {:else}
+                  <svg class="glyph" viewBox="0 0 24 24" aria-label={t(ICON_LABELS[icon])}>
+                    {#each LOWER_THIRD_ICONS[icon] as d (d)}
+                      <path {d} />
+                    {/each}
+                  </svg>
+                {/if}
+              </Button>
+            {/each}
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="field">
+            {t("lowerThird.size")}
+            <div class="choices">
+              {#each SIZES as size (size)}
+                <Button active={item.look.size === size} onclick={() => (item.look.size = size)}>
+                  {t(SIZE_LABELS[size])}
+                </Button>
+              {/each}
+            </div>
+          </div>
+          <div class="field">
+            {t("lowerThird.speed")}
+            <div class="choices">
+              {#each SPEEDS as speed (speed)}
+                <Button
+                  active={item.look.speed === speed}
+                  onclick={() => (item.look.speed = speed)}
+                >
+                  {t(SPEED_LABELS[speed])}
+                </Button>
+              {/each}
+            </div>
+          </div>
+        </div>
+
+        <label class="field">
+          {t("lowerThird.corners")}
+          <input type="range" min="0" max="40" step="2" bind:value={item.look.rounding}>
+        </label>
 
         <div class="colours">
           <ColorField
@@ -256,6 +326,17 @@
     display: flex;
     flex-wrap: wrap;
     gap: var(--sw-space-1);
+  }
+
+  .glyph {
+    display: block;
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
   }
 
   .colours,

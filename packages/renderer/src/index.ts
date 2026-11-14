@@ -43,6 +43,7 @@ export {
 } from "./file-fit.ts";
 export { frameAt } from "./frames.ts";
 export { default as LowerThirdLayer } from "./LowerThirdLayer.svelte";
+export { LOWER_THIRD_ICONS } from "./lower-third-icons.ts";
 export {
   LOWER_THIRD_EXIT_MS,
   type LowerThirdPlace,

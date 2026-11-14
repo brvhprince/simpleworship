@@ -204,8 +204,15 @@
 
 {#if lowerThird}
   {#key lowerThird.showId}
-    <div class="layer" out:lowerThirdOut={{ style: lowerThird.item.look.style, still }}>
-      <LowerThirdLayer shown={lowerThird} {still} onend={lowerThirdEnded} />
+    <div
+      class="layer"
+      out:lowerThirdOut={{
+        style: lowerThird.item.look.style,
+        speed: lowerThird.item.look.speed,
+        still,
+      }}
+    >
+      <LowerThirdLayer shown={lowerThird} logo={output.logo} {still} onend={lowerThirdEnded} />
     </div>
   {/key}
 {/if}
