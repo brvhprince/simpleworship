@@ -5,7 +5,12 @@
   Changes apply and are saved at once, like the transitions.
 -->
 <script lang="ts">
-  import type { StreamBackdrop, StreamLook, StreamSettings } from "@simpleworship/protocol";
+  import type {
+    StreamBackdrop,
+    StreamEntrance,
+    StreamLook,
+    StreamSettings,
+  } from "@simpleworship/protocol";
   import { saveStream } from "../lib/api.ts";
   import { engine } from "../lib/engine.svelte.ts";
   import { type MessageKey, t } from "../lib/i18n/i18n.svelte.ts";
@@ -76,6 +81,17 @@
       {#each BACKDROPS as { backdrop, label } (backdrop)}
         <option value={backdrop}>{t(label)}</option>
       {/each}
+    </select>
+
+    <label for="stream-entrance" title={t("stream.entranceHint")}>{t("stream.entrance")}</label>
+    <select
+      id="stream-entrance"
+      value={settings.entrance}
+      onchange={(e) => change({ entrance: e.currentTarget.value as StreamEntrance })}
+    >
+      <option value="rise">{t("stream.entranceRise")}</option>
+      <option value="wipe">{t("stream.entranceWipe")}</option>
+      <option value="fade">{t("stream.entranceFade")}</option>
     </select>
   </div>
   <label class="option">

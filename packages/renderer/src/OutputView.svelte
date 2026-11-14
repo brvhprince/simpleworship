@@ -27,6 +27,10 @@
     window passes these on to the engine. Every output also hides a timed
     lower third by itself when its time is up, so a screen that has lost
     touch with the main computer does not keep it.
+  - `entrance`, `entranceRun`: how the slide's words come in when they
+    appear after nothing was showing (the stream's lower-third looks, see
+    `StreamView`); each new run plays it once. The words' own transitions
+    from slide to slide are unchanged.
   - `lowerThirds`: which lower thirds to show: those for the room's screens
     (projectors), the stream (`StreamView`), or all (the operator's live pane).
 
@@ -34,7 +38,7 @@
   covers everything.
 -->
 <script lang="ts">
-  import type { OutputState, RenderFrame } from "@simpleworship/protocol";
+  import type { OutputState, RenderFrame, StreamEntrance } from "@simpleworship/protocol";
   import { fade } from "svelte/transition";
   import AlertLayer from "./AlertLayer.svelte";
   import BackgroundLayer from "./BackgroundLayer.svelte";
@@ -52,6 +56,8 @@
     oncountdownend?: () => void;
     onlowerthirdend?: (showId: string) => void;
     lowerThirds?: LowerThirdPlace;
+    entrance?: StreamEntrance | null;
+    entranceRun?: number;
   }
 
   let {
@@ -62,6 +68,8 @@
     oncountdownend,
     onlowerthirdend,
     lowerThirds = "screens",
+    entrance = null,
+    entranceRun = 0,
   }: Props = $props();
 
   /** The showing of a timed lower third this output has seen run out. */
@@ -137,15 +145,30 @@
   </div>
 {/each}
 
-{#each textLayers as layer (layer.key)}
-  <div class="layer" transition:fade={{ duration }}>
-    {#if layer.frame.elements}
-      <ElementsLayer elements={layer.frame.elements} hideText={flags.hideText} {muted} {still} />
-    {:else}
-      <TextLayer frame={layer.frame} {oncountdownend} />
-    {/if}
+<!-- A new entrance run remounts the words, so its entrance plays once;
+     still outputs (NDI) and the first run (a screen opened late) skip it. -->
+{#key entranceRun}
+  <div
+    class="layer words"
+    class:rise={entrance === "rise" && entranceRun > 0 && !still}
+    class:wipe={entrance === "wipe" && entranceRun > 0 && !still}
+  >
+    {#each textLayers as layer (layer.key)}
+      <div class="layer" transition:fade={{ duration }}>
+        {#if layer.frame.elements}
+          <ElementsLayer
+            elements={layer.frame.elements}
+            hideText={flags.hideText}
+            {muted}
+            {still}
+          />
+        {:else}
+          <TextLayer frame={layer.frame} {oncountdownend} />
+        {/if}
+      </div>
+    {/each}
   </div>
-{/each}
+{/key}
 
 {#if showLogo && output.logo}
   {@const logo = output.logo}
@@ -192,6 +215,31 @@
   .layer {
     position: absolute;
     inset: 0;
+  }
+
+  /* The stream's lower-third entrances (see `entrance`). */
+  .words.rise {
+    animation: words-rise 520ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .words.wipe {
+    animation: words-wipe 620ms cubic-bezier(0.65, 0, 0.35, 1) both;
+  }
+
+  @keyframes words-rise {
+    from {
+      opacity: 0;
+      transform: translateY(48px);
+    }
+  }
+
+  @keyframes words-wipe {
+    from {
+      clip-path: inset(0 100% 0 0);
+    }
+    to {
+      clip-path: inset(0 0 0 0);
+    }
   }
 
   .black,

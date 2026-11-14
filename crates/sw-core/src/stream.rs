@@ -83,6 +83,22 @@ impl StreamBackdrop {
     }
 }
 
+/// How the words come in on the stream, where a theme draws them (the
+/// lower-third looks): when they appear after nothing was showing. From one
+/// slide to the next they change with the usual transition.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "bindings.ts")]
+pub enum StreamEntrance {
+    /// They fade in with the transition, as before 0.9.
+    Fade,
+    /// They rise a little into place.
+    #[default]
+    Rise,
+    /// They are wiped on from the left.
+    Wipe,
+}
+
 /// The stream look, chosen in Settings › Stream and saved by the host.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase", default)]
@@ -100,6 +116,8 @@ pub struct StreamSettings {
     pub backdrop: StreamBackdrop,
     /// Show alerts (nursery calls, notices) on the stream as well.
     pub show_alerts: bool,
+    /// How the words come in where a theme draws them.
+    pub entrance: StreamEntrance,
 }
 
 impl Default for StreamSettings {
@@ -116,6 +134,7 @@ impl Default for StreamSettings {
             other: StreamLook::SameAsMain,
             backdrop: StreamBackdrop::default(),
             show_alerts: true,
+            entrance: StreamEntrance::default(),
         }
     }
 }
@@ -164,6 +183,10 @@ pub struct StreamOutput {
     pub backdrop: String,
     /// Show the main output's alert.
     pub show_alerts: bool,
+    /// How the words come in, when a theme draws them (`None` for slides
+    /// shown as on the main output, which keep their transition).
+    #[serde(default)]
+    pub entrance: Option<StreamEntrance>,
 }
 
 impl Default for StreamOutput {
@@ -174,6 +197,7 @@ impl Default for StreamOutput {
             hide_background: false,
             backdrop: StreamBackdrop::default().color().to_owned(),
             show_alerts: true,
+            entrance: None,
         }
     }
 }
@@ -194,6 +218,7 @@ pub fn stream_output(
         hide_background: flags.hide_background,
         backdrop: backdrop.color().to_owned(),
         show_alerts: settings.show_alerts,
+        entrance: None,
     };
     // Black and Logo clear the stream instead of covering the camera.
     if flags.black || flags.logo {
@@ -209,6 +234,7 @@ pub fn stream_output(
         StreamLook::SameAsMain => {}
         StreamLook::Theme { theme_id } => {
             if let Some(record) = themes.get(theme_id) {
+                output.entrance = Some(settings.entrance);
                 let own_background = frame.theme.background.clone();
                 frame.theme = record.theme.clone();
                 frame.theme.background = match backdrop {
@@ -400,5 +426,42 @@ mod tests {
         };
         let output = show(StreamKind::Songs, DisplayFlags::default(), &settings);
         assert_eq!(output.frame, Some(song_frame()));
+    }
+
+    #[test]
+    fn a_themed_look_carries_the_entrance_and_the_main_look_does_not() {
+        let library = starter_library();
+        let settings = StreamSettings {
+            entrance: StreamEntrance::Wipe,
+            ..StreamSettings::default()
+        };
+        let frame = song_frame();
+        let flags = DisplayFlags::default();
+        let song = stream_output(
+            &settings,
+            &library,
+            Some(StreamKind::Songs),
+            Some(&frame),
+            flags,
+        );
+        assert_eq!(song.entrance, Some(StreamEntrance::Wipe));
+        let slides = stream_output(
+            &settings,
+            &library,
+            Some(StreamKind::Presentations),
+            Some(&frame),
+            flags,
+        );
+        assert_eq!(
+            slides.entrance, None,
+            "slides as on the main output keep their transition"
+        );
+    }
+
+    #[test]
+    fn settings_saved_before_entrances_rise() {
+        let settings: StreamSettings = serde_json::from_str(r#"{"showAlerts":false}"#).unwrap();
+        assert_eq!(settings.entrance, StreamEntrance::Rise);
+        assert!(!settings.show_alerts);
     }
 }

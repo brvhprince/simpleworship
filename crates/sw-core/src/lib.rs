@@ -51,6 +51,6 @@ pub use schedule::{ItemContent, Schedule, ScheduleItem, SermonPart};
 pub use scripture::{BibleInfo, BookOutline, ScriptureOptions, TranslationText, Verse};
 pub use slides::{Slide, SlideOptions};
 pub use song::{Song, SongSummary};
-pub use stream::{StreamBackdrop, StreamLook, StreamOutput, StreamSettings};
+pub use stream::{StreamBackdrop, StreamEntrance, StreamLook, StreamOutput, StreamSettings};
 pub use theme::{Background, MediaFit, Theme, ThemeCategory};
 pub use themes::{ItemLook, Look, ThemeDefaults, ThemeLibrary, ThemeRecord};

@@ -11,6 +11,7 @@
 -->
 <script lang="ts">
   import type { OutputState } from "@simpleworship/protocol";
+  import { untrack } from "svelte";
   import OutputView from "./OutputView.svelte";
 
   interface Props {
@@ -35,10 +36,34 @@
     // Black takes everything off the stream, lower thirds too.
     lowerThird: output.flags.black ? null : output.lowerThird,
   });
+
+  /** Whether a theme's words are on the stream (the lower-third looks). */
+  const wordsUp = $derived(
+    output.stream.frame != null && !output.stream.hideText && output.stream.entrance != null,
+  );
+  /**
+   * Counts the times the words appeared after nothing was showing, so each
+   * plays the entrance once. Words already up when this view opened (OBS
+   * connecting mid-song) are run 0: they show in place.
+   */
+  let entranceRun = $state(0);
+  let wasUp = untrack(() => wordsUp);
+  $effect.pre(() => {
+    const up = wordsUp;
+    if (up && !wasUp) entranceRun = untrack(() => entranceRun) + 1;
+    wasUp = up;
+  });
 </script>
 
 <div class="backdrop" style:background={output.stream.backdrop}></div>
-<OutputView output={shown} muted {still} lowerThirds="stream" />
+<OutputView
+  output={shown}
+  muted
+  {still}
+  lowerThirds="stream"
+  entrance={output.stream.entrance}
+  {entranceRun}
+/>
 
 <style>
   .backdrop {
