@@ -40,12 +40,16 @@
   let fonts: string[] = $state([]);
   /** When the preview last started its entrance (the renderer's clock). */
   let playedAt = $state(now());
-  let saving = $state(false);
 
   const item = $derived(lowerThirds.editing);
   /** The lower third as the preview shows it, entering from `playedAt`. */
   const preview: LowerThirdShown | null = $derived(
-    item && { item: { ...item, hideAfterSeconds: null }, startedAt: playedAt },
+    // A preview never reaches the engine: its showing is just when it last played.
+    item && {
+      showId: `preview-${playedAt}`,
+      item: { ...item, hideAfterSeconds: null },
+      startedAt: playedAt,
+    },
   );
 
   onMount(() => {
@@ -64,9 +68,7 @@
   });
 
   async function save(andShow: boolean) {
-    saving = true;
     const saved = await lowerThirds.saveEditing();
-    saving = false;
     if (saved && andShow) lowerThirds.show(saved);
   }
 </script>
@@ -87,7 +89,7 @@
       </div>
 
       <!-- Locked while saving, so a change made meanwhile cannot be lost. -->
-      <fieldset class="form" disabled={saving}>
+      <fieldset class="form" disabled={lowerThirds.busy}>
         <label class="field">
           {t("lowerThird.kind")}
           <select bind:value={item.kind}>
@@ -188,14 +190,20 @@
 
     {#snippet actions()}
       {#if !lowerThirds.isNew}
-        <Button onclick={() => lowerThirds.deleteEditing()}>{t("common.delete")}</Button>
+        <Button disabled={lowerThirds.busy} onclick={() => lowerThirds.deleteEditing()}
+          >{t("common.delete")}</Button
+        >
       {/if}
       <span class="spacer"></span>
       <Button onclick={() => (lowerThirds.editing = null)}>{t("common.cancel")}</Button>
-      <Button disabled={saving || !item.title.trim()} onclick={() => save(false)}
+      <Button disabled={lowerThirds.busy || !item.title.trim()} onclick={() => save(false)}
         >{t("common.save")}</Button
       >
-      <Button variant="primary" disabled={saving || !item.title.trim()} onclick={() => save(true)}>
+      <Button
+        variant="primary"
+        disabled={lowerThirds.busy || !item.title.trim()}
+        onclick={() => save(true)}
+      >
         {t("lowerThird.saveShow")}
       </Button>
     {/snippet}

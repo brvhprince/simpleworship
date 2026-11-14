@@ -527,16 +527,17 @@ impl Engine {
             Command::ClearAlert => self.alert = None,
             Command::ShowLowerThird { item } => {
                 self.lower_third = Some(LowerThirdShown {
+                    show_id: Id::new(),
                     item,
                     started_at: (self.clock)(),
                 });
             }
             Command::HideLowerThird => self.lower_third = None,
-            Command::LowerThirdEnded { started_at } => {
+            Command::LowerThirdEnded { show_id } => {
                 if self
                     .lower_third
                     .as_ref()
-                    .is_some_and(|shown| shown.started_at == started_at)
+                    .is_some_and(|shown| shown.show_id == show_id)
                 {
                     self.lower_third = None;
                 }
@@ -1900,22 +1901,22 @@ mod tests {
     }
 
     #[test]
-    fn a_lower_thirds_timer_only_hides_that_lower_third() {
+    fn a_lower_thirds_timer_only_hides_that_showing() {
         use crate::lower_thirds::{LowerThird, LowerThirdKind};
-        use std::sync::atomic::{AtomicI64, Ordering};
-        static NOW: AtomicI64 = AtomicI64::new(1_000);
-        let mut engine = Engine::with_clock(|| NOW.load(Ordering::SeqCst));
+        // Every show at the same millisecond: start times cannot tell them apart.
+        let mut engine = Engine::with_clock(fake_now);
         let show = |engine: &mut Engine, title: &str| {
             let item = LowerThird::new(LowerThirdKind::Name, title, "");
             engine.dispatch(Command::ShowLowerThird { item }).unwrap();
+            engine.snapshot().output.lower_third.unwrap().show_id
         };
-        show(&mut engine, "A");
-        NOW.store(2_000, Ordering::SeqCst);
-        show(&mut engine, "B");
+        let a = show(&mut engine, "A");
+        let b = show(&mut engine, "B");
+        assert_ne!(a, b, "each showing has its own id");
 
-        // A's time runs out after B replaced it: B stays.
+        // A's time runs out after B replaced it (in A's exit, say): B stays.
         engine
-            .dispatch(Command::LowerThirdEnded { started_at: 1_000 })
+            .dispatch(Command::LowerThirdEnded { show_id: a })
             .unwrap();
         assert_eq!(
             engine.snapshot().output.lower_third.unwrap().item.title,
@@ -1923,7 +1924,7 @@ mod tests {
         );
         // B's own time: it goes.
         engine
-            .dispatch(Command::LowerThirdEnded { started_at: 2_000 })
+            .dispatch(Command::LowerThirdEnded { show_id: b })
             .unwrap();
         assert_eq!(engine.snapshot().output.lower_third, None);
     }

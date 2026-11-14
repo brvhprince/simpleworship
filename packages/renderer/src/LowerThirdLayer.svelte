@@ -11,7 +11,9 @@
 
   - `still`: no movement, just the lower third in place (NDI output, which
     is not redrawn often enough for animation).
-  - `onend`: fires once when its seconds are up (if it has a time).
+  - `onend`: fires once when its seconds are up (if it has a time), with
+    the id of the showing this layer was mounted for: a layer still leaving
+    after a replacement appeared reports its own showing, never the new one.
 -->
 <script lang="ts">
   import type { LowerThirdShown } from "@simpleworship/protocol";
@@ -21,7 +23,7 @@
   interface Props {
     shown: LowerThirdShown;
     still?: boolean;
-    onend?: () => void;
+    onend?: (showId: string) => void;
   }
 
   let { shown, still = false, onend }: Props = $props();
@@ -33,10 +35,12 @@
   const joined = -Math.max(0, serviceNow() - untrack(() => shown.startedAt));
 
   onMount(() => {
-    const seconds = shown.item.hideAfterSeconds;
+    // The showing this layer is for, fixed now (each showing mounts afresh).
+    const { showId, startedAt, item } = untrack(() => shown);
+    const seconds = item.hideAfterSeconds;
     if (seconds == null) return;
-    const left = seconds * 1000 - (serviceNow() - shown.startedAt);
-    const timer = setTimeout(() => onend?.(), Math.max(0, left));
+    const left = seconds * 1000 - (serviceNow() - startedAt);
+    const timer = setTimeout(() => onend?.(showId), Math.max(0, left));
     return () => clearTimeout(timer);
   });
 </script>

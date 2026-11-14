@@ -230,7 +230,7 @@
       output={engine.output}
       onselect={(index) => engine.dispatch({ type: "selectLiveSlide", index })}
       onalertend={() => engine.dispatch({ type: "clearAlert" })}
-      onlowerthirdend={(startedAt) => engine.dispatch({ type: "lowerThirdEnded", startedAt })}
+      onlowerthirdend={(showId) => engine.dispatch({ type: "lowerThirdEnded", showId })}
       oncountdownend={() => engine.dispatch({ type: "countdownFinished" })}
     >
       {#snippet below()}

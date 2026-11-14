@@ -23,7 +23,7 @@
     outputs that are not redrawn often enough for movement (NDI).
   - `onalertend`, `oncountdownend`, `onlowerthirdend`: an alert ran its
     course, a countdown reached zero, a lower third's seconds are up (with
-    its start time, so the engine takes off only that one). The operator
+    the id of that showing, so the engine takes off only that one). The operator
     window passes these on to the engine. Every output also hides a timed
     lower third by itself when its time is up, so a screen that has lost
     touch with the main computer does not keep it.
@@ -50,7 +50,7 @@
     still?: boolean;
     onalertend?: () => void;
     oncountdownend?: () => void;
-    onlowerthirdend?: (startedAt: number) => void;
+    onlowerthirdend?: (showId: string) => void;
     lowerThirds?: LowerThirdPlace;
   }
 
@@ -64,16 +64,17 @@
     lowerThirds = "screens",
   }: Props = $props();
 
-  /** The start time of the timed lower third this output has seen run out. */
-  let endedLowerThird: number | null = $state(null);
+  /** The showing of a timed lower third this output has seen run out. */
+  let endedLowerThird: string | null = $state(null);
   const lowerThird = $derived.by(() => {
     const shown = lowerThirdFor(output.lowerThird, lowerThirds);
-    return shown && shown.startedAt !== endedLowerThird ? shown : null;
+    return shown && shown.showId !== endedLowerThird ? shown : null;
   });
 
-  function lowerThirdEnded(startedAt: number) {
-    endedLowerThird = startedAt;
-    onlowerthirdend?.(startedAt);
+  /** A layer's timer ran out, for the showing it was mounted for. */
+  function lowerThirdEnded(showId: string) {
+    endedLowerThird = showId;
+    onlowerthirdend?.(showId);
   }
 
   const urls = getMediaUrls();
@@ -168,13 +169,9 @@
 {/if}
 
 {#if lowerThird}
-  {#key lowerThird.startedAt}
+  {#key lowerThird.showId}
     <div class="layer" out:lowerThirdOut={{ style: lowerThird.item.look.style, still }}>
-      <LowerThirdLayer
-        shown={lowerThird}
-        {still}
-        onend={() => lowerThirdEnded(lowerThird.startedAt)}
-      />
+      <LowerThirdLayer shown={lowerThird} {still} onend={lowerThirdEnded} />
     </div>
   {/key}
 {/if}

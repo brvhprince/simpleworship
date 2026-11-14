@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { lowerThirdFor } from "./lower-thirds.ts";
 
 const shown = (target: LowerThirdTarget): LowerThirdShown => ({
+  showId: "0192f0e4-0000-7000-8000-0000000000aa",
   item: {
     id: "0192f0e4-0000-7000-8000-000000000001",
     kind: "name",

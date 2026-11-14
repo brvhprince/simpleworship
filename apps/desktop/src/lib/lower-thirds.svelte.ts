@@ -35,6 +35,12 @@ class LowerThirdsStore {
   ready = $state(false);
   /** Counts saves, so a load that started before one does not undo it. */
   #saves = 0;
+  /**
+   * Whether the list is being written. Saves and deletes each write the
+   * whole list, so one at a time: a late save could otherwise bring back
+   * an item just deleted.
+   */
+  busy = $state(false);
 
   /** Loads the saved list (the main computer's, on one that joined). */
   async load(): Promise<void> {
@@ -105,7 +111,8 @@ class LowerThirdsStore {
   }
 
   async #store(list: LowerThird[]): Promise<boolean> {
-    if (!this.ready) return false;
+    if (!this.ready || this.busy) return false;
+    this.busy = true;
     try {
       await saveLowerThirds($state.snapshot(list) as LowerThird[]);
       this.#saves += 1;
@@ -114,6 +121,8 @@ class LowerThirdsStore {
     } catch (error) {
       engine.showError(error);
       return false;
+    } finally {
+      this.busy = false;
     }
   }
 }

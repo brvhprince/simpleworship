@@ -540,9 +540,9 @@ export type Command =
   | {
       type: "lowerThirdEnded";
       /**
-       * When the lower third that ended appeared.
+       * The showing that ran out (`LowerThirdShown::show_id`).
        */
-      startedAt: number;
+      showId: Id;
     }
   | { type: "countdownFinished" }
   | {
@@ -1449,6 +1449,12 @@ export type LowerThirdLook = {
  * A lower third on screen.
  */
 export type LowerThirdShown = {
+  /**
+   * This showing of it: new each time one is shown (even the same item,
+   * even in the same millisecond), so a timer can say exactly which
+   * showing ran out.
+   */
+  showId: Id;
   /**
    * What is showing (a copy, so editing the saved one changes nothing on
    * screen until it is shown again).

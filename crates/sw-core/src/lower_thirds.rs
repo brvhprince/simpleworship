@@ -175,6 +175,10 @@ impl LowerThird {
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "bindings.ts")]
 pub struct LowerThirdShown {
+    /// This showing of it: new each time one is shown (even the same item,
+    /// even in the same millisecond), so a timer can say exactly which
+    /// showing ran out.
+    pub show_id: Id,
     /// What is showing (a copy, so editing the saved one changes nothing on
     /// screen until it is shown again).
     pub item: LowerThird,
@@ -227,6 +231,7 @@ mod tests {
     fn expires_only_with_a_time() {
         let mut item = LowerThird::new(LowerThirdKind::Name, "A", "B");
         let shown = |item: &LowerThird| LowerThirdShown {
+            show_id: Id::new(),
             item: item.clone(),
             started_at: 1_000,
         };
