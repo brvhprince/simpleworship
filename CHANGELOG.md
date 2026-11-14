@@ -4,6 +4,31 @@ What changed in each release of SimpleWorship. The newest release is at
 the top. Each release's notes are also shown in the app when it offers the
 update.
 
+## 0.8.0 (14 November 2026)
+
+Animated lower thirds, a light appearance, and plain copyright lines for
+Bibles from EasyWorship.
+
+- **Lower thirds:** a name, a title or a short message in an animated strap
+  at the bottom of the screen, without After Effects or another program.
+  Click **Lower Third** in the toolbar (or press **L**) to show one with a
+  click and hide it again. Make them for the pastor's name and title, the
+  sermon title, a Bible reference, the offering's **MoMo number**, your
+  **social media handles** or an announcement.
+  - Six styles, each with its own entrance: Bar, Wipe, Underline, Rise,
+    Block and Strap, on the left, in the centre or on the right, in your
+    colours and font. The editor plays the entrance as you choose.
+  - Show each one on the **screens**, the **stream** or both, and let it go
+    away by itself after some seconds or stay until you hide it.
+  - Over NDI a lower third appears without moving, as alerts do.
+- **Light appearance:** Settings › Appearance offers Dark (still the
+  usual, for a dim room during the service), Light, or the same as this
+  computer. Only the SimpleWorship window changes: the screens, stage
+  display and stream always look as your themes say. The phone remote
+  follows the phone's own light or dark setting.
+- **Bibles imported from EasyWorship** show their copyright line as plain
+  words instead of formatting codes, including Bibles imported before.
+
 ## 0.7.0 (27 October 2026)
 
 Right-click menus, a sermon as one schedule item, and fixes from the first
