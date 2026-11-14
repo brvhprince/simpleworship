@@ -6,9 +6,19 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 /** Answers to getLowerThirds, released by the test in any order. */
 const pending: { resolve: (list: LowerThird[]) => void }[] = [];
 
+/** Failures for the same loads, to make one fail instead. */
+const failing: { reject: (error: Error) => void }[] = [];
+/** What the next save does: succeed, or be refused. */
+const saves = { refuse: false };
+
 vi.mock("./api.ts", () => ({
-  getLowerThirds: () => new Promise<LowerThird[]>((resolve) => pending.push({ resolve })),
-  saveLowerThirds: () => Promise.resolve(),
+  getLowerThirds: () =>
+    new Promise<LowerThird[]>((resolve, reject) => {
+      pending.push({ resolve });
+      failing.push({ reject });
+    }),
+  saveLowerThirds: () =>
+    saves.refuse ? Promise.reject(new Error("changed elsewhere")) : Promise.resolve(),
   uuidV7: () => "new-id",
 }));
 vi.mock("./engine.svelte.ts", () => ({ engine: { showError: vi.fn(), dispatch: vi.fn() } }));
@@ -45,6 +55,8 @@ function answer(n: number, list: LowerThird[]): void {
 describe("lower thirds store", () => {
   beforeEach(() => {
     pending.length = 0;
+    failing.length = 0;
+    saves.refuse = false;
     vi.resetModules();
   });
 
@@ -78,5 +90,80 @@ describe("lower thirds store", () => {
     const { lowerThirds } = await import("./lower-thirds.svelte.ts");
     lowerThirds.create();
     expect(lowerThirds.editing).toBeNull();
+  });
+
+  it("keeps what a pack import added, with saving locked until the list is reloaded", async () => {
+    const { lowerThirds } = await import("./lower-thirds.svelte.ts");
+    const firstLoad = lowerThirds.load();
+    answer(0, [item("a")]);
+    await firstLoad;
+
+    let finishImport = () => {};
+    const importing = lowerThirds.whileWrittenElsewhere(
+      () => new Promise<void>((resolve) => (finishImport = resolve)),
+    );
+    // While the import runs, the old list cannot be saved over it.
+    lowerThirds.create();
+    expect(lowerThirds.editing).toBeNull();
+    expect(lowerThirds.busy).toBe(true);
+
+    finishImport(); // the pack added "b"
+    await vi.waitFor(() => expect(pending).toHaveLength(2));
+    expect(lowerThirds.busy).toBe(true); // still locked until the reload arrives
+    answer(1, [item("a"), item("b")]);
+    await importing;
+    expect(ids(lowerThirds.list)).toEqual(["a", "b"]);
+    expect(lowerThirds.busy).toBe(false);
+  });
+
+  it("keeps saving off after an import if the reload fails", async () => {
+    const { lowerThirds } = await import("./lower-thirds.svelte.ts");
+    const firstLoad = lowerThirds.load();
+    answer(0, [item("a")]);
+    await firstLoad;
+
+    const importing = lowerThirds.whileWrittenElsewhere(() => Promise.resolve());
+    await vi.waitFor(() => expect(failing).toHaveLength(2));
+    failing[1]?.reject(new Error("no connection"));
+    expect((await importing).reloadFailed).toBe(true); // the import says so
+
+    // The old list must not be saved over the imported one.
+    expect(lowerThirds.ready).toBe(false);
+    lowerThirds.create();
+    expect(lowerThirds.editing).toBeNull();
+  });
+
+  it("keeps saving off after an import until the load that overtook its reload arrives", async () => {
+    const { lowerThirds } = await import("./lower-thirds.svelte.ts");
+    const firstLoad = lowerThirds.load();
+    answer(0, [item("a")]);
+    await firstLoad;
+
+    const importing = lowerThirds.whileWrittenElsewhere(() => Promise.resolve());
+    await vi.waitFor(() => expect(pending).toHaveLength(2));
+    const newer = lowerThirds.load(); // the panel opened meanwhile
+    answer(1, [item("a"), item("b")]); // the overtaken reload: not used
+    expect((await importing).reloadFailed).toBe(false); // overtaken, not failed
+    expect(lowerThirds.ready).toBe(false);
+
+    answer(2, [item("a"), item("b")]);
+    await newer;
+    expect(lowerThirds.ready).toBe(true);
+    expect(ids(lowerThirds.list)).toEqual(["a", "b"]);
+  });
+
+  it("reloads the list when a save is refused because it changed elsewhere", async () => {
+    const { lowerThirds } = await import("./lower-thirds.svelte.ts");
+    const firstLoad = lowerThirds.load();
+    answer(0, [item("a")]);
+    await firstLoad;
+
+    saves.refuse = true;
+    lowerThirds.create();
+    if (lowerThirds.editing) lowerThirds.editing.title = "New";
+    expect(await lowerThirds.saveEditing()).toBeNull();
+    expect(pending).toHaveLength(2); // fetching the list as it is now
+    answer(1, [item("a"), item("from-a-pack")]);
+    await vi.waitFor(() => expect(ids(lowerThirds.list)).toEqual(["a", "from-a-pack"]));
   });
 });

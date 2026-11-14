@@ -639,6 +639,8 @@
   "menu.hide": "Masquer SimpleWorship",
   "menu.hideOthers": "Masquer les autres",
   "menu.import": "Importer depuis un autre logiciel…",
+  "menu.packImport": "Importer un pack de thèmes…",
+  "menu.packExport": "Exporter un pack de thèmes…",
   "menu.logs": "Ouvrir le dossier des journaux",
   "menu.minimize": "Réduire",
   "menu.moving": "Passer d’EasyWorship à SimpleWorship",
@@ -1025,5 +1027,38 @@
   "video.controls": "Vidéo en direct",
   "video.mute": "Muet",
   "video.muteHint": "Coupe le son de la vidéo sur le projecteur et tous les autres écrans",
-  "video.position": "Position"
+  "video.position": "Position",
+  "pack.import": "Importer…",
+  "pack.importHint": "Ajouter des thèmes et des bandeaux depuis un fichier .swpack partagé par une autre église ou un autre ordinateur",
+  "pack.exportButton": "Exporter…",
+  "pack.exportHint": "Partager des thèmes et des bandeaux en un seul fichier .swpack",
+  "pack.notWhenJoined": "Importez et exportez sur l’ordinateur principal : celui-ci affiche sa bibliothèque",
+  "pack.exportTitle": "Exporter des thèmes et des bandeaux",
+  "pack.themes": "Thèmes",
+  "pack.lowerThirds": "Bandeaux",
+  "pack.all": "Tous",
+  "pack.none": "Aucun",
+  "pack.export": {
+    "one": "Exporter {count} élément",
+    "other": "Exporter {count} éléments"
+  },
+  "pack.defaultName": "Thèmes de l’église",
+  "pack.exportedTitle": "Exporté",
+  "pack.exportedMessage": "Envoyez le fichier .swpack à toute personne qui utilise SimpleWorship. Elle l’ouvre d’un double-clic, ou avec Fichier › Importer un pack de thèmes….",
+  "pack.importedTitle": "Importé",
+  "pack.addedThemes": {
+    "one": "{count} thème ajouté.",
+    "other": "{count} thèmes ajoutés."
+  },
+  "pack.addedLowerThirds": {
+    "one": "{count} bandeau ajouté.",
+    "other": "{count} bandeaux ajoutés."
+  },
+  "pack.alreadyHere": {
+    "one": "{count} élément était déjà là et n’a pas été modifié.",
+    "other": "{count} éléments étaient déjà là et n’ont pas été modifiés."
+  },
+  "pack.missingFonts": "Installez ces polices sur cet ordinateur pour un rendu fidèle : {fonts}",
+  "pack.importTitle": "Importer des thèmes et des bandeaux",
+  "pack.listNotRefreshed": "La liste des bandeaux n’a pas pu être actualisée : elle ne peut pas être modifiée pour l’instant. Rouvrez le panneau Bandeaux pour la charger."
 }

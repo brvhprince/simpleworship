@@ -157,6 +157,17 @@
     gap: 0.3em;
   }
 
+  /* A long unbroken title wraps rather than being cut off by the card's
+     rounded clip. */
+  .box,
+  .title > span {
+    min-width: 0;
+  }
+
+  .title > span {
+    overflow-wrap: anywhere;
+  }
+
   .icon {
     flex: none;
     width: 0.9em;

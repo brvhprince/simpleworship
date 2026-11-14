@@ -639,6 +639,8 @@
   "menu.hide": "Fa SimpleWorship Sie",
   "menu.hideOthers": "Fa Deɛ Aka Sie",
   "menu.import": "Fa Firi Dwumadie Foforɔ Mu Bra…",
+  "menu.packImport": "Fa Theme Pack Bra…",
+  "menu.packExport": "Fa Theme Pack Kɔ…",
   "menu.logs": "Bue Logs Nwoma Kotokuo",
   "menu.minimize": "Ma ɛnyɛ ketewa",
   "menu.moving": " Worefiri EasyWorship Mu Aba",
@@ -1025,5 +1027,38 @@
   "video.controls": "Video a ɛda so",
   "video.mute": "Dum nnyegyeeɛ",
   "video.muteHint": "Dum video no nnyegyeeɛ wɔ prɔgyɛkta ne skrin foforɔ biara so",
-  "video.position": "Gyinabea"
+  "video.position": "Gyinabea",
+  "pack.import": "Fa Bra…",
+  "pack.importHint": "Fa themes ne ase nkyerɛwee fi .swpack fael a asɔre foforɔ anaa kɔmputa foforɔ de mae no so bra",
+  "pack.exportButton": "Fa Kɔ…",
+  "pack.exportHint": "Fa themes ne ase nkyerɛwee kyɛ afoforɔ wɔ .swpack fael baako mu",
+  "pack.notWhenJoined": "Fa bra na fa kɔ wɔ kɔmputa titire no so: deɛ yi kyerɛ ne library",
+  "pack.exportTitle": "Fa Themes ne Ase Nkyerɛwee Kɔ",
+  "pack.themes": "Themes",
+  "pack.lowerThirds": "Ase nkyerɛwee",
+  "pack.all": "Ne nyinaa",
+  "pack.none": "Hwee",
+  "pack.export": {
+    "one": "Fa {count} kɔ",
+    "other": "Fa {count} kɔ"
+  },
+  "pack.defaultName": "Asɔre themes",
+  "pack.exportedTitle": "Ɛkɔ",
+  "pack.exportedMessage": "Fa .swpack fael no ma obiara a ɔwɔ SimpleWorship. Ɔbɛmia so mprenu, anaa ɔde File › Fa Theme Pack Bra… bɛbue.",
+  "pack.importedTitle": "Ɛaba",
+  "pack.addedThemes": {
+    "one": "Yɛde theme {count} aka ho.",
+    "other": "Yɛde themes {count} aka ho."
+  },
+  "pack.addedLowerThirds": {
+    "one": "Yɛde ase nkyerɛwee {count} aka ho.",
+    "other": "Yɛde ase nkyerɛwee {count} aka ho."
+  },
+  "pack.alreadyHere": {
+    "one": "{count} na ɛwɔ ha dada; yɛannsesa no.",
+    "other": "{count} na ɛwɔ ha dada; yɛannsesa wɔn."
+  },
+  "pack.missingFonts": "Fa fonts yi gu kɔmputa yi so na ɛbɛyɛ sɛdeɛ wɔyɛeɛ no: {fonts}",
+  "pack.importTitle": "Fa Themes ne Ase Nkyerɛwee Bra",
+  "pack.listNotRefreshed": "Yɛantumi amma Ase Nkyerɛwee list no ho nsakraeɛ, enti yɛrentumi nsesa no seesei. Bue Ase Nkyerɛwee panel no bio na ɛmmra."
 }

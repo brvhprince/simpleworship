@@ -27,6 +27,7 @@ import type {
   NewSermonPart,
   OutputKind,
   OutputTarget,
+  PackImported,
   Passage,
   PreparedPdf,
   Presentation,
@@ -447,9 +448,12 @@ export const saveStream = (settings: StreamSettings) => invoke<void>("stream_sav
 /** The saved lower thirds, in the order shown. */
 export const getLowerThirds = () => invoke<LowerThird[]>("lower_thirds_get");
 
-/** Saves the lower thirds (the whole list, in order). */
-export const saveLowerThirds = (items: LowerThird[]) =>
-  invoke<void>("lower_thirds_save", { items });
+/**
+ * Saves the lower thirds (the whole list, in order), if the saved list is
+ * still `previous`: refused if it changed meanwhile (see `lower_thirds_save`).
+ */
+export const saveLowerThirds = (items: LowerThird[], previous: LowerThird[]) =>
+  invoke<void>("lower_thirds_save", { items, previous });
 
 /** Songs used between two dates (`YYYY-MM-DD`, inclusive), most used first. */
 export const usageReport = (from: string, to: string) =>
@@ -535,3 +539,14 @@ export function uuidV7(now: number = Date.now()): string {
   const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
 }
+
+/**
+ * Saves themes and lower thirds (with the pictures and videos behind the
+ * themes) as a `.swpack` file. Always on this computer: a joined computer
+ * cannot export (the library is the main computer's).
+ */
+export const exportPack = (path: string, themeIds: string[], lowerThirdIds: string[]) =>
+  invoke<void>("pack_export", { path, themeIds, lowerThirdIds });
+
+/** Adds what a `.swpack` file holds that this computer lacks. */
+export const importPack = (path: string) => invoke<PackImported>("pack_import", { path });

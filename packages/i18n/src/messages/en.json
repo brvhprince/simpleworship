@@ -639,6 +639,8 @@
   "menu.hide": "Hide SimpleWorship",
   "menu.hideOthers": "Hide Others",
   "menu.import": "Import from Other Software…",
+  "menu.packImport": "Import Theme Pack…",
+  "menu.packExport": "Export Theme Pack…",
   "menu.logs": "Open Logs Folder",
   "menu.minimize": "Minimize",
   "menu.moving": "Moving from EasyWorship",
@@ -1025,5 +1027,38 @@
   "video.controls": "Live video",
   "video.mute": "Mute",
   "video.muteHint": "Silences the video on the projector and every other screen",
-  "video.position": "Position"
+  "video.position": "Position",
+  "pack.import": "Import…",
+  "pack.importHint": "Add themes and lower thirds from a .swpack file another church or computer shared",
+  "pack.exportButton": "Export…",
+  "pack.exportHint": "Share themes and lower thirds as one .swpack file",
+  "pack.notWhenJoined": "Import and export on the main computer: this one shows its library",
+  "pack.exportTitle": "Export Themes and Lower Thirds",
+  "pack.themes": "Themes",
+  "pack.lowerThirds": "Lower thirds",
+  "pack.all": "All",
+  "pack.none": "None",
+  "pack.export": {
+    "one": "Export {count} item",
+    "other": "Export {count} items"
+  },
+  "pack.defaultName": "Church themes",
+  "pack.exportedTitle": "Exported",
+  "pack.exportedMessage": "Send the .swpack file to anyone with SimpleWorship. They double-click it, or use File › Import Theme Pack….",
+  "pack.importedTitle": "Imported",
+  "pack.addedThemes": {
+    "one": "Added {count} theme.",
+    "other": "Added {count} themes."
+  },
+  "pack.addedLowerThirds": {
+    "one": "Added {count} lower third.",
+    "other": "Added {count} lower thirds."
+  },
+  "pack.alreadyHere": {
+    "one": "{count} was already here and was left as it is.",
+    "other": "{count} were already here and were left as they are."
+  },
+  "pack.missingFonts": "Install these fonts on this computer for them to look as designed: {fonts}",
+  "pack.importTitle": "Import Themes and Lower Thirds",
+  "pack.listNotRefreshed": "The Lower Thirds list could not be refreshed, so it cannot be changed for now. Open the Lower Thirds panel again to load it."
 }

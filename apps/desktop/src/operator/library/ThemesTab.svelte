@@ -11,6 +11,8 @@
   import { showContextMenu } from "../../lib/context-menu.ts";
   import { engine } from "../../lib/engine.svelte.ts";
   import { t } from "../../lib/i18n/i18n.svelte.ts";
+  import { link } from "../../lib/link.svelte.ts";
+  import { packs } from "../../lib/packs.svelte.ts";
   import { prompts } from "../../lib/prompts.svelte.ts";
   import {
     sampleLyrics,
@@ -170,6 +172,19 @@
     <Button onclick={create}>{t("themes.new")}</Button>
     <Button disabled={!selected} onclick={duplicate}>{t("themes.duplicate")}</Button>
     <Button disabled={!selected} onclick={editSelected}>{t("common.edit")}</Button>
+    <Button
+      disabled={link.joined}
+      title={link.joined ? t("pack.notWhenJoined") : t("pack.importHint")}
+      onclick={() => packs.import()}
+      >{t("pack.import")}</Button
+    >
+    <Button
+      disabled={link.joined}
+      title={link.joined ? t("pack.notWhenJoined") : t("pack.exportHint")}
+      onclick={() =>
+        packs.startExport({ themeIds: selected ? [selected.id] : [], lowerThirdIds: [] })}
+      >{t("pack.exportButton")}</Button
+    >
     <Button disabled={!selected} onclick={() => selected && remove(selected)}
       >{t("common.delete")}</Button
     >

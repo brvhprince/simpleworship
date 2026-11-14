@@ -184,6 +184,16 @@ fn build(
             "menu.import",
             "Import from Other Software…",
         )?)
+        .item(&text(
+            "pack-import",
+            "menu.packImport",
+            "Import Theme Pack…",
+        )?)
+        .item(&text(
+            "pack-export",
+            "menu.packExport",
+            "Export Theme Pack…",
+        )?)
         .item(&text("usage", "menu.usage", "Song Usage Report…")?);
     // Settings lives in the app menu on macOS, and in File elsewhere.
     let settings = item(

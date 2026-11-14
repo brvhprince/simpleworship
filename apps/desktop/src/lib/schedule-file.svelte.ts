@@ -16,13 +16,14 @@ import { engine } from "./engine.svelte.ts";
 import { t } from "./i18n/i18n.svelte.ts";
 import { link } from "./link.svelte.ts";
 import { OPEN_RECENT_PREFIX, onMenuClick } from "./menu.ts";
+import { packs } from "./packs.svelte.ts";
 import { prompts } from "./prompts.svelte.ts";
 
 /** Must match `SCHEDULE_FILE_EVENT` in `src-tauri/src/schedule_file.rs`. */
 const SCHEDULE_FILE_EVENT = "schedule-file://status";
 
 /** Must match `OPEN_FILE_EVENT` in `src-tauri/src/launch.rs`. */
-const OPEN_FILE_EVENT = "app://open-schedule";
+const OPEN_FILE_EVENT = "app://open-file";
 
 /** File type filter for the open and save dialogs. */
 const SCHEDULE_FILTERS = [{ name: "SimpleWorship Schedule", extensions: ["sws"] }];
@@ -46,9 +47,9 @@ class ScheduleFileStore {
       event.preventDefault();
       await this.quit();
     });
-    // A schedule file double-clicked (or dropped on the app's icon).
+    // A schedule or theme pack double-clicked (or dropped on the app's icon).
     const stopOpenFile = await listen<string>(OPEN_FILE_EVENT, ({ payload }) => {
-      void this.open(payload);
+      void this.#openFromOutside(payload);
     });
 
     try {
@@ -63,7 +64,7 @@ class ScheduleFileStore {
 
     // The file SimpleWorship was started with, if any.
     const launchedWith = await api.launchReady();
-    if (launchedWith && !link.joined) await this.open(launchedWith);
+    if (launchedWith) await this.#openFromOutside(launchedWith);
 
     return () => {
       stopStatus();
@@ -209,6 +210,16 @@ class ScheduleFileStore {
   }
 
   /** Runs a file operation, showing any failure. Resolves to whether it worked. */
+  /**
+   * A file opened from outside the app: a theme pack is imported, a
+   * schedule opened (not on a joined computer, which runs the main
+   * computer's schedule).
+   */
+  async #openFromOutside(path: string): Promise<void> {
+    if (path.toLowerCase().endsWith(".swpack")) await packs.import(path);
+    else if (!link.joined) await this.open(path);
+  }
+
   async #attempt(operation: Promise<void>): Promise<boolean> {
     try {
       await operation;

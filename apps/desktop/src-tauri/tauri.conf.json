@@ -67,6 +67,13 @@
         "description": "SimpleWorship schedule",
         "role": "Editor",
         "mimeType": "application/x-simpleworship-schedule"
+      },
+      {
+        "ext": ["swpack"],
+        "name": "SimpleWorship Theme Pack",
+        "description": "SimpleWorship themes and lower thirds",
+        "role": "Viewer",
+        "mimeType": "application/x-simpleworship-pack"
       }
     ],
     "macOS": {
