@@ -44,6 +44,7 @@ use crate::command::{Command, EngineEvent};
 use crate::countdown::{CountdownEnd, CountdownFrame};
 use crate::deck::SlideDeck;
 use crate::id::Id;
+use crate::lower_thirds::LowerThirdShown;
 use crate::media::{Logo, MediaItem, MediaKind};
 use crate::output::{
     DisplayFlags, OutputState, RenderFrame, Transition, TransitionSettings, VideoPlayback,
@@ -155,6 +156,8 @@ pub struct Engine {
     video: Option<VideoPlayback>,
     /// The alert over the slides, if any.
     alert: Option<Alert>,
+    /// The lower third, if one is showing.
+    lower_third: Option<LowerThirdShown>,
     /// The stage display's timer and message.
     stage: StageState,
     /// The background audio player.
@@ -190,6 +193,7 @@ impl Default for OutputState {
             video: None,
             logo: None,
             alert: None,
+            lower_third: None,
             stream: StreamOutput::default(),
             revision: 0,
         }
@@ -226,6 +230,7 @@ impl Engine {
             file_fits: crate::FileFits::new(),
             video: None,
             alert: None,
+            lower_third: None,
             stage: StageState::default(),
             audio: AudioState::default(),
             ccli_license: None,
@@ -328,6 +333,7 @@ impl Engine {
             engine.flags = service.output.flags;
             engine.video = service.output.video;
             engine.alert = service.output.alert;
+            engine.lower_third = service.output.lower_third;
             engine.stage = service.stage;
             engine.audio = service.audio;
             engine.transitions = service.transitions;
@@ -519,6 +525,23 @@ impl Engine {
                 });
             }
             Command::ClearAlert => self.alert = None,
+            Command::ShowLowerThird { item } => {
+                self.lower_third = Some(LowerThirdShown {
+                    show_id: Id::new(),
+                    item,
+                    started_at: (self.clock)(),
+                });
+            }
+            Command::HideLowerThird => self.lower_third = None,
+            Command::LowerThirdEnded { show_id } => {
+                if self
+                    .lower_third
+                    .as_ref()
+                    .is_some_and(|shown| shown.show_id == show_id)
+                {
+                    self.lower_third = None;
+                }
+            }
             Command::CountdownFinished => self.finish_countdown()?,
 
             // ── Stage display ─────────────────────────────────────────────
@@ -1054,6 +1077,7 @@ impl Engine {
             && self.video == self.output.video
             && self.logo == self.output.logo
             && self.alert == self.output.alert
+            && self.lower_third == self.output.lower_third
             && stream == self.output.stream;
         if unchanged {
             return None;
@@ -1066,6 +1090,7 @@ impl Engine {
             video: self.video,
             logo: self.logo.clone(),
             alert: self.alert.clone(),
+            lower_third: self.lower_third.clone(),
             stream,
             revision: self.output.revision + 1,
         };
@@ -1847,6 +1872,61 @@ mod tests {
             kind: MediaKind::Audio,
             ..video(name)
         }
+    }
+
+    #[test]
+    fn lower_thirds_show_replace_and_hide() {
+        use crate::lower_thirds::{LowerThird, LowerThirdKind};
+        let mut engine = Engine::with_clock(fake_now);
+        let pastor = LowerThird::new(LowerThirdKind::Name, "Pastor Kwame", "Senior Pastor");
+        engine
+            .dispatch(Command::ShowLowerThird { item: pastor })
+            .unwrap();
+        let shown = engine.snapshot().output.lower_third.unwrap();
+        assert_eq!(shown.item.title, "Pastor Kwame");
+        assert_eq!(shown.started_at, fake_now());
+
+        let momo = LowerThird::new(LowerThirdKind::Offering, "MoMo: 024 000 0000", "");
+        engine
+            .dispatch(Command::ShowLowerThird { item: momo })
+            .unwrap();
+        assert_eq!(
+            engine.snapshot().output.lower_third.unwrap().item.title,
+            "MoMo: 024 000 0000",
+            "a new one replaces the one showing"
+        );
+
+        engine.dispatch(Command::HideLowerThird).unwrap();
+        assert_eq!(engine.snapshot().output.lower_third, None);
+    }
+
+    #[test]
+    fn a_lower_thirds_timer_only_hides_that_showing() {
+        use crate::lower_thirds::{LowerThird, LowerThirdKind};
+        // Every show at the same millisecond: start times cannot tell them apart.
+        let mut engine = Engine::with_clock(fake_now);
+        let show = |engine: &mut Engine, title: &str| {
+            let item = LowerThird::new(LowerThirdKind::Name, title, "");
+            engine.dispatch(Command::ShowLowerThird { item }).unwrap();
+            engine.snapshot().output.lower_third.unwrap().show_id
+        };
+        let a = show(&mut engine, "A");
+        let b = show(&mut engine, "B");
+        assert_ne!(a, b, "each showing has its own id");
+
+        // A's time runs out after B replaced it (in A's exit, say): B stays.
+        engine
+            .dispatch(Command::LowerThirdEnded { show_id: a })
+            .unwrap();
+        assert_eq!(
+            engine.snapshot().output.lower_third.unwrap().item.title,
+            "B"
+        );
+        // B's own time: it goes.
+        engine
+            .dispatch(Command::LowerThirdEnded { show_id: b })
+            .unwrap();
+        assert_eq!(engine.snapshot().output.lower_third, None);
     }
 
     #[test]

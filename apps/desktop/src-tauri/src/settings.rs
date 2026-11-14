@@ -4,6 +4,7 @@
 use serde::{Deserialize, Serialize};
 use sw_core::StreamSettings;
 use sw_core::alerts::{AlertTemplate, starter_templates};
+use sw_core::lower_thirds::{LowerThird, starter_lower_thirds};
 use sw_core::output::TransitionSettings;
 use sw_db::Database;
 use ts_rs::TS;
@@ -94,6 +95,22 @@ pub fn load_transitions(database: &Database) -> AppResult<TransitionSettings> {
 /// Saves the transitions, so they are the same after a restart.
 pub fn save_transitions(database: &Database, transitions: &TransitionSettings) -> AppResult<()> {
     Ok(database.settings().set(TRANSITIONS_KEY, transitions)?)
+}
+
+/// Settings key for the lower thirds.
+const LOWER_THIRDS_KEY: &str = "lower-thirds";
+
+/// The saved lower thirds, or one of each kind to start from.
+pub fn load_lower_thirds(database: &Database) -> AppResult<Vec<LowerThird>> {
+    Ok(database
+        .settings()
+        .get(LOWER_THIRDS_KEY)?
+        .unwrap_or_else(starter_lower_thirds))
+}
+
+/// Saves the lower thirds, in the order shown.
+pub fn save_lower_thirds(database: &Database, items: &[LowerThird]) -> AppResult<()> {
+    Ok(database.settings().set(LOWER_THIRDS_KEY, &items)?)
 }
 
 /// Settings key for the stream look.

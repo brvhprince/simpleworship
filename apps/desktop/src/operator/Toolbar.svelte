@@ -29,6 +29,7 @@
   import { updates } from "../lib/updates.svelte.ts";
   import AlertsPanel from "./AlertsPanel.svelte";
   import ListenPanel from "./ListenPanel.svelte";
+  import LowerThirdsPanel from "./LowerThirdsPanel.svelte";
   import Popover from "./Popover.svelte";
   import RemotePanel from "./RemotePanel.svelte";
   import ScreensPanel from "./ScreensPanel.svelte";
@@ -167,6 +168,16 @@
         onclose={() => panels.close()}
       >
         <AlertsPanel />
+      </Popover>
+      <Popover
+        label={t("toolbar.lowerThird")}
+        shortcut="L"
+        open={panels.open === "lowerThirds"}
+        active={engine.output?.lowerThird != null}
+        ontoggle={() => panels.toggle("lowerThirds")}
+        onclose={() => panels.close()}
+      >
+        <LowerThirdsPanel />
       </Popover>
       <Popover
         label={t("toolbar.stage")}

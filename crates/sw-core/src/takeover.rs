@@ -45,6 +45,9 @@ impl EngineSnapshot {
         if let Some(video) = &mut self.output.video {
             shift(&mut video.anchor);
         }
+        if let Some(shown) = &mut self.output.lower_third {
+            shift(&mut shown.started_at);
+        }
         if let Some(alert) = &mut self.output.alert {
             shift(&mut alert.started_at);
         }

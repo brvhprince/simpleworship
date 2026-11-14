@@ -33,6 +33,8 @@
     below?: Snippet;
     /** The live view's alert ran its course. */
     onalertend?: () => void;
+    /** A lower third's seconds are up (the live pane passes it on). */
+    onlowerthirdend?: (showId: string) => void;
     /** The live view's countdown reached zero. */
     oncountdownend?: () => void;
   }
@@ -46,6 +48,7 @@
     actions,
     below,
     onalertend,
+    onlowerthirdend,
     oncountdownend,
   }: Props = $props();
 
@@ -106,7 +109,15 @@
     <ScaledCanvas>
       {#if kind === "live" && output}
         <!-- Muted: only the projector plays sound. -->
-        <OutputView {output} muted {onalertend} {oncountdownend} />
+        <!-- The operator sees every lower third, whichever outputs it is for. -->
+        <OutputView
+          {output}
+          muted
+          {onalertend}
+          {oncountdownend}
+          {onlowerthirdend}
+          lowerThirds="all"
+        />
       {:else if selectedFrame}
         <SlideView frame={selectedFrame} />
       {/if}
@@ -235,7 +246,7 @@
     padding: 2px var(--sw-space-2);
     border-radius: var(--sw-radius-small);
     background: var(--pane-color);
-    color: #fff;   /* PREVIEW / LIVE: white on blue or red in both appearances */
+    color: #fff; /* PREVIEW / LIVE: white on blue or red in both appearances */
     font-size: var(--sw-font-size-small);
     font-weight: 700;
     text-transform: uppercase;

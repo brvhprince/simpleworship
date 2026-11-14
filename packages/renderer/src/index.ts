@@ -42,6 +42,13 @@ export {
   setFileFitLookup,
 } from "./file-fit.ts";
 export { frameAt } from "./frames.ts";
+export { default as LowerThirdLayer } from "./LowerThirdLayer.svelte";
+export {
+  LOWER_THIRD_EXIT_MS,
+  type LowerThirdPlace,
+  lowerThirdFor,
+  lowerThirdOut,
+} from "./lower-thirds.ts";
 export { getMediaUrls, type MediaUrls, setMediaUrls } from "./media.ts";
 export { default as OutputView } from "./OutputView.svelte";
 export { default as ScaledCanvas } from "./ScaledCanvas.svelte";

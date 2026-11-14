@@ -207,6 +207,8 @@ pub fn run(app: &AppHandle, method: &str, params: Value) -> AppResult<Value> {
             state(),
             params.get("transitions")?,
         )?),
+        "lower_thirds_get" => json(settings::lower_thirds_get(state())?),
+        "lower_thirds_save" => json(settings::lower_thirds_save(state(), params.get("items")?)?),
         "stream_save" => json(settings::stream_save(
             app.clone(),
             state(),

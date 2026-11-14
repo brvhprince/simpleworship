@@ -20,6 +20,7 @@ use crate::audio::AudioState;
 use crate::deck::{AutoAdvance, DeckSlide, SlideDeck};
 use crate::engine::PaneState;
 use crate::id::Id;
+use crate::lower_thirds::LowerThird;
 use crate::media::{CameraRef, Logo, MediaItem};
 use crate::output::{OutputState, TransitionSettings};
 use crate::presentation::Presentation;
@@ -183,6 +184,22 @@ pub enum Command {
     },
     /// Take the alert off the screen.
     ClearAlert,
+
+    // ── Lower thirds ─────────────────────────────────────────────────────
+    /// Show a lower third, replacing any already showing.
+    ShowLowerThird {
+        /// What to show, where and how.
+        item: LowerThird,
+    },
+    /// Take the lower third off (it animates out), whichever is showing.
+    HideLowerThird,
+    /// A lower third's seconds are up (sent by the screen timing it): takes
+    /// it off only if that showing is still on, so a timer cannot hide the
+    /// lower third that replaced it.
+    LowerThirdEnded {
+        /// The showing that ran out (`LowerThirdShown::show_id`).
+        show_id: crate::id::Id,
+    },
 
     // ── Countdowns ───────────────────────────────────────────────────────
     /// A live countdown reached zero (sent by a screen showing it). If the
