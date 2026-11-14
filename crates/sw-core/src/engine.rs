@@ -146,6 +146,9 @@ pub struct Engine {
     pub auto_preview_next: bool,
     /// How the stream output shows each kind of content.
     stream: StreamSettings,
+    /// How many times a different item has gone live: the stream's words
+    /// come in again for each (see [`StreamOutput::entrance_cue`]).
+    entrance_cue: u64,
     /// The themes and defaults everything is styled with.
     themes: ThemeLibrary,
     /// The church logo, if one is set.
@@ -225,6 +228,7 @@ impl Engine {
             transitions: TransitionSettings::default(),
             auto_preview_next: true,
             stream: StreamSettings::default(),
+            entrance_cue: 0,
             themes: ThemeLibrary::default(),
             logo: None,
             file_fits: crate::FileFits::new(),
@@ -338,6 +342,8 @@ impl Engine {
             engine.audio = service.audio;
             engine.transitions = service.transitions;
             engine.stream = service.stream;
+            // The same item stays up, so the stream's words stay in place.
+            engine.entrance_cue = service.output.stream.entrance_cue;
             // Its media files keep this computer's scaling, as its themes
             // do: `changes` refits the panes.
             Ok(())
@@ -868,6 +874,15 @@ impl Engine {
             Some(tracks) => self.set_playlist(tracks, true),
             None => {
                 self.start_countdown(&pane);
+                // Sending the same item live again (say, from its preview)
+                // is not a new entrance; a different one is.
+                let same_item = self.live.as_ref().is_some_and(|live| {
+                    live.schedule_item == pane.schedule_item
+                        && live.presentation.source == pane.presentation.source
+                });
+                if !same_item {
+                    self.entrance_cue += 1;
+                }
                 self.live = Some(pane);
             }
         }
@@ -1063,13 +1078,14 @@ impl Engine {
         });
         self.follow_live_video(frame.as_ref());
         let transition = self.live_transition();
-        let stream = stream_output(
+        let mut stream = stream_output(
             &self.stream,
             &self.themes,
             self.live_kind(),
             frame.as_ref(),
             self.flags,
         );
+        stream.entrance_cue = self.entrance_cue;
 
         let unchanged = frame == self.output.frame
             && self.flags == self.output.flags
@@ -2132,6 +2148,35 @@ mod tests {
         let content = &engine.schedule().get(id).unwrap().content;
         assert!(matches!(content, ItemContent::Deck { deck } if deck.name == "Welcome"));
         assert_eq!(item_slide_count(&engine, id), 2);
+    }
+
+    #[test]
+    fn a_different_item_going_live_cues_the_streams_entrance() {
+        let mut engine = themed_engine(Vec::new());
+        let cue = |engine: &Engine| engine.snapshot().output.stream.entrance_cue;
+        let go_live = |engine: &mut Engine, title: &str| {
+            let mut song = Song::new(title);
+            song.lyrics = "[V1]\none\n\ntwo".into();
+            engine
+                .dispatch(Command::PreviewSong {
+                    song: Box::new(song),
+                })
+                .unwrap();
+            engine.dispatch(Command::GoLive).unwrap();
+        };
+
+        go_live(&mut engine, "Amazing Grace");
+        assert_eq!(cue(&engine), 1);
+        engine.dispatch(Command::NextSlide).unwrap();
+        assert_eq!(cue(&engine), 1, "the next slide is not a new entrance");
+        engine.dispatch(Command::GoLive).unwrap();
+        assert_eq!(
+            cue(&engine),
+            1,
+            "sending the same song live again is not either"
+        );
+        go_live(&mut engine, "Blessed Assurance");
+        assert_eq!(cue(&engine), 2, "a different song is");
     }
 
     #[test]

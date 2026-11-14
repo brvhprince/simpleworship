@@ -2298,6 +2298,14 @@ export type StageTimer = {
 export type StreamBackdrop = "transparent" | "green" | "black" | "main";
 
 /**
+ * How the words come in on the stream, where a theme draws them (the
+ * lower-third looks): when they appear after nothing was showing, and when
+ * a different song, passage or schedule item goes live. From one slide to
+ * the next they change with the usual transition.
+ */
+export type StreamEntrance = "fade" | "rise" | "wipe";
+
+/**
  * How the stream shows one kind of content.
  */
 export type StreamLook =
@@ -2339,6 +2347,16 @@ export type StreamOutput = {
    * Show the main output's alert.
    */
   showAlerts: boolean;
+  /**
+   * How the words come in, when a theme draws them (`None` for slides
+   * shown as on the main output, which keep their transition).
+   */
+  entrance: StreamEntrance | null;
+  /**
+   * Goes up by one each time a different item goes live, so the words
+   * come in again for a new song or passage (see `Engine::go_live`).
+   */
+  entranceCue: number;
 };
 
 /**
@@ -2369,6 +2387,10 @@ export type StreamSettings = {
    * Show alerts (nursery calls, notices) on the stream as well.
    */
   showAlerts: boolean;
+  /**
+   * How the words come in where a theme draws them.
+   */
+  entrance: StreamEntrance;
 };
 
 /**
