@@ -121,6 +121,43 @@ struct NewToThisComputer {
     already_here: u32,
 }
 
+impl NewToThisComputer {
+    /// Gives the media file at `index` the name `name` here, and points the
+    /// new themes that show it at that name.
+    fn rename_media(&mut self, index: usize, name: String) {
+        let file = &mut self.media[index].item;
+        for record in &mut self.themes {
+            if let Some(reference) = record.theme.background.media_mut()
+                && reference.id == file.id
+            {
+                reference.file.clone_from(&name);
+            }
+        }
+        file.file = name;
+    }
+}
+
+/// `wanted` if no file in `folder` has that name, or else the first of
+/// `stem-1.ext`, `stem-2.ext`… that is free.
+fn unused_name(folder: &Path, wanted: &str) -> String {
+    if !folder.join(wanted).exists() {
+        return wanted.to_owned();
+    }
+    let path = Path::new(wanted);
+    let stem = path
+        .file_stem()
+        .map(|stem| stem.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let extension = path
+        .extension()
+        .map(|ext| format!(".{}", ext.to_string_lossy()))
+        .unwrap_or_default();
+    (1..)
+        .map(|n| format!("{stem}-{n}{extension}"))
+        .find(|name| !folder.join(name).exists())
+        .expect("some name is free")
+}
+
 /// A media file to copy out of a pack, and its record here.
 #[derive(Debug, PartialEq)]
 struct PackFile {
@@ -263,7 +300,7 @@ pub fn read(
         .collect();
     let mut lower_thirds = crate::settings::load_lower_thirds(database)?;
     let lower_thirds_here: HashSet<Id> = lower_thirds.iter().map(|item| item.id).collect();
-    let new = new_to_this_computer(
+    let mut new = new_to_this_computer(
         contents,
         &themes_here,
         &lower_thirds_here,
@@ -272,7 +309,15 @@ pub fn read(
     )?;
 
     // Files first, so a theme never points at a picture not yet copied.
-    for file in &new.media {
+    for index in 0..new.media.len() {
+        // A file in the folder may already have this name (one brought by
+        // an older schedule keeps the name it had): never write over it.
+        let wanted = &new.media[index].item.file;
+        let name = unused_name(&folders.media, wanted);
+        if &name != wanted {
+            new.rename_media(index, name);
+        }
+        let file = &new.media[index];
         let destination: PathBuf = folders.media.join(&file.item.file);
         copy_out(&mut reader, &file.in_pack, &destination)?;
         database.media().save(&file.item)?;
@@ -579,6 +624,70 @@ mod tests {
         assert_eq!(local_file_name(id, "x.JPG"), format!("{id}.jpg"));
         assert_eq!(local_file_name(id, "x.jp-g!"), format!("{id}.jpg"));
         assert_eq!(local_file_name(id, "x"), id.to_string());
+    }
+
+    #[test]
+    fn an_imported_file_never_writes_over_one_with_the_same_name() {
+        let folder = std::env::temp_dir().join(format!("sw-pack-names-{}", Id::new()));
+        let (ours, our_folders) = library(&folder.join("ours"));
+        let (theirs, their_folders) = library(&folder.join("theirs"));
+
+        // Their library: a picture brought by an older schedule, under a
+        // name made from another id, the very id our pack's picture has.
+        let sunrise = picture("sunrise.jpg");
+        let mut older = picture("older.jpg");
+        older.file = format!("{}.jpg", sunrise.id);
+        std::fs::write(their_folders.media.join(&older.file), b"their picture").unwrap();
+        theirs.media().save(&older).unwrap();
+
+        std::fs::write(our_folders.media.join("sunrise.jpg"), b"our picture").unwrap();
+        ours.media().save(&sunrise).unwrap();
+        let mut record = theme("Sunrise", "Lato");
+        record.builtin = false;
+        record.theme.background = sw_core::Background::Image {
+            media: sunrise.as_ref(),
+            fit: sw_core::MediaFit::Cover,
+            file_fit: None,
+            opacity: 1.0,
+        };
+        ours.themes().save(&record).unwrap();
+        let file = folder.join("Sunrise.swpack");
+        write(
+            &file,
+            &gather(&ours, &[record.id], &[]).unwrap(),
+            &our_folders,
+        )
+        .unwrap();
+
+        read(&file, &theirs, &their_folders, &[]).unwrap();
+
+        assert_eq!(
+            std::fs::read(their_folders.media.join(&older.file)).unwrap(),
+            b"their picture",
+            "left as it was"
+        );
+        let copied = theirs.media().get(sunrise.id).unwrap().unwrap();
+        assert_eq!(copied.file, format!("{}-1.jpg", sunrise.id));
+        assert_eq!(
+            std::fs::read(their_folders.media.join(&copied.file)).unwrap(),
+            b"our picture"
+        );
+        let imported = theirs
+            .themes()
+            .library()
+            .unwrap()
+            .get(record.id)
+            .cloned()
+            .unwrap();
+        assert_eq!(
+            imported
+                .theme
+                .background
+                .media()
+                .map(|media| media.file.clone()),
+            Some(copied.file)
+        );
+        std::fs::remove_dir_all(&folder).unwrap();
     }
 
     /// A library with its own media folder, in a temporary directory.

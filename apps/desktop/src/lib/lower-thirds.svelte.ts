@@ -52,22 +52,24 @@ class LowerThirdsStore {
 
   /**
    * Loads the saved list (the main computer's, on one that joined).
-   * Resolves to whether this load's answer was used.
+   * Resolves to whether this load's answer was used: `"failed"` if it
+   * could not be fetched (the error is shown), `"superseded"` if a newer
+   * load or a save made it out of date.
    */
-  async load(): Promise<boolean> {
+  async load(): Promise<"loaded" | "superseded" | "failed"> {
     const load = ++this.#loads;
     const savesBefore = this.#saves;
     try {
       const list = await getLowerThirds();
       // Only the newest load counts, and not if a save came since: the
       // list then already holds something newer than this answer.
-      if (load !== this.#loads || this.#saves !== savesBefore) return false;
+      if (load !== this.#loads || this.#saves !== savesBefore) return "superseded";
       this.list = list;
       this.ready = true;
-      return true;
+      return "loaded";
     } catch (error) {
       if (load === this.#loads) engine.showError(error);
-      return false;
+      return "failed";
     }
   }
 
@@ -77,21 +79,29 @@ class LowerThirdsStore {
    * meanwhile, or one from the old list just after, would otherwise drop
    * what `change` added. Saving stays off (`ready` false) until a load
    * brings the new list, even if this reload fails or a newer one
-   * overtakes it.
+   * overtakes it. Resolves to `change`'s answer and whether the reload
+   * failed (an overtaken one is not a failure: the newer load reports
+   * its own).
    */
-  async whileWrittenElsewhere<T>(change: () => Promise<T>): Promise<T> {
+  async whileWrittenElsewhere<T>(
+    change: () => Promise<T>,
+  ): Promise<{ result: T; reloadFailed: boolean }> {
     while (this.busy) await new Promise<void>((resolve) => this.#idle.push(resolve));
     this.busy = true;
+    let outcome: PromiseSettledResult<T>;
     try {
-      return await change();
-    } finally {
-      // The list here is now out of date, and a load already on its way
-      // holds the old one: neither may be saved over the new list.
-      this.ready = false;
-      this.#saves += 1;
-      await this.load();
-      this.#setIdle();
+      outcome = { status: "fulfilled", value: await change() };
+    } catch (reason) {
+      outcome = { status: "rejected", reason };
     }
+    // The list here is now out of date, and a load already on its way
+    // holds the old one: neither may be saved over the new list.
+    this.ready = false;
+    this.#saves += 1;
+    const reload = await this.load();
+    this.#setIdle();
+    if (outcome.status === "rejected") throw outcome.reason;
+    return { result: outcome.value, reloadFailed: reload === "failed" };
   }
 
   #setIdle(): void {

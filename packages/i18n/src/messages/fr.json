@@ -1059,5 +1059,6 @@
     "other": "{count} éléments étaient déjà là et n’ont pas été modifiés."
   },
   "pack.missingFonts": "Installez ces polices sur cet ordinateur pour un rendu fidèle : {fonts}",
-  "pack.importTitle": "Importer des thèmes et des bandeaux"
+  "pack.importTitle": "Importer des thèmes et des bandeaux",
+  "pack.listNotRefreshed": "La liste des bandeaux n’a pas pu être actualisée : elle ne peut pas être modifiée pour l’instant. Rouvrez le panneau Bandeaux pour la charger."
 }

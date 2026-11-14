@@ -1059,5 +1059,6 @@
     "other": "{count} were already here and were left as they are."
   },
   "pack.missingFonts": "Install these fonts on this computer for them to look as designed: {fonts}",
-  "pack.importTitle": "Import Themes and Lower Thirds"
+  "pack.importTitle": "Import Themes and Lower Thirds",
+  "pack.listNotRefreshed": "The Lower Thirds list could not be refreshed, so it cannot be changed for now. Open the Lower Thirds panel again to load it."
 }

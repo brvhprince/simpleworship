@@ -125,7 +125,7 @@ describe("lower thirds store", () => {
     const importing = lowerThirds.whileWrittenElsewhere(() => Promise.resolve());
     await vi.waitFor(() => expect(failing).toHaveLength(2));
     failing[1]?.reject(new Error("no connection"));
-    await importing;
+    expect((await importing).reloadFailed).toBe(true); // the import says so
 
     // The old list must not be saved over the imported one.
     expect(lowerThirds.ready).toBe(false);
@@ -143,7 +143,7 @@ describe("lower thirds store", () => {
     await vi.waitFor(() => expect(pending).toHaveLength(2));
     const newer = lowerThirds.load(); // the panel opened meanwhile
     answer(1, [item("a"), item("b")]); // the overtaken reload: not used
-    await importing;
+    expect((await importing).reloadFailed).toBe(false); // overtaken, not failed
     expect(lowerThirds.ready).toBe(false);
 
     answer(2, [item("a"), item("b")]);

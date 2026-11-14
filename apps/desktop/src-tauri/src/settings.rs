@@ -123,10 +123,9 @@ pub fn save_lower_thirds(database: &Database, items: &[LowerThird]) -> AppResult
 pub fn save_lower_thirds_over(
     database: &Database,
     items: &[LowerThird],
-    previous: Option<&[LowerThird]>,
+    previous: &[LowerThird],
 ) -> AppResult<()> {
-    let saved = saved_lower_thirds(database)?;
-    if let (Some(previous), Some(saved)) = (previous, saved)
+    if let Some(saved) = saved_lower_thirds(database)?
         && previous != saved.as_slice()
     {
         return Err(AppError::LowerThirdsChanged);
@@ -166,19 +165,15 @@ mod tests {
 
         // Nothing saved yet: anything goes (the starters have new ids each load).
         let starters = load_lower_thirds(&database).unwrap();
-        save_lower_thirds_over(&database, std::slice::from_ref(&name), Some(&starters)).unwrap();
+        save_lower_thirds_over(&database, std::slice::from_ref(&name), &starters).unwrap();
 
         // Made to the list as saved: saved.
         let both = [name.clone(), momo];
-        save_lower_thirds_over(&database, &both, Some(std::slice::from_ref(&name))).unwrap();
+        save_lower_thirds_over(&database, &both, std::slice::from_ref(&name)).unwrap();
 
         // Made to the list before (a pack added one meanwhile): refused.
-        let stale = save_lower_thirds_over(&database, &[], Some(std::slice::from_ref(&name)));
+        let stale = save_lower_thirds_over(&database, &[], std::slice::from_ref(&name));
         assert!(matches!(stale, Err(AppError::LowerThirdsChanged)));
         assert_eq!(load_lower_thirds(&database).unwrap(), both);
-
-        // An older joined computer sends no previous list: saved as before.
-        save_lower_thirds_over(&database, &[], None).unwrap();
-        assert!(load_lower_thirds(&database).unwrap().is_empty());
     }
 }

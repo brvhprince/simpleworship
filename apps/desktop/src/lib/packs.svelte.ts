@@ -60,12 +60,15 @@ class Packs {
     try {
       // The import writes the lower thirds itself: the list is locked and
       // reloaded around it.
-      const result = await lowerThirds.whileWrittenElsewhere(() => importPack(path));
+      const { result, reloadFailed } = await lowerThirds.whileWrittenElsewhere(() =>
+        importPack(path),
+      );
       const lines = [
         t("pack.addedThemes", { count: result.themesAdded }),
         t("pack.addedLowerThirds", { count: result.lowerThirdsAdded }),
       ];
       if (result.alreadyHere > 0) lines.push(t("pack.alreadyHere", { count: result.alreadyHere }));
+      if (reloadFailed) lines.push(t("pack.listNotRefreshed"));
       if (result.missingFonts.length > 0) {
         lines.push(t("pack.missingFonts", { fonts: result.missingFonts.join(", ") }));
       }
