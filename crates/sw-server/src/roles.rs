@@ -14,7 +14,8 @@ use ts_rs::TS;
 #[ts(export, export_to = "remote.ts")]
 pub enum Role {
     /// A second operator: everything the operator window can do from a
-    /// phone (live controls, schedule, songs, scripture, alerts, stage).
+    /// phone (live controls, schedule, songs, scripture, alerts, lower
+    /// thirds, stage).
     Full,
     /// The preacher: move through the live slides, jump to a section, and
     /// black the screen.
@@ -174,6 +175,33 @@ mod tests {
             &Command::NextSlide,
             &state
         ));
+    }
+
+    #[test]
+    fn only_full_control_shows_lower_thirds() {
+        use sw_core::lower_thirds::{LowerThird, LowerThirdKind};
+        let state = state_with(Vec::new());
+        let show = Command::ShowLowerThird {
+            item: LowerThird::new(LowerThirdKind::Name, "Pastor Kwame", "Senior Pastor"),
+        };
+        assert!(may_dispatch(Role::Full, &show, &state));
+        assert!(may_dispatch(Role::Full, &Command::HideLowerThird, &state));
+        assert!(may_call(Role::Full, "lowerThirds.list"));
+        // Lower thirds belong to the media desk, not the pulpit, the band or the nursery.
+        for role in [
+            Role::Presenter,
+            Role::WorshipLeader,
+            Role::Alerts,
+            Role::Stage,
+            Role::Mirror,
+        ] {
+            assert!(!may_dispatch(role, &show, &state), "{role:?}");
+            assert!(
+                !may_dispatch(role, &Command::HideLowerThird, &state),
+                "{role:?}"
+            );
+            assert!(!may_call(role, "lowerThirds.list"), "{role:?}");
+        }
     }
 
     #[test]

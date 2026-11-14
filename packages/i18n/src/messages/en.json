@@ -705,6 +705,8 @@
   "remote.screens": "Screens",
   "remote.sections": "Sections",
   "remote.tabAlerts": "Alerts",
+  "remote.tabLowerThirds": "Lower thirds",
+  "remote.noLowerThirds": "No lower thirds yet. Make them on the computer: Lower Third in the toolbar.",
   "remote.tabBible": "Bible",
   "remote.tabLive": "Live",
   "remote.tabSchedule": "Schedule",
